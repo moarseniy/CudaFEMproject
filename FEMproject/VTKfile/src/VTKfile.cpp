@@ -11,6 +11,9 @@ void MakeVTKfile(std::string output_vtk,
                  std::vector<float> sigma_mises,
                  std::vector<MyArray> Deformation,
                  std::vector<float> epsilon_mises) {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     fstream outvtk;
     outvtk.open(output_vtk, fstream::out);
     outvtk << "# vtk DataFile Version 1.0\nresults.vtk  3D Unstructured Grid of Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "

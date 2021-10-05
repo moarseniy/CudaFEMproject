@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 
+#include "Tools.h"
+
 class MyArray;
 class Matrix;
 
@@ -14,6 +16,7 @@ public:
 	MyArray(int array_size);
 	MyArray(const MyArray &a);
 	~MyArray();
+    void Resize(int new_size);
 	void Show();
 	void zap();
 	void Set(int index, float value);
@@ -76,7 +79,7 @@ private:
 	int row;
 	int col;
 	bool isDiag;
-	bool isTrans;
+    bool isSym;
     float *m;
 };
 

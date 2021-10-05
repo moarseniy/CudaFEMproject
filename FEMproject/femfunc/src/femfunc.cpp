@@ -27,6 +27,9 @@ void FindConstraints(const std::vector<Constraint> constraints, std::vector<int>
 }
 
 void ApplyConstraints(SparseMatrixCOO& K, const std::vector<Constraint>& constraints, int n) {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     std::vector<int> indicesToConstraint;
 
     for (std::vector<Constraint>::const_iterator it = constraints.begin(); it != constraints.end(); ++it) {
@@ -70,6 +73,9 @@ void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
                                    Matrix D,
                                    std::vector<Element> elements,
                                    MyArray displacements) {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     MyArray StressVector(6);
     MyArray DeformationVector(6);
     MyArray delta(12);
@@ -208,5 +214,51 @@ void Element::CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets
                 triplets.push_back(trplt33);
             }
         }
+    }
+}
+
+void FEMdataKeeper::ParseFiles(std::string dir, std::string name) {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
+    fstream nodes_file, elements_file, loads_file, constraints_file;
+
+    nodes_file.open(dir + name + "/nodes.txt", fstream::in);
+    elements_file.open(dir + name + "/elements.txt", fstream::in);
+    loads_file.open(dir + name + "/loads.txt", fstream::in);
+    constraints_file.open(dir + name + "/constraints.txt", fstream::in);
+
+    nodes_file >> nodesCount;
+    elements_file >> elementsCount;
+    constraints_file >> constraintsCount;
+    loads_file >> loadsCount;
+
+    AllocateDynamicMemory();
+
+    for (int i = 0; i < nodesCount; ++i) {
+        nodes_file >> nodesX[i] >> nodesY[i] >> nodesZ[i];
+    }
+
+    for (int i = 0; i < elementsCount; ++i) {
+        Element element;
+        elements_file >> element.nodesIds[0] >> element.nodesIds[1] >> element.nodesIds[2] >> element.nodesIds[3];
+        elements.push_back(element);
+    }
+
+    for (int i = 0; i < constraintsCount; ++i) {
+        Constraint constraint;
+        int type;
+        constraints_file >> constraint.node >> type;
+        constraint.type = static_cast<Constraint::Type>(type);
+        constraints.push_back(constraint);
+    }
+
+    for (int i = 0; i < loadsCount; ++i) {
+        int node;
+        float x, y, z;
+        loads_file >> node >> x >> y >> z;
+        loads[3 * node + 0] = x;
+        loads[3 * node + 1] = y;
+        loads[3 * node + 2] = z;
     }
 }

@@ -8,4 +8,4 @@ add_library(
 	)
 
 target_include_directories(Linal2 PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-TARGET_LINK_LIBRARIES(Linal2)
+TARGET_LINK_LIBRARIES(Linal2 Tools)

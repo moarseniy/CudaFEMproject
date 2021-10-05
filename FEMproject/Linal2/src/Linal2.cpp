@@ -31,6 +31,16 @@ MyArray::~MyArray() {
 	delete [] p;
 }
 
+void MyArray::Resize(int new_size) {
+    if (array_size == 0) {
+        this->array_size = new_size;
+        this->p = new float[array_size];
+        for (int i = 0; i < array_size; i++) {
+            p[i] = 0.0;
+        }
+    }
+}
+
 void MyArray::Show() {
 	for (int i = 0; i < array_size; i++) {
 		cout << p[i] << " ";
@@ -395,7 +405,7 @@ Matrix & Matrix::transpose() {
 				}
 			}
 		}
-		this->isTrans = true;
+        this->isSym = true;
 	} else {
 		cout << "ERROR! transpose: col != row" << endl;
 	}	
@@ -417,7 +427,7 @@ void Matrix::transpose2() {
 				m[j + i * col] = temp_matr.m[i + j * row];
 			}
 		}
-		//this->isTrans = true;
+        //this->isSym = true;
 	} else {
 		for (int i = 0; i < row; i++) {
 			for (int j = 0; j < col; j++) {
@@ -729,6 +739,9 @@ SparseMatrixCOO::~SparseMatrixCOO() {
 }
 
 void SparseMatrixCOO::resize() {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     int *x_new = new int[sparse_size];
     int *y_new = new int[sparse_size];
     float *data_new = new float[sparse_size];
@@ -806,6 +819,9 @@ float* SparseMatrixCOO::get_data() {
 }
 
 SparseMatrixCOO SparseMatrixCOO::DeleteZeros() {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     int new_size = sparse_size;
     int k = 0;
     SparseMatrixCOO temp(sparse_size);
@@ -848,6 +864,9 @@ int SparseMatrixCOO::CountNonZero() {
 
 
 void SparseMatrixCOO::ConvertTripletToSparse(std::vector<Triplet> t) {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     int new_size = sparse_size;
     int k = 1;
     int index = 0;
@@ -946,6 +965,9 @@ void SparseMatrixCOO::ConvertToMatrix(Matrix &M) {
 }
 
 void SparseMatrixCOO::SortIt() {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
 	int temp;
 	float temp_value;
     for (int i = 0; i < sparse_size; i++) {
@@ -1089,6 +1111,9 @@ void SparseMatrixCOO::SparseLU() {
 }
 
 void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
+    #ifdef TOOLS_TIMER
+        Timer timer(__func__);
+    #endif
     int k = 1;
 
     float *z_k = new float[n];

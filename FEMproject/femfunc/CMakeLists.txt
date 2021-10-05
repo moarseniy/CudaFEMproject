@@ -1,6 +1,5 @@
 cmake_minimum_required (VERSION 3.5)
 
-
 add_library(
 	femfunc 
 	src/femfunc.h 
@@ -8,4 +7,4 @@ add_library(
 	)
 
 target_include_directories(femfunc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-TARGET_LINK_LIBRARIES(femfunc Linal2)
+TARGET_LINK_LIBRARIES(femfunc Linal2 Tools)

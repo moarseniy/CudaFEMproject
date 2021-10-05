@@ -2,21 +2,21 @@
 #define FEMFUNC_H
 
 #include "Linal2.h"
+#include "Tools.h"
+
 #include <iostream>
 #include <vector>
 
 using namespace std;
 
-struct Element
-{
+struct Element {
     void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ);
     void FindSparseSize(std::vector<couple> &Sparse);
     Matrix B = Matrix(6, 12);
     int nodesIds[4];
 };
 
-struct ElementLight
-{
+struct ElementLight {
     int nodesIds[4];
 };
 
@@ -46,6 +46,56 @@ struct Coords {
     }
     int x;
     int y;
+};
+
+
+class FEMdataKeeper {
+public:
+    FEMdataKeeper(){}
+
+    void ParseFiles(std::string dir, std::string name);
+    void ShowInfo() {
+        std::cout << "Nodes count = " << nodesCount <<
+                     "\nElements count = " << elementsCount <<
+                     "\nConstraints count = " << constraintsCount <<
+                     "\nLoads count = " << loadsCount << "\n\n";
+    }
+
+    void SetNodesCount(int nodesCount) {
+        this->nodesCount = nodesCount;
+    }
+    void SetElementsCount(int elementsCount) {
+        this->elementsCount = elementsCount;
+    }
+    void SetLoadsCount(int loadsCount) {
+        this->loadsCount = loadsCount;
+    }
+    void SetConstraintsCount(int constraintsCount) {
+        this->constraintsCount = constraintsCount;
+    }
+    void SetDimensionCount(int dimension) {
+        this->dimension = dimension;
+    }
+
+    void AllocateDynamicMemory() {
+        nodesX.Resize(nodesCount);
+        nodesY.Resize(nodesCount);
+        nodesZ.Resize(nodesCount);
+        loads.Resize(3 * nodesCount);
+    }
+
+    int nodesCount;
+    int elementsCount;
+    int loadsCount;
+    int constraintsCount;
+    int dimension;
+
+    MyArray nodesX;
+    MyArray nodesY;
+    MyArray nodesZ;
+    std::vector<Element>   	elements;
+    std::vector<Constraint>	constraints;
+    MyArray loads;
 };
 
 void FindConstraints(const std::vector<Constraint> constraints, std::vector<int> &indicesToConstraint);

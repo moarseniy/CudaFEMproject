@@ -7,6 +7,7 @@
 #include <string>
 #include "Linal2.h"
 #include "femfunc.h"
+#include "Tools.h"
 
 void MakeVTKfile(std::string output_vtk,
                  MyArray nodesX,
