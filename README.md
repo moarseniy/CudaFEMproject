@@ -1,2 +1,2 @@
 # CudaFEMproject
-Finite Element Method CUDA implementation
+Finite Element Method + CUDA + CMake implementation
