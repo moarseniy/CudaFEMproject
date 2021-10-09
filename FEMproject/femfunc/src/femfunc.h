@@ -9,6 +9,7 @@
 
 using namespace std;
 
+
 struct Element {
     void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ);
     void FindSparseSize(std::vector<couple> &Sparse);
@@ -53,12 +54,14 @@ class FEMdataKeeper {
 public:
     FEMdataKeeper(){}
 
-    void ParseFiles(std::string dir, std::string name);
+    void ParseFiles(std::string dir, std::string name, float poissonRatio, float youngModulus);
     void ShowInfo() {
-        std::cout << "Nodes count = " << nodesCount <<
+        std::cout << "==========INFO==========" <<
+                     "\nNodes count = " << nodesCount <<
                      "\nElements count = " << elementsCount <<
                      "\nConstraints count = " << constraintsCount <<
-                     "\nLoads count = " << loadsCount << "\n\n";
+                     "\nLoads count = " << loadsCount <<
+                     "\n========================\n\n";
     }
 
     void SetNodesCount(int nodesCount) {
@@ -82,6 +85,7 @@ public:
         nodesY.Resize(nodesCount);
         nodesZ.Resize(nodesCount);
         loads.Resize(3 * nodesCount);
+        D.Resize(6, 6);
     }
 
     int nodesCount;
@@ -90,6 +94,7 @@ public:
     int constraintsCount;
     int dimension;
 
+    Matrix D;
     MyArray nodesX;
     MyArray nodesY;
     MyArray nodesZ;
@@ -97,6 +102,9 @@ public:
     std::vector<Constraint>	constraints;
     MyArray loads;
 };
+
+void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata, MyArray &displacements);
+
 
 void FindConstraints(const std::vector<Constraint> constraints, std::vector<int> &indicesToConstraint);
 void ApplyConstraints(SparseMatrixCOO& K, const std::vector<Constraint>& constraints, int n);

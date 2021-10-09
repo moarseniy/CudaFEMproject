@@ -44,6 +44,7 @@ public:
 	Matrix(const Matrix &a);
 	Matrix(int row, int col, bool isDiag);
 	~Matrix();
+    void Resize(int row, int col);
 	void Show();
 	float & operator ()(int i,int j);
 	void Set(int index1,int index2,float value);

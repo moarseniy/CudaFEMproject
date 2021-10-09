@@ -246,6 +246,18 @@ Matrix::~Matrix() {
 	delete [] m;
 }
 
+void Matrix::Resize(int row, int col) {
+    this->row = row;
+    this->col = col;
+    this->m = new float[row * col];
+
+    for (int i = 0; i < row; i++) {
+        for (int j = 0; j < col; j++) {
+            m[j + i * col] = 0.0;
+        }
+    }
+}
+
 float & Matrix::operator ()(int i, int j) {
 	return m[j + i * col];
 }
