@@ -9,10 +9,16 @@ if (TOOLS_TIMER)
     add_definitions(-DTOOLS_TIMER)
 endif()
 
+if (FEM3D)
+    add_definitions(-DDIM=3)
+else ()
+    add_definitions(-DDIM=2)
+endif()
+
 add_subdirectory(Linal2)
 add_subdirectory(fem)
 add_subdirectory(VTKfile)
 add_subdirectory(femfunc)
 #add_subdirectory(femstruct)
 add_subdirectory(Tools)
-
+add_subdirectory(CudaLib)

@@ -10,6 +10,7 @@
 //#include <cmath>
 #include "femfunc.h"
 #include "VTKfile.h"
+#include "init.h"
 
 using namespace std;
 
@@ -17,6 +18,10 @@ int main(void) {
     #ifdef TOOLS_TIMER
         Timer timer(__func__);
     #endif
+
+    callCudaKernel();
+
+    std::cout << DIM << std::endl;
 
     std::string name = "bulk_test";
 
