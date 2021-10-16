@@ -138,14 +138,16 @@ public:
     int CountNonZero();
     SparseMatrixCOO DeleteZeros();
 	void Show();
-    void ShowAsMatrix(int n);
+    void ShowAsMatrix(int start, int end, int n);
+    void ShowAsMatrixNumber(int start, int end, int n);
+    void ShowAsMatrixSymbol(int start, int end, int n);
 private:
 	std::vector<Triplet> v;
 	int nonzero;
 	int sparse_size;
 	int *x;
 	int *y;
-	float *data;
+    float *data;
 };
 int CountNonZero(std::vector<Triplet> t);
 

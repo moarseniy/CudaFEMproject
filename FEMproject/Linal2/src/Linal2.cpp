@@ -1159,14 +1159,14 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
     for (int i = 0; i < sparse_size; i++) {
         Az[x[i]] += data[i] * z_k[y[i]];
     }
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; ++i) {
       Spz += Az[i] * z_k[i];
       Spr += r_k[i] * r_k[i];
     }
     alpha = Spr / Spz;
 
     Spr1 = 0.0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; ++i) {
       x_k[i] += alpha * z_k[i];
       r_k[i] -= alpha * Az[i];
       Spr1 += r_k[i] * r_k[i];
@@ -1178,7 +1178,7 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
 
     beta = Spr1 / Spr;
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; ++i) {
       z_k[i] = r_k[i] + beta * z_k[i];
     }
   } while(Spr1 / mf > eps * eps);
@@ -1194,24 +1194,50 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
 
 void SparseMatrixCOO::Show() {
 	cout << "X\tY\tValue\n";
-	for (int i = 0; i < sparse_size; i++) {
+    for (int i = 0; i < sparse_size; ++i) {
 		cout << x[i] << "\t" << y[i] << "\t" << data[i] << endl;
 	}
 }
 
-void SparseMatrixCOO::ShowAsMatrix(int n) {
+// Warning: the ShowAsMatrix* methdods work well only if the sparse matrix is sorted (call method .SortIt())
+void SparseMatrixCOO::ShowAsMatrixNumber(int start, int end, int n) {
     int k = 0;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            bool cond_start_end = (i >= start && i <= end && j >= start && j <= end);
             if (x[k] == i && y[k] == j) {
-                cout << data[k] << " ";
-                k++;
+                if (cond_start_end)
+                    cout << data[k] << " ";
+                ++k;
             } else {
-                cout << "0 ";
+                if (cond_start_end)
+                    cout << "- ";
             }
         }
         cout << endl;
     }
 }
 
+// Warning: see warning before
+void SparseMatrixCOO::ShowAsMatrixSymbol(int start, int end, int n) {
+    int k = 0;
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            bool cond_start_end = (i >= start && i <= end && j >= start && j <= end);
+            if (x[k] == i && y[k] == j) {
+                if (cond_start_end)
+                    cout << "A ";
+                ++k;
+            } else {
+                if (cond_start_end)
+                    cout << "- ";
+            }
+        }
+        cout << endl;
+    }
+}
 
+// Warning: see warning before
+void SparseMatrixCOO::ShowAsMatrix(int start, int end, int n) {
+    ShowAsMatrixSymbol(start, end, n);
+}
