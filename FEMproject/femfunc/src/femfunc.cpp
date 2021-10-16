@@ -175,12 +175,16 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata, MyArray &displacements
     cout << "new size= "<<globalK.get_size()<<"\n";
     //cout << "!!!" << sizeof (globalK) << endl;
 
-    globalK.resize();
+    globalK.resize();       // Sabinin: this doesn't do anything as long as .resize() has no arguments?
 
     globalK.SortIt();
     //SortCOO(globalK.get_x(), globalK.get_y(), globalK.get_data(), loads.get_size(), globalK.get_size());
+    //cout << "globalK after SortIt():\n";
+    //globalK.ShowAsMatrix(0, FEMdata.nodesCount*3 - 7, FEMdata.nodesCount*3);
 
     ApplyConstraints(globalK, FEMdata.constraints, FEMdata.loads.get_size());
+    //cout << "globalK after applying constraints:\n";
+    //globalK.ShowAsMatrix(0, FEMdata.nodesCount*3 - 7, FEMdata.nodesCount*3);
 
     cout << "nonzero = " << globalK.CountNonZero() << endl;
     SparseMatrixCOO globalK2(globalK.CountNonZero());
