@@ -5,9 +5,8 @@
 using namespace std;
 
 void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonRatio, float youngModulus) {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
+
     fstream nodes_file, elements_file, loads_file, constraints_file;
 
     nodes_file.open(dir + name + "/nodes.txt", fstream::in);

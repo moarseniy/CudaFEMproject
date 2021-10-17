@@ -16,9 +16,7 @@
 using namespace std;
 
 int main(void) {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
 
     std::string name = "bulk_test";
 

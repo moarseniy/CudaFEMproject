@@ -757,9 +757,7 @@ SparseMatrixCOO::~SparseMatrixCOO() {
 }
 
 void SparseMatrixCOO::resize() {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
     int *x_new = new int[sparse_size];
     int *y_new = new int[sparse_size];
     float *data_new = new float[sparse_size];
@@ -838,9 +836,7 @@ float* SparseMatrixCOO::get_data() {
 }
 
 SparseMatrixCOO SparseMatrixCOO::DeleteZeros() {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
     int new_size = sparse_size;
     int k = 0;
     SparseMatrixCOO temp(sparse_size);
@@ -883,9 +879,7 @@ int SparseMatrixCOO::CountNonZero() {
 
 
 void SparseMatrixCOO::ConvertTripletToSparse(std::vector<Triplet> t) {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
     int new_size = sparse_size;
     int k = 1;
     int index = 0;
@@ -984,9 +978,7 @@ void SparseMatrixCOO::ConvertToMatrix(Matrix &M) {
 }
 
 void SparseMatrixCOO::SortIt() {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
 	int temp;
 	float temp_value;
     for (int i = 0; i < sparse_size; i++) {
@@ -1130,9 +1122,7 @@ void SparseMatrixCOO::SparseLU() {
 }
 
 void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
     int k = 1;
 
     float *z_k = new float[n];

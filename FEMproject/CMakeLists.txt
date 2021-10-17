@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(FemProject)
 
-option(TOOLS_TIMER ON)
-option(FEM3D ON)
+option(TOOLS_TIMER CACHED ON)
+option(FEM3D CACHED ON)
 
 if (TOOLS_TIMER)
     add_definitions(-DTOOLS_TIMER)

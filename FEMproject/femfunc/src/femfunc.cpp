@@ -13,9 +13,7 @@ float SetConstraints(int i, int j, float v, int index) {
 }
 
 void ApplyConstraints(SparseMatrixCOO& K, const std::vector<Constraint>& constraints, int n) {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
     std::vector<int> indicesToConstraint;
 
     for (std::vector<Constraint>::const_iterator it = constraints.begin(); it != constraints.end(); ++it) {
@@ -59,9 +57,7 @@ void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
                                    Matrix D,
                                    std::vector<Element> elements,
                                    MyArray displacements) {
-    #ifdef TOOLS_TIMER
-        Timer timer(__func__);
-    #endif
+    CheckRunTime(__func__)
     MyArray StressVector(6);
     MyArray DeformationVector(6);
     MyArray delta(12);

@@ -17,10 +17,12 @@ private:
     std::string namefunc;
 };
 
+#ifdef TOOLS_TIMER
+    #define CheckRunTime(nameFunc) \
+    Timer timer(nameFunc);
+#else
+    #define CheckRunTime(nameFunc)
+#endif
 
-//#define CheckRunTime
-//    #ifdef TOOLS_TIMER
-//        Timer timer(__func__);
-//    #endif
 
 #endif
