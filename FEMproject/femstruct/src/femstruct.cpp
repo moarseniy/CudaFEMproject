@@ -44,7 +44,7 @@ void Element::CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets
         B(5, 3 * i + 2) = IC(1, i);
     }
 
-    Matrix K(12, 12);
+    //Matrix K(12, 12);
     Matrix temp1(12, 6);
     Matrix temp_B(6, 12);
     float determinant = C.det(4);
@@ -57,23 +57,23 @@ void Element::CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets
 
     temp1 = temp_B.Product(D);
 
-    K = temp1.Product(B);
+    Klocal = temp1.Product(B);
 
-    K.scale(std::abs(determinant) / 6.0);
+    Klocal.scale(std::abs(determinant) / 6.0);
 
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            Triplet trplt11(3 * nodesIds[i] + 0, 3 * nodesIds[j] + 0, K(3 * i + 0, 3 * j + 0));
-            Triplet trplt12(3 * nodesIds[i] + 0, 3 * nodesIds[j] + 1, K(3 * i + 0, 3 * j + 1));
-            Triplet trplt13(3 * nodesIds[i] + 0, 3 * nodesIds[j] + 2, K(3 * i + 0, 3 * j + 2));
+            Triplet trplt11(3 * nodesIds[i] + 0, 3 * nodesIds[j] + 0, Klocal(3 * i + 0, 3 * j + 0));
+            Triplet trplt12(3 * nodesIds[i] + 0, 3 * nodesIds[j] + 1, Klocal(3 * i + 0, 3 * j + 1));
+            Triplet trplt13(3 * nodesIds[i] + 0, 3 * nodesIds[j] + 2, Klocal(3 * i + 0, 3 * j + 2));
 
-            Triplet trplt21(3 * nodesIds[i] + 1, 3 * nodesIds[j] + 0, K(3 * i + 1, 3 * j + 0));
-            Triplet trplt22(3 * nodesIds[i] + 1, 3 * nodesIds[j] + 1, K(3 * i + 1, 3 * j + 1));
-            Triplet trplt23(3 * nodesIds[i] + 1, 3 * nodesIds[j] + 2, K(3 * i + 1, 3 * j + 2));
+            Triplet trplt21(3 * nodesIds[i] + 1, 3 * nodesIds[j] + 0, Klocal(3 * i + 1, 3 * j + 0));
+            Triplet trplt22(3 * nodesIds[i] + 1, 3 * nodesIds[j] + 1, Klocal(3 * i + 1, 3 * j + 1));
+            Triplet trplt23(3 * nodesIds[i] + 1, 3 * nodesIds[j] + 2, Klocal(3 * i + 1, 3 * j + 2));
 
-            Triplet trplt31(3 * nodesIds[i] + 2, 3 * nodesIds[j] + 0, K(3 * i + 2, 3 * j + 0));
-            Triplet trplt32(3 * nodesIds[i] + 2, 3 * nodesIds[j] + 1, K(3 * i + 2, 3 * j + 1));
-            Triplet trplt33(3 * nodesIds[i] + 2, 3 * nodesIds[j] + 2, K(3 * i + 2, 3 * j + 2));
+            Triplet trplt31(3 * nodesIds[i] + 2, 3 * nodesIds[j] + 0, Klocal(3 * i + 2, 3 * j + 0));
+            Triplet trplt32(3 * nodesIds[i] + 2, 3 * nodesIds[j] + 1, Klocal(3 * i + 2, 3 * j + 1));
+            Triplet trplt33(3 * nodesIds[i] + 2, 3 * nodesIds[j] + 2, Klocal(3 * i + 2, 3 * j + 2));
 
             if (trplt11.get_value() != 0.0) {
                 triplets.push_back(trplt11);

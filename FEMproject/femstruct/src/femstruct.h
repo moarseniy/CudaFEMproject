@@ -14,9 +14,11 @@ struct Element {
     void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ);
     Element() {
         B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
+        Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
     }
     //void FindSparseSize(std::vector<couple> &Sparse);
     Matrix B;
+    Matrix Klocal;
     int nodesIds[4];
 };
 

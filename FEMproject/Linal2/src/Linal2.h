@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cassert>
 
 #include "Tools.h"
 
@@ -34,6 +35,24 @@ public:
 private:
 	int array_size;
 	float *p;
+};
+
+struct Triplet {
+    Triplet(int x_value, int y_value, float value) {
+        this->x_value = x_value;
+        this->y_value = y_value;
+        this->value = value;
+    }
+    int get_x() { return x_value; }
+    int get_y() { return y_value; }
+    float get_value() { return value; }
+
+    void Show() {
+        std::cout << x_value << " " << y_value << " " << value << "\n";
+    }
+    int x_value;
+    int y_value;
+    float value;
 };
 
 class Matrix{
@@ -93,26 +112,9 @@ struct couple{
     int y;
 };
 
-struct Triplet {
-	Triplet(int x_value, int y_value, float value) {
-		this->x_value = x_value;
-		this->y_value = y_value;
-		this->value = value;
-	}
-    int get_x() { return x_value; }
-    int get_y() { return y_value; }
-    float get_value() { return value; }
-
-	void Show() {
-		std::cout << x_value << " " << y_value << " " << value << "\n";
-	}
-	int x_value;
-	int y_value;
-	float value;
-};
-
 class SparseMatrixCOO {
 public:
+    SparseMatrixCOO();
 	SparseMatrixCOO(int sparse_size);
     SparseMatrixCOO(const SparseMatrixCOO &m);
     SparseMatrixCOO operator =(const SparseMatrixCOO &m);

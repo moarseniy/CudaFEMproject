@@ -709,6 +709,12 @@ void Matrix::ReadFromFile() {
 /////SPARSE MATRIX/////
 ///////////////////////
 
+SparseMatrixCOO::SparseMatrixCOO() {
+    this->sparse_size = 0;
+    this->x = nullptr;
+    this->y = nullptr;
+    this->data = nullptr;
+}
 
 SparseMatrixCOO::SparseMatrixCOO(int size) {
     this->sparse_size = size;
@@ -771,6 +777,7 @@ void SparseMatrixCOO::resize() {
 }
 
 void SparseMatrixCOO::resize(int size) {
+    assert(size > sparse_size);
     int *x_new = new int[size];
     int *y_new = new int[size];
     float *data_new = new float[size];
