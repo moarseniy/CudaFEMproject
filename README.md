@@ -1,6 +1,6 @@
 # CudaFEMproject
 Finite Element Method + CUDA + CMake implementation
 
-Mokin Arseniy moarseniy@yandex.ru
+Arseniy Mokin moarseniy@yandex.ru
 
-Gregory Sabinin gvsabinin@gmail.com
+Grigory Sabinin gvsabinin@gmail.com

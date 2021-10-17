@@ -34,8 +34,7 @@ void saxpy(int n, float a, float *x, float *y)
       y[i] = a*x[i] + y[i];
 }
 
-void callCudaKernel()
-{
+void callCudaKernel() {
   int N = 1<<8;
   float *x, *y, *d_x, *d_y;
   x = (float*)malloc(N*sizeof(float));

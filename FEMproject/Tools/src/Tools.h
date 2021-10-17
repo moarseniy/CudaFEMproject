@@ -17,4 +17,10 @@ private:
     std::string namefunc;
 };
 
+
+//#define CheckRunTime
+//    #ifdef TOOLS_TIMER
+//        Timer timer(__func__);
+//    #endif
+
 #endif
