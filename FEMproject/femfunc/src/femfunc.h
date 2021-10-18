@@ -28,5 +28,7 @@ void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
                                    std::vector<Element> elements,
                                    MyArray displacements);
 
+SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata);
+
 
 #endif

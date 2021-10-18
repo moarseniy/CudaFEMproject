@@ -97,17 +97,18 @@ void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
 }
 
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
-    std::vector<Triplet> triplets;
+//    std::vector<Triplet> triplets;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-        it->CalculateStiffnessMatrix(FEMdata.D, triplets, FEMdata.nodesX, FEMdata.nodesY, FEMdata.nodesZ);
+        it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY, FEMdata.nodesZ);
+//        it->CalculateStiffnessMatrix(FEMdata.D, triplets, FEMdata.nodesX, FEMdata.nodesY, FEMdata.nodesZ);
     }
-    cout << "CalculateStiffnessMatrix success\n";
-    cout << "Triplets Size = " << triplets.size() << endl;
+//    std::cout << "CalculateStiffnessMatrix success\n";
+//    std::cout << "Triplets Size = " << triplets.size() << std::endl;
 
-    SparseMatrixCOO globalK(triplets.size());
-    globalK.ConvertTripletToSparse(triplets);
-    cout << "new size= "<<globalK.get_size()<<"\n";
-    //cout << "!!!" << sizeof (globalK) << endl;
+//    SparseMatrixCOO globalK(triplets.size());
+//    globalK.ConvertTripletToSparse(triplets);
+//    std::cout << "new size= "<<globalK.get_size()<<"\n";
+    SparseMatrixCOO globalK = AssemblyStiffnessMatrix(FEMdata);
 
     globalK.resize();       // Sabinin: this doesn't do anything as long as .resize() has no arguments?
 
@@ -138,4 +139,66 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
 
     MakeVTKfile(output_vtk, FEMdata.nodesX, FEMdata.nodesY, FEMdata.nodesZ, FEMdata.elements,
                 FEMdata.displacements, Stress, sigma_mises, Deformation, epsilon_mises);
+}
+
+SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata)
+{
+    std::vector<Triplet> triplets;
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            Triplet trplt11(3 * it->nodesIds[i] + 0, 3 * it->nodesIds[j] + 0, it->Klocal(3 * i + 0, 3 * j + 0));
+            Triplet trplt12(3 * it->nodesIds[i] + 0, 3 * it->nodesIds[j] + 1, it->Klocal(3 * i + 0, 3 * j + 1));
+            Triplet trplt13(3 * it->nodesIds[i] + 0, 3 * it->nodesIds[j] + 2, it->Klocal(3 * i + 0, 3 * j + 2));
+
+            Triplet trplt21(3 * it->nodesIds[i] + 1, 3 * it->nodesIds[j] + 0, it->Klocal(3 * i + 1, 3 * j + 0));
+            Triplet trplt22(3 * it->nodesIds[i] + 1, 3 * it->nodesIds[j] + 1, it->Klocal(3 * i + 1, 3 * j + 1));
+            Triplet trplt23(3 * it->nodesIds[i] + 1, 3 * it->nodesIds[j] + 2, it->Klocal(3 * i + 1, 3 * j + 2));
+
+            Triplet trplt31(3 * it->nodesIds[i] + 2, 3 * it->nodesIds[j] + 0, it->Klocal(3 * i + 2, 3 * j + 0));
+            Triplet trplt32(3 * it->nodesIds[i] + 2, 3 * it->nodesIds[j] + 1, it->Klocal(3 * i + 2, 3 * j + 1));
+            Triplet trplt33(3 * it->nodesIds[i] + 2, 3 * it->nodesIds[j] + 2, it->Klocal(3 * i + 2, 3 * j + 2));
+
+            if (trplt11.get_value() != 0.0) {
+                triplets.push_back(trplt11);
+            }
+            if (trplt12.get_value() != 0.0) {
+                triplets.push_back(trplt12);
+            }
+            if (trplt13.get_value() != 0.0) {
+                triplets.push_back(trplt13);
+            }
+            if (trplt21.get_value() != 0.0) {
+                triplets.push_back(trplt21);
+            }
+            if (trplt22.get_value() != 0.0) {
+                triplets.push_back(trplt22);
+            }
+            if (trplt23.get_value() != 0.0) {
+                triplets.push_back(trplt23);
+            }
+            if (trplt31.get_value() != 0.0) {
+                triplets.push_back(trplt31);
+            }
+            if (trplt32.get_value() != 0.0) {
+                triplets.push_back(trplt32);
+            }
+            if (trplt33.get_value() != 0.0) {
+                triplets.push_back(trplt33);
+            }
+        }
+    }
+
+    }
+
+    cout << "CalculateStiffnessMatrix success\n";
+    cout << "Triplets Size = " << triplets.size() << std::endl;
+
+    SparseMatrixCOO globalK(triplets.size());
+    globalK.ConvertTripletToSparse(triplets);
+
+    std::cout << "new size= "<<globalK.get_size()<<"\n";
+
+    return globalK;
 }
