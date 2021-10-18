@@ -148,44 +148,14 @@ SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata)
 
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            Triplet trplt11(3 * it->nodesIds[i] + 0, 3 * it->nodesIds[j] + 0, it->Klocal(3 * i + 0, 3 * j + 0));
-            Triplet trplt12(3 * it->nodesIds[i] + 0, 3 * it->nodesIds[j] + 1, it->Klocal(3 * i + 0, 3 * j + 1));
-            Triplet trplt13(3 * it->nodesIds[i] + 0, 3 * it->nodesIds[j] + 2, it->Klocal(3 * i + 0, 3 * j + 2));
-
-            Triplet trplt21(3 * it->nodesIds[i] + 1, 3 * it->nodesIds[j] + 0, it->Klocal(3 * i + 1, 3 * j + 0));
-            Triplet trplt22(3 * it->nodesIds[i] + 1, 3 * it->nodesIds[j] + 1, it->Klocal(3 * i + 1, 3 * j + 1));
-            Triplet trplt23(3 * it->nodesIds[i] + 1, 3 * it->nodesIds[j] + 2, it->Klocal(3 * i + 1, 3 * j + 2));
-
-            Triplet trplt31(3 * it->nodesIds[i] + 2, 3 * it->nodesIds[j] + 0, it->Klocal(3 * i + 2, 3 * j + 0));
-            Triplet trplt32(3 * it->nodesIds[i] + 2, 3 * it->nodesIds[j] + 1, it->Klocal(3 * i + 2, 3 * j + 1));
-            Triplet trplt33(3 * it->nodesIds[i] + 2, 3 * it->nodesIds[j] + 2, it->Klocal(3 * i + 2, 3 * j + 2));
-
-            if (trplt11.get_value() != 0.0) {
-                triplets.push_back(trplt11);
-            }
-            if (trplt12.get_value() != 0.0) {
-                triplets.push_back(trplt12);
-            }
-            if (trplt13.get_value() != 0.0) {
-                triplets.push_back(trplt13);
-            }
-            if (trplt21.get_value() != 0.0) {
-                triplets.push_back(trplt21);
-            }
-            if (trplt22.get_value() != 0.0) {
-                triplets.push_back(trplt22);
-            }
-            if (trplt23.get_value() != 0.0) {
-                triplets.push_back(trplt23);
-            }
-            if (trplt31.get_value() != 0.0) {
-                triplets.push_back(trplt31);
-            }
-            if (trplt32.get_value() != 0.0) {
-                triplets.push_back(trplt32);
-            }
-            if (trplt33.get_value() != 0.0) {
-                triplets.push_back(trplt33);
+            for (int ilocal = 0; ilocal < 3; ++ilocal) {
+                for (int jlocal = 0; jlocal < 3; ++jlocal) {
+                    float value = it->Klocal(3 * i + ilocal, 3 * j + jlocal);
+                    if (value != 0.0) {
+                        Triplet tmp(3 * it->nodesIds[i] + ilocal, 3 * it->nodesIds[j] + jlocal, value);
+                        triplets.push_back(tmp);
+                    }
+                }
             }
         }
     }
