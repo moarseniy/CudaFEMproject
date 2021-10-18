@@ -143,7 +143,7 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
 
 SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata)
 {
-    std::vector<Triplet> triplets;
+    vecSparseMatrixCOO triplets;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
 
     for (int i = 0; i < 4; ++i) {

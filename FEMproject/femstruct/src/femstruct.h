@@ -11,6 +11,7 @@
 using namespace std;
 
 struct Element {
+    // CalculateStiffnessMatrix will be deprecated!
     void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ);
     void CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ);
     Element() {
@@ -54,6 +55,8 @@ struct Coords {
     int x;
     int y;
 };
+
+typedef std::vector<Triplet> vecSparseMatrixCOO;
 
 
 #endif

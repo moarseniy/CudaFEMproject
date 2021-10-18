@@ -3,6 +3,7 @@
 
 using namespace std;
 
+// CalculateStiffnessMatrix will be deprecated!
 void Element::CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ) {
     MyArray x(4), y(4), z(4);
     x[0] = nodesX[nodesIds[0]]; x[1] = nodesX[nodesIds[1]]; x[2] = nodesX[nodesIds[2]], x[3] = nodesX[nodesIds[3]];
