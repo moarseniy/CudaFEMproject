@@ -714,7 +714,6 @@ SparseMatrixCOO::SparseMatrixCOO() {
     this->x = nullptr;
     this->y = nullptr;
     this->data = nullptr;
-    this->ptr = 0;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(int size) {
@@ -722,7 +721,6 @@ SparseMatrixCOO::SparseMatrixCOO(int size) {
 	this->x = new int[sparse_size];
 	this->y = new int[sparse_size];
 	this->data = new float[sparse_size];
-    this->ptr = 0;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
@@ -736,8 +734,6 @@ SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
         y[i] = m.y[i];
         data[i] = m.data[i];
     }
-
-    this->ptr = m.ptr;
 }
 
 SparseMatrixCOO SparseMatrixCOO::operator =(const SparseMatrixCOO &m) {
@@ -751,8 +747,6 @@ SparseMatrixCOO SparseMatrixCOO::operator =(const SparseMatrixCOO &m) {
         y[i] = m.y[i];
         data[i] = m.data[i];
     }
-    this->ptr = m.ptr;
-
     return *this;
 }
 
@@ -797,18 +791,9 @@ void SparseMatrixCOO::resize(int size) {
     y = y_new;
     data = data_new;
     sparse_size = size;
-    if (ptr != -1 && ptr >= size) ptr = -1;
 }
 
-int SparseMatrixCOO::get_ptr() { return ptr; }
 int SparseMatrixCOO::get_size() { return sparse_size; }
-
-void SparseMatrixCOO::add_value(int row, int col, float value)
-{
-    assert(ptr == -1);
-    x[ptr] = row; y[ptr] = col; data[ptr] = value;
-    if (++ptr >= sparse_size) ptr = -1;
-}
 
 void SparseMatrixCOO::set_value(int row, int col, float value) {
 //    for (int i = 0; i < sparse_size; i++) {
@@ -816,7 +801,7 @@ void SparseMatrixCOO::set_value(int row, int col, float value) {
 //            data[i] = value;
 //        }
 //    }
-    for (int i = 0; i < (ptr == -1 ? sparse_size : ptr); i++) {
+    for (int i = 0; i < sparse_size; ++i) {
         if (x[i] == row && y[i] == col) {
             data[i] = value;
         }
@@ -853,7 +838,6 @@ SparseMatrixCOO SparseMatrixCOO::DeleteZeros() {
     int new_size = sparse_size;
     int k = 0;
     SparseMatrixCOO temp(sparse_size);
-    temp.ptr = ptr;
     for (int i = 0; i < sparse_size; ++i) {
         if (data[i] != 0) {
             temp.x[k] = x[i];
@@ -943,7 +927,6 @@ void SparseMatrixCOO::ConvertTripletToSparse(std::vector<Triplet> t) {
         }
    }
    sparse_size = new_size;
-   ptr = -1;
 
 
 
@@ -1223,7 +1206,7 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
 
 void SparseMatrixCOO::Show() {
 	cout << "X\tY\tValue\n";
-    for (int i = 0; i < (ptr == -1 ? sparse_size : ptr); ++i) {
+    for (int i = 0; i < sparse_size; ++i) {
 		cout << x[i] << "\t" << y[i] << "\t" << data[i] << endl;
 	}
 }
