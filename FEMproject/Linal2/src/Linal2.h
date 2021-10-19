@@ -128,17 +128,20 @@ public:
     void SparseLU();
     void CGM_solve(MyArray B, MyArray &x_k, int n, float eps);
     int get_size();
+    int get_ptr();
     int get_x(int index);
     int get_y(int index);
     float get_value(int index);
     int* get_x();
     int* get_y();
     float* get_data();
-    void WriteData();
+    void ShowData();
 
+    void add_value(int row, int col, float value);
     void set_value(int row, int col, float value);
     int CountNonZero();
     SparseMatrixCOO DeleteZeros();
+    void DeleteZerosOrder();
 	void Show();
     void ShowAsMatrix(int start, int end, int n);
     void ShowAsMatrixNumber(int start, int end, int n);
@@ -150,6 +153,7 @@ private:
 	int *x;
 	int *y;
     float *data;
+    int ptr;    // stores index of the first unused element, stores -1 if there is no free elements to write
 };
 int CountNonZero(std::vector<Triplet> t);
 

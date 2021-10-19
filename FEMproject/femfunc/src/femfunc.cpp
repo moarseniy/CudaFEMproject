@@ -122,10 +122,13 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     //globalK.ShowAsMatrix(0, FEMdata.nodesCount*3 - 7, FEMdata.nodesCount*3);
 
     cout << "nonzero = " << globalK.CountNonZero() << endl;
-    SparseMatrixCOO globalK2(globalK.CountNonZero());
-    globalK2 = globalK.DeleteZeros();
+//    SparseMatrixCOO globalK2(globalK.CountNonZero());
+//    globalK2 = globalK.DeleteZeros();
 
-    globalK2.CGM_solve(FEMdata.loads, FEMdata.displacements, FEMdata.loads.get_size(), 1e-10);
+//    globalK2.CGM_solve(FEMdata.loads, FEMdata.displacements, FEMdata.loads.get_size(), 1e-10);
+
+    globalK.DeleteZerosOrder();
+    globalK.CGM_solve(FEMdata.loads, FEMdata.displacements, FEMdata.loads.get_size(), 1e-10);
 }
 
 void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
