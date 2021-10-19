@@ -137,6 +137,7 @@ public:
     void ShowData();
 
     void set_value(int row, int col, float value);
+    void pop(int row, int col);
     int CountNonZero();
     SparseMatrixCOO DeleteZeros();
     void DeleteZerosOrder();

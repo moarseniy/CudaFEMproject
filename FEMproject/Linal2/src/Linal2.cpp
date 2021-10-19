@@ -809,6 +809,19 @@ void SparseMatrixCOO::set_value(int row, int col, float value) {
 
 }
 
+void SparseMatrixCOO::pop(int row, int col)
+{
+    for (int i = 0; i < sparse_size; i++) {
+        if (x[i] == row && y[i] == col) {
+            x[i] = x[sparse_size-1];
+            y[i] = y[sparse_size-1];
+            data[i] = data[sparse_size-1];
+            --sparse_size;
+            break;
+        }
+    }
+}
+
 int SparseMatrixCOO::get_x(int index) {
     return x[index];
 }

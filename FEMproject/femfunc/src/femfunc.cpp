@@ -34,18 +34,25 @@ void ApplyConstraints(SparseMatrixCOO& K, const std::vector<Constraint>& constra
 //    }
 
     int k = 0;
-    for (int i = 0; i < K.get_size(); i++) {
+    int i = 0;
+    int threshhold = K.get_size();
+    while (i < threshhold) {
+    //for (int i = 0; i < K.get_size(); i++) {
         for (int j = 0; j < indicesToConstraint.size(); j++) {
             if (K.get_x(i) == indicesToConstraint[j] || K.get_y(i) == indicesToConstraint[j]) {
                 if (K.get_x(i) == K.get_y(i)) {
                     K.set_value(K.get_x(i), K.get_y(i), 1.0);
                     k++;
                 } else {
-                    K.set_value(K.get_x(i), K.get_y(i), 0.0);
+                    //K.set_value(K.get_x(i), K.get_y(i), 0.0);
+                    K.pop(K.get_x(i), K.get_y(i));
+                    --threshhold; --i;
                 }
                 //cout << K.get_x(i) << " " << K.get_y(i) << "\n\n";
             }
         }
+
+        ++i;
     }
     //cout << "!!!!" << k << " " << indicesToConstraint.size() << " ";
 }
@@ -97,37 +104,18 @@ void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
 }
 
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
-//    std::vector<Triplet> triplets;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY, FEMdata.nodesZ);
-//        it->CalculateStiffnessMatrix(FEMdata.D, triplets, FEMdata.nodesX, FEMdata.nodesY, FEMdata.nodesZ);
     }
-//    std::cout << "CalculateStiffnessMatrix success\n";
-//    std::cout << "Triplets Size = " << triplets.size() << std::endl;
 
-//    SparseMatrixCOO globalK(triplets.size());
-//    globalK.ConvertTripletToSparse(triplets);
-//    std::cout << "new size= "<<globalK.get_size()<<"\n";
     SparseMatrixCOO globalK = AssemblyStiffnessMatrix(FEMdata);
 
-    globalK.resize();       // Sabinin: this doesn't do anything as long as .resize() has no arguments?
+    ApplyConstraints(globalK, FEMdata.constraints, FEMdata.loads.get_size());
 
     globalK.SortIt();
-    //SortCOO(globalK.get_x(), globalK.get_y(), globalK.get_data(), loads.get_size(), globalK.get_size());
-    //cout << "globalK after SortIt():\n";
-    //globalK.ShowAsMatrix(0, FEMdata.nodesCount*3 - 7, FEMdata.nodesCount*3);
-
-    ApplyConstraints(globalK, FEMdata.constraints, FEMdata.loads.get_size());
-    //cout << "globalK after applying constraints:\n";
-    //globalK.ShowAsMatrix(0, FEMdata.nodesCount*3 - 7, FEMdata.nodesCount*3);
 
     cout << "nonzero = " << globalK.CountNonZero() << endl;
-//    SparseMatrixCOO globalK2(globalK.CountNonZero());
-//    globalK2 = globalK.DeleteZeros();
 
-//    globalK2.CGM_solve(FEMdata.loads, FEMdata.displacements, FEMdata.loads.get_size(), 1e-10);
-
-    globalK.DeleteZerosOrder();
     globalK.CGM_solve(FEMdata.loads, FEMdata.displacements, FEMdata.loads.get_size(), 1e-10);
 }
 
