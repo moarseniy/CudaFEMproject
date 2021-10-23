@@ -13,10 +13,15 @@
 #include "VTKfile.h"
 #include "init.h"
 #include "datakeeper.h"
-
-using namespace std;
+#include "tests.h"
 
 int main(void) {
+//    std::vector<Element> elems;
+//    std::vector<float*> m_e;
+//    std::vector<float*> b_e;
+//    float soln[18];
+//    test_EbePCG_diag(elems, m_e, b_e, soln);
+
     CheckRunTime(__func__)
 
     std::string name = "bulk_small";

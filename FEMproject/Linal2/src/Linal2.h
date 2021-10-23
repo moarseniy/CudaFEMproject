@@ -67,6 +67,7 @@ public:
 	void Show();
 	float & operator ()(int i,int j);
 	void Set(int index1,int index2,float value);
+    float Get(int index1,int index2);
 	int get_row();
 	int get_col();
     float* get_data();
