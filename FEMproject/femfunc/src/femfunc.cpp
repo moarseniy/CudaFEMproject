@@ -132,25 +132,22 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
                 FEMdata.displacements, Stress, sigma_mises, Deformation, epsilon_mises);
 }
 
-SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata)
-{
+SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata) {
     vecSparseMatrixCOO triplets;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            for (int ilocal = 0; ilocal < 3; ++ilocal) {
-                for (int jlocal = 0; jlocal < 3; ++jlocal) {
-                    float value = it->Klocal(3 * i + ilocal, 3 * j + jlocal);
-                    if (value != 0.0) {
-                        Triplet tmp(3 * it->nodesIds[i] + ilocal, 3 * it->nodesIds[j] + jlocal, value);
-                        triplets.push_back(tmp);
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                for (int ilocal = 0; ilocal < 3; ++ilocal) {
+                    for (int jlocal = 0; jlocal < 3; ++jlocal) {
+                        float value = it->Klocal(3 * i + ilocal, 3 * j + jlocal);
+                        if (value != 0.0) {
+                            Triplet tmp(3 * it->nodesIds[i] + ilocal, 3 * it->nodesIds[j] + jlocal, value);
+                            triplets.push_back(tmp);
+                        }
                     }
                 }
             }
         }
-    }
-
     }
 
     cout << "CalculateStiffnessMatrix success\n";

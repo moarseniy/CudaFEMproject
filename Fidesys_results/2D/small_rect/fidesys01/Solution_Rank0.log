@@ -1,0 +1,35 @@
+2021-03-31 22:40:31 [Info   ] Parser.FC: Start
+2021-03-31 22:40:31 [Info   ] Parser.FC: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Setting resultant matrix: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Setting resultant matrix: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Filling internal fields: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Filling internal fields: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Applying constraints: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Applying constraints: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Solving constraints: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Solving constraints: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Initializing matrix: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Initializing matrix: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Filling matrix and internal forces: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Filling matrix and internal forces: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Filling matrix and internal forces: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Filling external forces: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Filling external forces: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Applying constraints to matrix: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Applying constraints to matrix: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Solving matrix: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Solving matrix: Done
+
+2021-03-31 22:40:31 [Info   ] Kernel.Filling internal fields: Start
+2021-03-31 22:40:31 [Info   ] Kernel.Filling internal fields: Done
+

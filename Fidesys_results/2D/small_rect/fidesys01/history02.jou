@@ -1,0 +1,9 @@
+#!python
+import fidesys
+fidesys.silent_cmd("import fidesyscase 'D:/Fidesys/small_rect/fidesys01/fidesys01.fc'")
+fidesys.cmd("Print [matrix_hb {on|off}] [matrix_txt {on|off}] [matrix_bin {on|off}] [precision <value>]")
+fidesys.cmd("Print [matrix_hb {on}] [matrix_txt {on}] [matrix_bin {on}] [precision <value>]")
+fidesys.cmd("Print [matrix_hb on] [matrix_txt on] [matrix_bin on] [precision <value>]")
+fidesys.cmd("Print [matrix_hb] [matrix_txt on] [matrix_bin on] [precision <value>]")
+fidesys.cmd("Print [matrix_hb] [matrix_txt] [matrix_bin on] [precision <value>]")
+fidesys.cmd("Print [matrix_hb] [matrix_txt] [matrix_bin] [precision <value>]")

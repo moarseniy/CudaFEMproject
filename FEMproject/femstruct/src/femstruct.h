@@ -17,6 +17,7 @@ struct Element {
     Element() {
         B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
         Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
+        //Q.Resize();
     }
     //void FindSparseSize(std::vector<couple> &Sparse);
     Matrix B;

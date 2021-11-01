@@ -1,0 +1,3 @@
+#!python
+import fidesys
+fidesys.silent_cmd("import fidesyscase 'D:/Fidesys/small_rect/fidesys01/fidesys01.fc'")

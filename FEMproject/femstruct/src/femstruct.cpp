@@ -107,8 +107,7 @@ void Element::CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets
     }
 }
 
-void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ)
-{
+void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ) {
     MyArray x(4), y(4), z(4);
     x[0] = nodesX[nodesIds[0]]; x[1] = nodesX[nodesIds[1]]; x[2] = nodesX[nodesIds[2]], x[3] = nodesX[nodesIds[3]];
     y[0] = nodesY[nodesIds[0]]; y[1] = nodesY[nodesIds[1]]; y[2] = nodesY[nodesIds[2]], y[3] = nodesY[nodesIds[3]];
@@ -166,3 +165,4 @@ void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY, MyArr
 
     Klocal.scale(std::abs(determinant) / 6.0);
 }
+

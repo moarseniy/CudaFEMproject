@@ -1,0 +1,5 @@
+#!python
+import fidesys
+fidesys.silent_cmd("import fidesyscase 'D:/Fidesys/small_rect/fidesys01/fidesys01.fc'")
+fidesys.cmd("Print matrix_hb on")
+fidesys.cmd("Print matrix_hb on matrix_txt on matrix_bin on")
