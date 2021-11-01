@@ -275,7 +275,20 @@ void Matrix::Show() {
 void Matrix::Set(int index1, int index2, float value) {
 	if ((index1 >= 0) && (index2 >= 0) && (index1 < row) && (index2 < col)) {
 		m[index2 + index1 * col] = value;
-	}
+    } else {
+        fprintf(stderr,"Indexes exceed matrix dimensions!\n");
+        exit(1);
+    }
+}
+
+float Matrix::Get(int index1,int index2)
+{
+    if ((index1 >= 0) && (index2 >= 0) && (index1 < row) && (index2 < col)) {
+        return m[index2 + index1 * col];
+    } else {
+        fprintf(stderr,"Indexes exceed matrix dimensions!\n");
+        exit(1);
+    }
 }
 
 int Matrix::get_row() {
