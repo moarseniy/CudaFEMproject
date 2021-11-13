@@ -37,7 +37,7 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
         float X3 = nodesX[element.nodesIds[2]] - nodesX[element.nodesIds[0]];
         float Y2 = nodesY[element.nodesIds[1]] - nodesY[element.nodesIds[0]];
         float Y3 = nodesY[element.nodesIds[2]] - nodesY[element.nodesIds[0]];
-        element.jacobian = 1.0/(X3*Y2 + X2*Y3);
+        element.jacobian = 1.0 / (X3 * Y2 - X2 * Y3);
         elements.push_back(element);
     }
 
