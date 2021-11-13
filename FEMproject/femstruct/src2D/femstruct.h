@@ -24,6 +24,7 @@ struct Element {
     Matrix Klocal;
     //Matrix Q;
     int nodesIds[3];
+    float jacobian; // node 1 -> (0,0) ; node 2 -> (1,0) ; node 3 -> (0,1)
 };
 
 struct ElementLight {
