@@ -18,13 +18,14 @@ def run_parser():
     parser.parse_nodes()
     parser.prepare_nodes()
 
+    parser.parse_loads()
+    
     parser.parse_elements()
     parser.prepare_elements()
 
     parser.parse_constraints_and_sets()
     parser.prepare_constraints()
 
-    parser.parse_loads()
     parser.prepare_loads()
 
 

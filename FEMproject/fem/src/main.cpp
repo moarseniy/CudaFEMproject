@@ -24,7 +24,7 @@ int main(void) {
 
     CheckRunTime(__func__)
 
-    std::string name = "test_rect";
+    std::string name = "bulk_small";
 
     std::string project_directory = "C:/Users/mokin/Desktop/git/CudaFEMproject/";
     std::string mesh_directory = project_directory + "prepared_meshes/" + std::to_string(DIM) + "D/";
@@ -33,7 +33,7 @@ int main(void) {
     std::string output_vtk = results_directory + "results.vtk";
     std::string output_results = results_directory + "output.txt";
 
-    float poissonRatio = 0.3, youngModulus = 2000;//2e+11;
+    float poissonRatio = 0.3, youngModulus = 2e+11;
 
     FEMdataKeeper FEMdata;
     FEMdata.ParseFiles(mesh_directory, name, poissonRatio, youngModulus);
