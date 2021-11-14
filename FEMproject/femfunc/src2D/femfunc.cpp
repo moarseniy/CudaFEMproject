@@ -130,11 +130,10 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     //SparseMatrixCOO globalK2(nonzero);
     //globalK2 = globalK.DeleteZeros();
 
-    //MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
-    //F.add(FEMdata.loads);
-    //MyArray F(FEMdata.loads);
+    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
+    F.add(FEMdata.loads);
 
-    globalK.CGM_solve(FEMdata.loads, FEMdata.displacements, 1e-10);
+    globalK.CGM_solve(F, FEMdata.displacements, 1e-10);
 }
 
 void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
