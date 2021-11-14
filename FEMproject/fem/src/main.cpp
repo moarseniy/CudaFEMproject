@@ -24,7 +24,7 @@ int main(void) {
 
     CheckRunTime(__func__)
 
-    std::string name = "test_rect";
+    std::string name = "bulk_small";
 
     std::string project_directory = "C:/Users/mokin/Desktop/git/CudaFEMproject/";
     std::string mesh_directory = project_directory + "prepared_meshes/" + std::to_string(DIM) + "D/";

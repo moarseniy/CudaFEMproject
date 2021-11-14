@@ -139,7 +139,7 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
 
     CalculateStressAndDeformation(Deformation, Stress, epsilon_mises, sigma_mises, FEMdata.D, FEMdata.elements, FEMdata.displacements);
 
-    MakeVTKfile(output_vtk, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements,
+    MakeVTKfile2D(output_vtk, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements,
                 FEMdata.displacements, Stress, sigma_mises, Deformation, epsilon_mises);
 }
 
