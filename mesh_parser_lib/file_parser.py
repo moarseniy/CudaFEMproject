@@ -1,5 +1,6 @@
 import re, os
 import math
+import collections
 
 class FileParser:
     def __init__(self, filename, mesh_dir, raw_mesh_dir,
@@ -33,7 +34,7 @@ class FileParser:
             
     def parse_nodes(self):
         filename = self.raw_mesh_dir + '/' + self.filename
-        nodes = {}
+        nodes = collections.OrderedDict()
 
         print('Parsing file for nodes start...')
 
