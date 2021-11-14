@@ -113,10 +113,13 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
 
-    SparseMatrixCOO globalK = AssemblyStiffnessMatrix(FEMdata);
+    int num = 0;
+    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    }
+
+    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
     //globalK.resize();
-
-
 
     ApplyConstraints(globalK, FEMdata.constraints, FEMdata.loads.get_size());
 
@@ -127,7 +130,10 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     //SparseMatrixCOO globalK2(nonzero);
     //globalK2 = globalK.DeleteZeros();
 
-    globalK.CGM_solve(FEMdata.loads, FEMdata.displacements, FEMdata.loads.get_size(), 1e-10);
+    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
+    F.add(FEMdata.loads);
+
+    globalK.CGM_solve(F, FEMdata.displacements, 1e-10);
 }
 
 void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
@@ -144,6 +150,7 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
 }
 
 SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata) {
+    CheckRunTime(__func__)
     vecSparseMatrixCOO triplets;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         for (int i = 0; i < 3; ++i) {
@@ -170,4 +177,16 @@ SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata) {
     std::cout << "new size= "<<globalK.get_size()<<"\n";
 
     return globalK;
+}
+
+MyArray AssemblyF(FEMdataKeeper &FEMdata) {
+    MyArray F(DIM * FEMdata.nodesCount);
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        for (int i = 0; i < 3; ++i) {
+            F[it->nodesIds[i] * 2 + 0] += it->Flocal[i * 2 + 0];
+            F[it->nodesIds[i] * 2 + 1] += it->Flocal[i * 2 + 1];
+        }
+    }
+
+    return F;
 }

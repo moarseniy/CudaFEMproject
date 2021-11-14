@@ -7,17 +7,19 @@ using namespace std;
 void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonRatio, float youngModulus) {
     CheckRunTime(__func__)
 
-    fstream nodes_file, elements_file, loads_file, constraints_file;
+    fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
 
-    nodes_file.open(dir + name + "/nodes.txt", fstream::in);
-    elements_file.open(dir + name + "/elements.txt", fstream::in);
-    loads_file.open(dir + name + "/loads.txt", fstream::in);
-    constraints_file.open(dir + name + "/constraints.txt", fstream::in);
+    nodes_file.open         (dir + name + "/nodes.txt",         fstream::in);
+    elements_file.open      (dir + name + "/elements.txt",      fstream::in);
+    loads_file.open         (dir + name + "/loads.txt",         fstream::in);
+    constraints_file.open   (dir + name + "/constraints.txt",   fstream::in);
+    stress_file.open        (dir + name + "/stress.txt",        fstream::in);
 
-    nodes_file >> nodesCount;
-    elements_file >> elementsCount;
-    constraints_file >> constraintsCount;
-    loads_file >> loadsCount;
+    nodes_file          >> nodesCount;
+    elements_file       >> elementsCount;
+    constraints_file    >> constraintsCount;
+    loads_file          >> loadsCount;
+    stress_file          >> boundaryEdgesCount;
 
     AllocateDynamicMemory();
 
@@ -33,11 +35,12 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
     for (int i = 0; i < elementsCount; ++i) {
         Element element;
         elements_file >> element.nodesIds[0] >> element.nodesIds[1] >> element.nodesIds[2];
-        float X2 = nodesX[element.nodesIds[1]] - nodesX[element.nodesIds[0]];
-        float X3 = nodesX[element.nodesIds[2]] - nodesX[element.nodesIds[0]];
-        float Y2 = nodesY[element.nodesIds[1]] - nodesY[element.nodesIds[0]];
-        float Y3 = nodesY[element.nodesIds[2]] - nodesY[element.nodesIds[0]];
-        element.jacobian = 1.0 / (X3 * Y2 - X2 * Y3);
+        // Jacobian calucation
+//        float X2 = nodesX[element.nodesIds[1]] - nodesX[element.nodesIds[0]];
+//        float X3 = nodesX[element.nodesIds[2]] - nodesX[element.nodesIds[0]];
+//        float Y2 = nodesY[element.nodesIds[1]] - nodesY[element.nodesIds[0]];
+//        float Y3 = nodesY[element.nodesIds[2]] - nodesY[element.nodesIds[0]];
+//        element.jacobian = 1.0 / (X3 * Y2 - X2 * Y3);
         elements.push_back(element);
     }
 
@@ -55,5 +58,15 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
         loads_file >> node >> x >> y;
         loads[2 * node + 0] = x;
         loads[2 * node + 1] = y;
+    }
+
+    for (int i = 0; i < boundaryEdgesCount; ++i) {
+        BoundaryEdge edge;
+        float normal_x, normal_y;
+        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
+        float normal_length = std::sqrt(normal_x * normal_x + normal_y * normal_y);
+        edge.normal_x = normal_x/normal_length;
+        edge.normal_y = normal_y/normal_length;
+        boundary.push_back(edge);
     }
 }

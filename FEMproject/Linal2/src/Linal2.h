@@ -21,6 +21,7 @@ public:
 	void Show();
 	void zap();
 	void Set(int index, float value);
+    void add(const MyArray &a);
 	int get_size();
     float* get_data();
 	float & operator [](int index);
@@ -127,7 +128,7 @@ public:
     void SortIt();
     void ConvertToCSR(int *ptr, int *ind, float *data_csr, int n);
     void SparseLU();
-    void CGM_solve(MyArray B, MyArray &x_k, int n, float eps);
+    void CGM_solve(MyArray B, MyArray &x_k, float eps);
     int get_size();
     int get_x(int index);
     int get_y(int index);

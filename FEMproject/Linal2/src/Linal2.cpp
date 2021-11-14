@@ -56,6 +56,13 @@ void MyArray::Set(int index, float value) {
 	}
 }
 
+void MyArray::add(const MyArray &a) {
+    assert(this->array_size != a.array_size);
+    for (int i = 0; i < array_size; ++i) {
+        p[i] += a.p[i];
+    }
+}
+
 int MyArray::get_size() {
 	return array_size;
 }
@@ -1162,8 +1169,9 @@ void SparseMatrixCOO::SparseLU() {
 //    }
 }
 
-void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
+void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, float eps) {
     CheckRunTime(__func__)
+    int n = B.get_size();
     int k = 1;
 
     float *z_k = new float[n];
@@ -1174,7 +1182,7 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, int n, float eps) {
 
   for (int i = 0; i < n; i++) {
     mf += B[i] * B[i];
-    x_k[i] = 0.2;
+    x_k[i] = 0.2;       // Grisha: Why do you choose exactly this initial value?
   }
 
   for (int i = 0; i < n; i++) {

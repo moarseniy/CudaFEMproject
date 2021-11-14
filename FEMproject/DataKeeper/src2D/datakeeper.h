@@ -22,6 +22,7 @@ public:
                      "\nElements count = " << elementsCount <<
                      "\nConstraints count = " << constraintsCount <<
                      "\nLoads count = " << loadsCount <<
+                     "\nBoundary edges with b.c. count = " << boundaryEdgesCount <<
                      "\n========================\n\n";
     }
 
@@ -37,6 +38,9 @@ public:
     void SetConstraintsCount(int constraintsCount) {
         this->constraintsCount = constraintsCount;
     }
+    void SetBoundaryEdgesCount(int boundaryEdgesCount) {
+        this->boundaryEdgesCount = boundaryEdgesCount;
+    }
 
     void AllocateDynamicMemory() {
         nodesX.Resize(nodesCount);
@@ -44,20 +48,25 @@ public:
         loads.Resize(DIM * nodesCount);
         displacements.Resize(DIM * nodesCount);
         D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
+        pressure.Resize(boundaryEdgesCount);
     }
 
     int nodesCount;
     int elementsCount;
+    int boundaryEdgesCount;
     int loadsCount;
     int constraintsCount;
 
     Matrix D;
     MyArray nodesX;
     MyArray nodesY;
-    std::vector<Element>   	elements;
-    std::vector<Constraint>	constraints;
+    std::vector<Element>        elements;
+    std::vector<Constraint>     constraints;
+    std::vector<BoundaryEdge>	boundary;       // stores only those boundary edges
+                                                // that have nonzero boundary conditions
     MyArray loads;
     MyArray displacements;
+    MyArray pressure;
 };
 
 #endif
