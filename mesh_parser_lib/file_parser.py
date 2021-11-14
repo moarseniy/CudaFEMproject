@@ -264,6 +264,8 @@ class FileParser:
         print('Prepare and writing loads in new files start...')
         
         with open(self.dir_name + '/loads.txt', 'w') as write_file:
+            if len(load_node_sets) == 0:
+                write_file.write(str(len(load_node_sets)))
             for load in load_node_sets:
                 for set_num in set_nodes.keys():
                     if load[0] == set_num:
@@ -273,7 +275,6 @@ class FileParser:
                             for force_num in forces.keys():
                                 if load[2] == force_num:
                                     if dim == 2:
-                                        #!!! TODO: add float instead .0
                                         if load[1] == '1':
                                             line += str(float(forces[force_num])) + ' 0.0'
                                         if load[1] == '2':
@@ -300,10 +301,10 @@ class FileParser:
                     xb = float(nodes[load[8]][0])
                     yb = float(nodes[load[8]][1])
 
-                    xn = y1  #/ (math.sqrt(y1*y1+x1*x1))
-                    yn = -x1 #/ (math.sqrt(y1*y1+x1*x1))
+                    xn = y2 - y1  #/ (math.sqrt(y1*y1+x1*x1))
+                    yn = -(x2 - x1) #/ (math.sqrt(y1*y1+x1*x1))
 
-                    dot_prod = (xn - x1) * (xb - x1) + (yn - y1) * (yb - y1)
+                    dot_prod = xn * (xb - x1) + yn * (yb - y1)
                     if dot_prod > 0:
                         xn = -xn
                         yn = -yn

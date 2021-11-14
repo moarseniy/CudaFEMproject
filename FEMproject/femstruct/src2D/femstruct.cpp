@@ -189,7 +189,6 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
     Flocal[edge2elem_num[1] * 2 + 0] = pressure_value * edge_length * edge.normal_x;
     Flocal[edge2elem_num[1] * 2 + 1] = pressure_value * edge_length * edge.normal_y;
 
-    std::cout << "pass\n";
 }
 
 

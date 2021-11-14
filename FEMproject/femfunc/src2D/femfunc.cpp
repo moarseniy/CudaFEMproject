@@ -132,8 +132,13 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 
     MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
     F.add(FEMdata.loads);
+    //globalK.ShowAsMatrixNumber(0, globalK.get_size(), 2*FEMdata.nodesCount);
 
-    globalK.CGM_solve(F, FEMdata.displacements, 1e-10);
+    Matrix temp(2*FEMdata.nodesCount);
+    globalK.ConvertToMatrix(temp);
+    temp.LU_solve(temp, F, FEMdata.displacements, 2*FEMdata.nodesCount);
+
+    //globalK.CGM_solve(F, FEMdata.displacements, 1e-10);
 }
 
 void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
@@ -187,6 +192,5 @@ MyArray AssemblyF(FEMdataKeeper &FEMdata) {
             F[it->nodesIds[i] * 2 + 1] += it->Flocal[i * 2 + 1];
         }
     }
-
     return F;
 }
