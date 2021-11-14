@@ -19,7 +19,7 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
     elements_file       >> elementsCount;
     constraints_file    >> constraintsCount;
     loads_file          >> loadsCount;
-    stress_file          >> boundaryEdgesCount;
+    stress_file         >> boundaryEdgesCount;
 
     AllocateDynamicMemory();
 
@@ -28,8 +28,10 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
     D(2, 0) = 0.0;        	D(2, 1) = 0.0;        	D(2, 2) = (1.0 - poissonRatio) / 2.0;
     D.scale(youngModulus / (1.0 - pow(poissonRatio, 2.0)));
 
+//    std::cout << "NODES" << std::endl;
     for (int i = 0; i < nodesCount; ++i) {
         nodes_file >> nodesX[i] >> nodesY[i];
+//        std::cout << nodesX[i] << ' ' << nodesY[i] << std::endl;
     }
 
     for (int i = 0; i < elementsCount; ++i) {
@@ -44,20 +46,24 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
         elements.push_back(element);
     }
 
+//    std::cout << "CONSTRAINTS" << std::endl;
     for (int i = 0; i < constraintsCount; ++i) {
         Constraint constraint;
         int type;
         constraints_file >> constraint.node >> type;
         constraint.type = static_cast<Constraint::Type>(type);
         constraints.push_back(constraint);
+//        std::cout << constraint.node << ' ' << type << std::endl;
     }
 
+//    std::cout << "LOADS" << std::endl;
     for (int i = 0; i < loadsCount; ++i) {
         int node;
         float x, y;
         loads_file >> node >> x >> y;
         loads[2 * node + 0] = x;
         loads[2 * node + 1] = y;
+//        std::cout << node << ' ' << x << ' ' << y << std::endl;
     }
 
     for (int i = 0; i < boundaryEdgesCount; ++i) {

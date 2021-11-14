@@ -10,11 +10,15 @@ MyArray::MyArray() {
 }
 
 MyArray::MyArray(int array_size) {
-	this->array_size = array_size;
-	this->p = new float[array_size];
-	for (int i = 0; i < array_size; i++) {
-		p[i] = 0.0;
-	}
+    if (array_size == 0)
+        MyArray();
+    else {
+        this->array_size = array_size;
+        this->p = new float[array_size];
+        for (int i = 0; i < array_size; i++) {
+            p[i] = 0.0;
+        }
+    }
 }
 
 
