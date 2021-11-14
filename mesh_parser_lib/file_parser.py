@@ -34,7 +34,7 @@ class FileParser:
             
     def parse_nodes(self):
         filename = self.raw_mesh_dir + '/' + self.filename
-        nodes = collections.OrderedDict()
+        nodes = {}#collections.OrderedDict()
 
         print('Parsing file for nodes start...')
 
@@ -112,7 +112,7 @@ class FileParser:
                             idx = 3 - line.index(load_segments[i][3]) - line.index(load_segments[i][4])
                             # int((len(line)-1)*len(line)/2) = 3
                             load_segments[i].append(line[idx])
-                            load_segments[i].append(line[0])
+                            load_segments[i].append(elements.index(element))
                 if dim ==3:
                     for i in range(len(load_segments)):
                         if load_segments[i][3] in line and load_segments[i][4] in line and load_segments[i][5] in line:
