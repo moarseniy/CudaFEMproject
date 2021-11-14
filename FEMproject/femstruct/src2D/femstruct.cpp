@@ -179,10 +179,15 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
 
     float a0 = X1 * Y2 - X2 * Y1, a1 = X2 * Y0 - Y2 * X0;
 
-    Flocal[edge2elem_num[0] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a0/area);
-    Flocal[edge2elem_num[0] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a0/area);
-    Flocal[edge2elem_num[1] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a1/area);
-    Flocal[edge2elem_num[1] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a1/area);
+//    Flocal[edge2elem_num[0] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a0/area);
+//    Flocal[edge2elem_num[0] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a0/area);
+//    Flocal[edge2elem_num[1] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a1/area);
+//    Flocal[edge2elem_num[1] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a1/area);
+
+    Flocal[edge2elem_num[0] * 2 + 0] = pressure_value * edge_length * edge.normal_x;
+    Flocal[edge2elem_num[0] * 2 + 1] = pressure_value * edge_length * edge.normal_y;
+    Flocal[edge2elem_num[1] * 2 + 0] = pressure_value * edge_length * edge.normal_x;
+    Flocal[edge2elem_num[1] * 2 + 1] = pressure_value * edge_length * edge.normal_y;
 
     std::cout << "pass\n";
 }
