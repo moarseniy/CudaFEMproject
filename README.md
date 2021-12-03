@@ -1,5 +1,5 @@
 # CudaFEMproject
-Finite Element Method + CUDA + CMake implementation
+Finite Element Method (2D/3D) + CUDA + CMake implementation
 
 Arseniy Mokin moarseniy@yandex.ru
 
