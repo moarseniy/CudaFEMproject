@@ -3,35 +3,26 @@ import math
 import collections
 
 class FileParser:
-    def __init__(self, filename, mesh_dir, raw_mesh_dir,
-                 new_dir, dim):
+    def __init__(self, filename, prepared_mesh_dir, raw_mesh_dir,
+                 task_name, dim):
         self.filename = filename
-        self.mesh_dir = mesh_dir
+        self.prepared_mesh_dir = prepared_mesh_dir
         self.raw_mesh_dir = raw_mesh_dir
-        self.new_dir = new_dir
+        self.task_name = task_name
         self.dim = dim
 
     def make_directory(self):
-        print('Make new directory named: ' + self.new_dir
-              + ' in ' + self.mesh_dir)
+        print('Make new directory named: ' + self.task_name
+              + ' in ' + self.prepared_mesh_dir)
 
-        self.dir_name = self.mesh_dir + '/' + self.new_dir
+        self.dir_name = self.prepared_mesh_dir + '/' + self.task_name
         try:
             os.mkdir(self.dir_name)
         except Exception as e:
-            print('This directory already exist!')
+            print('This directory already exists!')
             return
         print('OK')
 
-    def make_good(self):
-        print('Move base file in new directory.')
-        try:
-            os.replace(self.raw_mesh_dir + '/' + self.filename,
-                       self.dir_name + '/' + self.filename)
-        except Exception as e:
-            print('Some troubles with moving ' + self.filename
-                  + ' to ' + self.new_dir)
-            
     def parse_nodes(self):
         filename = self.raw_mesh_dir + '/' + self.filename
         nodes = {}#collections.OrderedDict()

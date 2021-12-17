@@ -1,0 +1,7 @@
+{
+	"task": "roma1",
+	"DIM": 2,
+	"parser": 1,
+	"youngModulus": 0.25,
+	"poissonRatio": 2e+07
+}
