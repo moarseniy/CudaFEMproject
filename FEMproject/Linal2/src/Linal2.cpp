@@ -1186,7 +1186,7 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, float eps) {
 
   for (int i = 0; i < n; i++) {
     mf += B[i] * B[i];
-    x_k[i] = 0.2;       // Grisha: Why do you choose exactly this initial value?
+    x_k[i] = 0.0;       // Grisha: Why do you choose exactly this initial value?
   }
 
   for (int i = 0; i < n; i++) {

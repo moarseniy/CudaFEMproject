@@ -184,10 +184,10 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
 //    Flocal[edge2elem_num[1] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a1/area);
 //    Flocal[edge2elem_num[1] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a1/area);
 
-    Flocal[edge2elem_num[0] * 2 + 0] = pressure_value * edge_length * edge.normal_x;
-    Flocal[edge2elem_num[0] * 2 + 1] = pressure_value * edge_length * edge.normal_y;
-    Flocal[edge2elem_num[1] * 2 + 0] = pressure_value * edge_length * edge.normal_x;
-    Flocal[edge2elem_num[1] * 2 + 1] = pressure_value * edge_length * edge.normal_y;
+    Flocal[2 * edge2elem_num[0] + 0] = - 0.5 * pressure_value * edge_length * edge.normal_x;
+    Flocal[2 * edge2elem_num[0] + 1] = - 0.5 * pressure_value * edge_length * edge.normal_y;
+    Flocal[2 * edge2elem_num[1] + 0] = - 0.5 * pressure_value * edge_length * edge.normal_x;
+    Flocal[2 * edge2elem_num[1] + 1] = - 0.5 * pressure_value * edge_length * edge.normal_y;
 
 }
 
