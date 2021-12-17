@@ -42,9 +42,11 @@ void MakeVTKfile2D(std::string output_vtk,
     }
 
     outvtk << "\nCELL_DATA " << elements.size() << "\n";
-    outvtk << "VECTORS stress double\n";
+    outvtk << "TENSORS stress double\n";
     for (int i = 0; i < Stress.size(); i++) {
-        outvtk << Stress[i][0] << " " << Stress[i][1] << " " << Stress[i][2] << "\n";
+        outvtk << Stress[i][0] << " " << Stress[i][2] << " " << 0.0 << "\n";
+        outvtk << Stress[i][2] << " " << Stress[i][1] << " " << 0.0 << "\n";
+        outvtk << 0.0 << " " << 0.0 << " " << 0.0 << "\n";
     }
 
     outvtk << "\nSCALARS mises_stress double\nLOOKUP_TABLE default\n";

@@ -1,13 +1,14 @@
 #ifndef VTKfile_H
 #define VTKfile_H
 
+#include "Linal2.h"
+#include "femfunc.h"
+#include "Tools.h"
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
-#include "Linal2.h"
-#include "femfunc.h"
-#include "Tools.h"
 
 void MakeVTKfile2D(std::string output_vtk,
                  MyArray nodesX,

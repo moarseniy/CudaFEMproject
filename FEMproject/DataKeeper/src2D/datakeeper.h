@@ -13,17 +13,23 @@ using namespace std;
 
 class FEMdataKeeper {
 public:
-    FEMdataKeeper(){}
+    FEMdataKeeper(std::string name){
+        this->name = name;
+    }
 
-    void ParseFiles(std::string dir, std::string name, float poissonRatio, float youngModulus);
+    void ParseFiles(std::string dir, float poissonRatio, float youngModulus);
     void ShowInfo() {
         std::cout << "==========INFO==========" <<
+                     "\nTask name = " << name <<
                      "\nNodes count = " << nodesCount <<
                      "\nElements count = " << elementsCount <<
                      "\nConstraints count = " << constraintsCount <<
                      "\nLoads count = " << loadsCount <<
                      "\nBoundary edges with b.c. count = " << boundaryEdgesCount <<
                      "\n========================\n\n";
+    }
+    std::string get_name() {
+        return this->name;
     }
 
     void SetNodesCount(int nodesCount) {
@@ -50,6 +56,8 @@ public:
         D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
         pressure.Resize(boundaryEdgesCount);
     }
+
+    std::string name;
 
     int nodesCount;
     int elementsCount;

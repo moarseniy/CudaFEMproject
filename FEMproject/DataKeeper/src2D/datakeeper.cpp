@@ -4,7 +4,7 @@
 
 using namespace std;
 
-void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonRatio, float youngModulus) {
+void FEMdataKeeper::ParseFiles(std::string dir, float poissonRatio, float youngModulus) {
     CheckRunTime(__func__)
 
     fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
@@ -71,8 +71,8 @@ void FEMdataKeeper::ParseFiles(std::string dir, std::string name, float poissonR
         float normal_x, normal_y;
         stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
         float normal_length = std::sqrt(normal_x * normal_x + normal_y * normal_y);
-        edge.normal_x = normal_x/normal_length;
-        edge.normal_y = normal_y/normal_length;
+        edge.normal_x = normal_x / normal_length;
+        edge.normal_y = normal_y / normal_length;
         boundary.push_back(edge);
     }
 }
