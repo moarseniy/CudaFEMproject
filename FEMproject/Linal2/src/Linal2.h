@@ -76,7 +76,7 @@ public:
 	Matrix operator =(const Matrix &a);
 	void LU_decomposition(Matrix &L, Matrix &U, int n);
 	void Solve_Gauss_reverse(Matrix matr, MyArray B, MyArray &res, int n, bool isDown);
-	void LU_solve(Matrix A, MyArray B, MyArray &result, int n);
+    void LU_solve(MyArray B, MyArray &result, int n);
 	void CGM_solve(Matrix A, MyArray B, MyArray &result, int n);
 	void scale(float value);
     Matrix Sum(Matrix &a);

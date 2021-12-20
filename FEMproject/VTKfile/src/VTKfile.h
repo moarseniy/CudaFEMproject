@@ -18,7 +18,8 @@ void MakeVTKfile2D(std::string output_vtk,
                  std::vector<MyArray> Stress,
                  std::vector<float> sigma_mises,
                  std::vector<MyArray> Deformation,
-                 std::vector<float> epsilon_mises);
+                 std::vector<float> epsilon_mises,
+                 MyArray SmoothStress);
 
 void MakeVTKfile3D(std::string output_vtk,
                  MyArray nodesX,

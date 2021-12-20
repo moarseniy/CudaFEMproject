@@ -134,6 +134,15 @@ bool CheckPointInside(float v1, float v2, float x1, float y1, float x2, float y2
             (res3 > 0.0 || std::abs(res3) < eps))
         return true;
 
+//    if ((res1 < 0.0) &&
+//            (res2 < 0.0) &&
+//            (res3 < 0.0))
+//        return true;
+//    if ((res1 > 0.0) &&
+//            (res2 > 0.0) &&
+//            (res3 > 0.0))
+//        return true;
+
     return false;
 }
 
@@ -148,7 +157,7 @@ void CalculateStressAlongAxe(std::vector<float> &StressComponents,
                              MyArray nodesY,
                              std::vector<Element> elements) {
     CheckRunTime(__func__)
-    MyArray range(100);
+    MyArray range(200);
     float h = (b - a) / (range.get_size() - 1);
     range[0] = a;
     for (int i = 1; i < range.get_size(); ++i) {
@@ -173,6 +182,65 @@ void CalculateStressAlongAxe(std::vector<float> &StressComponents,
             if (CheckPointInside(x, y, x1, y1, x2, y2, x3, y3)) {
                 StressComponents.push_back(range[i]);
                 StressComponents.push_back(Stress[j][component_id]);
+                break;
+            }
+        }
+    }
+}
+
+float Interpolate(float x, float y, float x1, float y1, float x2, float y2, float x3, float y3, float f1, float f2, float f3) {
+
+    float a1 = x2 * y3 - x3 * y2;
+    float b1 = y2 - y3;
+    float c1 = x3 - x2;
+
+    float a2 = x3 * y1 - x1 * y3;
+    float b2 = y3 - y1;
+    float c2 = x1 - x3;
+
+    float a3 = x1 * y2 - x2 * y1;
+    float b3 = y1 - y2;
+    float c3 = x2 - x1;
+
+    float dlt = std::abs((x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3));
+
+    float N1 = (a1 + x * b1 + y * c1) / dlt;
+    float N2 = (a2 + x * b2 + y * c2) / dlt;
+    float N3 = (a3 + x * b3 + y * c3) / dlt;
+
+    return f1 * N1 + f2 * N2 + f3 * N3;
+}
+
+void CalculateStressAlongAxeSmooth(std::vector<float> &StressComponentsSmooth,
+                             std::string axe,
+                             float fixed_value,
+                             float a,
+                             float b,
+                             MyArray StressSmooth,
+                             MyArray nodesX,
+                             MyArray nodesY,
+                             std::vector<Element> elements) {
+    CheckRunTime(__func__)
+    MyArray range(1000);
+    float h = (b - a) / (range.get_size() - 1);
+    range[0] = a;
+    for (int i = 1; i < range.get_size(); ++i) {
+        range[i] = range[i - 1] + h;
+    }
+
+    for (int i = 0; i < range.get_size(); ++i) {
+        float x = (axe == "x") ? range[i] : fixed_value;
+        float y = (axe == "y") ? range[i] : fixed_value;
+        for (int j = 0; j < elements.size(); ++j) {
+            float x1 = nodesX[elements[j].nodesIds[0]], y1 = nodesY[elements[j].nodesIds[0]];
+            float x2 = nodesX[elements[j].nodesIds[1]], y2 = nodesY[elements[j].nodesIds[1]];
+            float x3 = nodesX[elements[j].nodesIds[2]], y3 = nodesY[elements[j].nodesIds[2]];
+            if (CheckPointInside(x, y, x1, y1, x2, y2, x3, y3)) {
+                StressComponentsSmooth.push_back(range[i]);
+                float f1 = StressSmooth[elements[j].nodesIds[0]];
+                float f2 = StressSmooth[elements[j].nodesIds[1]];
+                float f3 = StressSmooth[elements[j].nodesIds[2]];
+                StressComponentsSmooth.push_back(Interpolate(x, y, x1, y1, x2, y2, x3, y3, f1, f2, f3));
                 break;
             }
         }
@@ -214,6 +282,64 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     globalK.CGM_solve(F, FEMdata.displacements, 1e-5);
 }
 
+void SmoothResults(MyArray &SmoothStress, std::vector<MyArray> Stress,
+                   int nodesCount, MyArray nodesX, MyArray nodesY, std::vector<Element> elements) {
+    Matrix C(nodesCount);
+    MyArray R(nodesCount);
+    float dlt, x1, y1, x2, y2, x3, y3;
+    for (int i = 0; i < elements.size(); ++i) {
+        x1 = nodesX[elements[i].nodesIds[0]]; y1 = nodesY[elements[i].nodesIds[0]];
+        x2 = nodesX[elements[i].nodesIds[1]]; y2 = nodesY[elements[i].nodesIds[1]];
+        x3 = nodesX[elements[i].nodesIds[2]]; y3 = nodesY[elements[i].nodesIds[2]];
+
+        float a1 = x2 * y3 - x3 * y2;
+        float b1 = y2 - y3;
+        float c1 = x3 - x2;
+
+        float a2 = x3 * y1 - x1 * y3;
+        float b2 = y3 - y1;
+        float c2 = x1 - x3;
+
+        float a3 = x1 * y2 - x2 * y1;
+        float b3 = y1 - y2;
+        float c3 = x2 - x1;
+
+        float x_c = (x1 + x2 + x3) / 3.0;
+        float y_c = (y1 + y2 + y3) / 3.0;
+
+        dlt = std::abs((x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3)) / 2.0;
+
+//        R[elements[i].nodesIds[0]] += (a1 + b1 * x_c + c1 * y_c) * 0.5 * Stress[i][2];
+//        R[elements[i].nodesIds[1]] += (a2 + b2 * x_c + c2 * y_c) * 0.5 * Stress[i][2];
+//        R[elements[i].nodesIds[2]] += (a3 + b3 * x_c + c3 * y_c) * 0.5 * Stress[i][2];
+
+        R[elements[i].nodesIds[0]] += Stress[i][2] * dlt * 3.0;
+        R[elements[i].nodesIds[1]] += Stress[i][2] * dlt * 3.0;
+        R[elements[i].nodesIds[2]] += Stress[i][2] * dlt * 3.0;
+
+//        C(elements[i].nodesIds[0], elements[i].nodesIds[0]) += (a1*a1+(a1*b1+a1*b1)*x_c+(a1*c1+a1*c1)*y_c+b1*b1*x_c*x_c+c1*c1*y_c*y_c+(b1*c1+b1*c1)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[0], elements[i].nodesIds[1]) += (a1*a2+(a1*b2+a2*b1)*x_c+(a1*c2+a2*c1)*y_c+b1*b2*x_c*x_c+c1*c2*y_c*y_c+(b1*c2+b2*c1)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[0], elements[i].nodesIds[2]) += (a1*a3+(a1*b3+a3*b1)*x_c+(a1*c3+a3*c1)*y_c+b1*b3*x_c*x_c+c1*c3*y_c*y_c+(b1*c3+b3*c1)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[1], elements[i].nodesIds[0]) += (a2*a1+(a2*b1+a1*b2)*x_c+(a2*c1+a1*c2)*y_c+b2*b1*x_c*x_c+c2*c1*y_c*y_c+(b2*c1+b1*c2)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[1], elements[i].nodesIds[1]) += (a2*a2+(a2*b2+a2*b2)*x_c+(a2*c2+a2*c2)*y_c+b2*b2*x_c*x_c+c2*c2*y_c*y_c+(b2*c2+b2*c2)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[1], elements[i].nodesIds[2]) += (a2*a3+(a2*b3+a3*b2)*x_c+(a2*c3+a3*c2)*y_c+b2*b3*x_c*x_c+c2*c3*y_c*y_c+(b2*c3+b3*c2)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[2], elements[i].nodesIds[0]) += (a3*a1+(a3*b1+a1*b3)*x_c+(a3*c1+a1*c3)*y_c+b3*b1*x_c*x_c+c3*c1*y_c*y_c+(b3*c1+b1*c3)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[2], elements[i].nodesIds[1]) += (a3*a2+(a3*b2+a2*b3)*x_c+(a3*c2+a2*c3)*y_c+b3*b2*x_c*x_c+c3*c2*y_c*y_c+(b3*c2+b2*c3)*x_c*y_c) / (4 * dlt);
+//        C(elements[i].nodesIds[2], elements[i].nodesIds[2]) += (a3*a3+(a3*b3+a3*b3)*x_c+(a3*c3+a3*c3)*y_c+b3*b3*x_c*x_c+c3*c3*y_c*y_c+(b3*c3+b3*c3)*x_c*y_c) / (4 * dlt);
+
+        C(elements[i].nodesIds[0], elements[i].nodesIds[0]) += dlt;
+        C(elements[i].nodesIds[0], elements[i].nodesIds[1]) += dlt;
+        C(elements[i].nodesIds[0], elements[i].nodesIds[2]) += dlt;
+        C(elements[i].nodesIds[1], elements[i].nodesIds[0]) += dlt;
+        C(elements[i].nodesIds[1], elements[i].nodesIds[1]) += dlt;
+        C(elements[i].nodesIds[1], elements[i].nodesIds[2]) += dlt;
+        C(elements[i].nodesIds[2], elements[i].nodesIds[0]) += dlt;
+        C(elements[i].nodesIds[2], elements[i].nodesIds[1]) += dlt;
+        C(elements[i].nodesIds[2], elements[i].nodesIds[2]) += dlt;
+    }
+    C.LU_solve(R, SmoothStress, nodesCount);
+}
+
 void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
     //POSTPROCESSING
     std::vector<MyArray> Deformation;
@@ -221,20 +347,30 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
     std::vector<float> sigma_mises;
     std::vector<float> epsilon_mises;
     std::vector<float> StressComponents;
+    std::vector<float> StressComponentsSmooth;
+    MyArray SmoothStress(FEMdata.nodesCount);
 
     CalculateStressAndDeformation(Deformation, Stress, epsilon_mises, sigma_mises, FEMdata.D, FEMdata.elements, FEMdata.displacements);
 
-//    CalculateStressAlongAxe(StressComponents, "x", "xy", -2.8, -4.0, 2.0, Stress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
-//    std::string path = "C:/Users/mokin/Desktop/git/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + ".txt";
-//    std::cout << "StressComponents Size = " << StressComponents.size() << "\n";
-//    fstream out;
-//    out.open(path, fstream::out);
-//    for (int i = 0; i < StressComponents.size(); i+=2) {
-//        out << StressComponents[i] << " " << StressComponents[i + 1] << "\n";
-//    }
+    CalculateStressAlongAxe(StressComponents, "x", "xy", -3.5, -3.0, 5.0, Stress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
+    SmoothResults(SmoothStress, Stress, FEMdata.nodesCount, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
+    CalculateStressAlongAxeSmooth(StressComponentsSmooth, "x", -3.5, -3.0, 5.0, SmoothStress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
+    std::string path1 = "C:/Users/mokin/Desktop/git/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + ".txt";
+    std::string path2 = "C:/Users/mokin/Desktop/git/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + "_2.txt";
+    std::cout << "StressComponents Size = " << StressComponents.size() << "\n";
+    std::cout << "StressComponentsSmooth Size = " << StressComponentsSmooth.size() << "\n";
+    fstream out1, out2;
+    out1.open(path1, fstream::out);
+    for (int i = 0; i < StressComponents.size(); i+=2) {
+        out1 << StressComponents[i] << " " << StressComponents[i + 1] << "\n";
+    }
+    out2.open(path2, fstream::out);
+    for (int i = 0; i < StressComponentsSmooth.size(); i+=2) {
+        out2 << StressComponentsSmooth[i] << " " << StressComponentsSmooth[i + 1] << "\n";
+    }
 
     MakeVTKfile2D(output_vtk, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements,
-                FEMdata.displacements, Stress, sigma_mises, Deformation, epsilon_mises);
+                FEMdata.displacements, Stress, sigma_mises, Deformation, epsilon_mises, SmoothStress);
 }
 
 SparseMatrixCOO AssemblyStiffnessMatrix(FEMdataKeeper &FEMdata) {

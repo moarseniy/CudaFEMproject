@@ -10,7 +10,8 @@ void MakeVTKfile2D(std::string output_vtk,
                  std::vector<MyArray> Stress,
                  std::vector<float> sigma_mises,
                  std::vector<MyArray> Deformation,
-                 std::vector<float> epsilon_mises) {
+                 std::vector<float> epsilon_mises,
+                 MyArray SmoothStress) {
     CheckRunTime(__func__)
     fstream outvtk;
     outvtk.open(output_vtk, fstream::out);
@@ -39,6 +40,11 @@ void MakeVTKfile2D(std::string output_vtk,
     outvtk << "\nSCALARS summary double\nLOOKUP_TABLE default\n";
     for (int i = 0; i < displacements.get_size() - 1; i += 2) {
         outvtk << std::sqrt(displacements[i] * displacements[i] + displacements[i + 1] * displacements[i + 1]) << "\n";
+    }
+
+    outvtk << "\nSCALARS SmoothStress double\nLOOKUP_TABLE default\n";
+    for (int i = 0; i < SmoothStress.get_size(); ++i) {
+        outvtk << SmoothStress[i] << "\n";
     }
 
     outvtk << "\nCELL_DATA " << elements.size() << "\n";

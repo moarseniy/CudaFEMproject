@@ -619,11 +619,11 @@ void Matrix::Solve_Gauss_reverse(Matrix matr, MyArray B, MyArray &res, int n, bo
 } 
 
 
-void Matrix::LU_solve(Matrix A, MyArray B, MyArray &result, int n) {
+void Matrix::LU_solve(MyArray B, MyArray &result, int n) {
 	MyArray res_tmp(n);
 	Matrix L(n, n), U(n, n);
 	
-	A.LU_decomposition(L, U, n); 
+    this->LU_decomposition(L, U, n);
     std::cout << "LU_decomposition success\n";
 	
 	// std::cout << "L = \n";
