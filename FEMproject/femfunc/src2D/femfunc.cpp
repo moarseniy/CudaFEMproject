@@ -286,6 +286,7 @@ void SmoothResults(MyArray &SmoothStress, std::vector<MyArray> Stress,
                    int nodesCount, MyArray nodesX, MyArray nodesY, std::vector<Element> elements) {
     Matrix C(nodesCount);
     MyArray R(nodesCount);
+    int StressIdx = 0;  // 0 -- XX; 1 -- YY; 2 -- XY
     float dlt, x1, y1, x2, y2, x3, y3;
     for (int i = 0; i < elements.size(); ++i) {
         x1 = nodesX[elements[i].nodesIds[0]]; y1 = nodesY[elements[i].nodesIds[0]];
@@ -309,33 +310,33 @@ void SmoothResults(MyArray &SmoothStress, std::vector<MyArray> Stress,
 
         dlt = std::abs((x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3)) / 2.0;
 
-//        R[elements[i].nodesIds[0]] += (a1 + b1 * x_c + c1 * y_c) * 0.5 * Stress[i][2];
-//        R[elements[i].nodesIds[1]] += (a2 + b2 * x_c + c2 * y_c) * 0.5 * Stress[i][2];
-//        R[elements[i].nodesIds[2]] += (a3 + b3 * x_c + c3 * y_c) * 0.5 * Stress[i][2];
+        R[elements[i].nodesIds[0]] += (a1 + b1 * x_c + c1 * y_c) * 0.5 * Stress[i][StressIdx];
+        R[elements[i].nodesIds[1]] += (a2 + b2 * x_c + c2 * y_c) * 0.5 * Stress[i][StressIdx];
+        R[elements[i].nodesIds[2]] += (a3 + b3 * x_c + c3 * y_c) * 0.5 * Stress[i][StressIdx];
 
-        R[elements[i].nodesIds[0]] += Stress[i][2] * dlt * 3.0;
-        R[elements[i].nodesIds[1]] += Stress[i][2] * dlt * 3.0;
-        R[elements[i].nodesIds[2]] += Stress[i][2] * dlt * 3.0;
+//        R[elements[i].nodesIds[0]] += Stress[i][StressIdx] * dlt * 3.0;
+//        R[elements[i].nodesIds[1]] += Stress[i][StressIdx] * dlt * 3.0;
+//        R[elements[i].nodesIds[2]] += Stress[i][StressIdx] * dlt * 3.0;
 
-//        C(elements[i].nodesIds[0], elements[i].nodesIds[0]) += (a1*a1+(a1*b1+a1*b1)*x_c+(a1*c1+a1*c1)*y_c+b1*b1*x_c*x_c+c1*c1*y_c*y_c+(b1*c1+b1*c1)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[0], elements[i].nodesIds[1]) += (a1*a2+(a1*b2+a2*b1)*x_c+(a1*c2+a2*c1)*y_c+b1*b2*x_c*x_c+c1*c2*y_c*y_c+(b1*c2+b2*c1)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[0], elements[i].nodesIds[2]) += (a1*a3+(a1*b3+a3*b1)*x_c+(a1*c3+a3*c1)*y_c+b1*b3*x_c*x_c+c1*c3*y_c*y_c+(b1*c3+b3*c1)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[1], elements[i].nodesIds[0]) += (a2*a1+(a2*b1+a1*b2)*x_c+(a2*c1+a1*c2)*y_c+b2*b1*x_c*x_c+c2*c1*y_c*y_c+(b2*c1+b1*c2)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[1], elements[i].nodesIds[1]) += (a2*a2+(a2*b2+a2*b2)*x_c+(a2*c2+a2*c2)*y_c+b2*b2*x_c*x_c+c2*c2*y_c*y_c+(b2*c2+b2*c2)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[1], elements[i].nodesIds[2]) += (a2*a3+(a2*b3+a3*b2)*x_c+(a2*c3+a3*c2)*y_c+b2*b3*x_c*x_c+c2*c3*y_c*y_c+(b2*c3+b3*c2)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[2], elements[i].nodesIds[0]) += (a3*a1+(a3*b1+a1*b3)*x_c+(a3*c1+a1*c3)*y_c+b3*b1*x_c*x_c+c3*c1*y_c*y_c+(b3*c1+b1*c3)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[2], elements[i].nodesIds[1]) += (a3*a2+(a3*b2+a2*b3)*x_c+(a3*c2+a2*c3)*y_c+b3*b2*x_c*x_c+c3*c2*y_c*y_c+(b3*c2+b2*c3)*x_c*y_c) / (4 * dlt);
-//        C(elements[i].nodesIds[2], elements[i].nodesIds[2]) += (a3*a3+(a3*b3+a3*b3)*x_c+(a3*c3+a3*c3)*y_c+b3*b3*x_c*x_c+c3*c3*y_c*y_c+(b3*c3+b3*c3)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[0], elements[i].nodesIds[0]) += (a1*a1+(a1*b1+a1*b1)*x_c+(a1*c1+a1*c1)*y_c+b1*b1*x_c*x_c+c1*c1*y_c*y_c+(b1*c1+b1*c1)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[0], elements[i].nodesIds[1]) += (a1*a2+(a1*b2+a2*b1)*x_c+(a1*c2+a2*c1)*y_c+b1*b2*x_c*x_c+c1*c2*y_c*y_c+(b1*c2+b2*c1)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[0], elements[i].nodesIds[2]) += (a1*a3+(a1*b3+a3*b1)*x_c+(a1*c3+a3*c1)*y_c+b1*b3*x_c*x_c+c1*c3*y_c*y_c+(b1*c3+b3*c1)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[1], elements[i].nodesIds[0]) += (a2*a1+(a2*b1+a1*b2)*x_c+(a2*c1+a1*c2)*y_c+b2*b1*x_c*x_c+c2*c1*y_c*y_c+(b2*c1+b1*c2)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[1], elements[i].nodesIds[1]) += (a2*a2+(a2*b2+a2*b2)*x_c+(a2*c2+a2*c2)*y_c+b2*b2*x_c*x_c+c2*c2*y_c*y_c+(b2*c2+b2*c2)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[1], elements[i].nodesIds[2]) += (a2*a3+(a2*b3+a3*b2)*x_c+(a2*c3+a3*c2)*y_c+b2*b3*x_c*x_c+c2*c3*y_c*y_c+(b2*c3+b3*c2)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[2], elements[i].nodesIds[0]) += (a3*a1+(a3*b1+a1*b3)*x_c+(a3*c1+a1*c3)*y_c+b3*b1*x_c*x_c+c3*c1*y_c*y_c+(b3*c1+b1*c3)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[2], elements[i].nodesIds[1]) += (a3*a2+(a3*b2+a2*b3)*x_c+(a3*c2+a2*c3)*y_c+b3*b2*x_c*x_c+c3*c2*y_c*y_c+(b3*c2+b2*c3)*x_c*y_c) / (4 * dlt);
+        C(elements[i].nodesIds[2], elements[i].nodesIds[2]) += (a3*a3+(a3*b3+a3*b3)*x_c+(a3*c3+a3*c3)*y_c+b3*b3*x_c*x_c+c3*c3*y_c*y_c+(b3*c3+b3*c3)*x_c*y_c) / (4 * dlt);
 
-        C(elements[i].nodesIds[0], elements[i].nodesIds[0]) += dlt;
-        C(elements[i].nodesIds[0], elements[i].nodesIds[1]) += dlt;
-        C(elements[i].nodesIds[0], elements[i].nodesIds[2]) += dlt;
-        C(elements[i].nodesIds[1], elements[i].nodesIds[0]) += dlt;
-        C(elements[i].nodesIds[1], elements[i].nodesIds[1]) += dlt;
-        C(elements[i].nodesIds[1], elements[i].nodesIds[2]) += dlt;
-        C(elements[i].nodesIds[2], elements[i].nodesIds[0]) += dlt;
-        C(elements[i].nodesIds[2], elements[i].nodesIds[1]) += dlt;
-        C(elements[i].nodesIds[2], elements[i].nodesIds[2]) += dlt;
+//        C(elements[i].nodesIds[0], elements[i].nodesIds[0]) += dlt;
+//        C(elements[i].nodesIds[0], elements[i].nodesIds[1]) += dlt;
+//        C(elements[i].nodesIds[0], elements[i].nodesIds[2]) += dlt;
+//        C(elements[i].nodesIds[1], elements[i].nodesIds[0]) += dlt;
+//        C(elements[i].nodesIds[1], elements[i].nodesIds[1]) += dlt;
+//        C(elements[i].nodesIds[1], elements[i].nodesIds[2]) += dlt;
+//        C(elements[i].nodesIds[2], elements[i].nodesIds[0]) += dlt;
+//        C(elements[i].nodesIds[2], elements[i].nodesIds[1]) += dlt;
+//        C(elements[i].nodesIds[2], elements[i].nodesIds[2]) += dlt;
     }
     C.LU_solve(R, SmoothStress, nodesCount);
 }
@@ -352,11 +353,14 @@ void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk) {
 
     CalculateStressAndDeformation(Deformation, Stress, epsilon_mises, sigma_mises, FEMdata.D, FEMdata.elements, FEMdata.displacements);
 
-    CalculateStressAlongAxe(StressComponents, "x", "xy", -3.5, -3.0, 5.0, Stress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
+    float fixed_value = 1.6;
+    float a = -6.0;
+    float b = 6.0;
+    CalculateStressAlongAxe(StressComponents, "x", "x", fixed_value, a, b, Stress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
     SmoothResults(SmoothStress, Stress, FEMdata.nodesCount, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
-    CalculateStressAlongAxeSmooth(StressComponentsSmooth, "x", -3.5, -3.0, 5.0, SmoothStress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
-    std::string path1 = "C:/Users/mokin/Desktop/git/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + ".txt";
-    std::string path2 = "C:/Users/mokin/Desktop/git/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + "_2.txt";
+    CalculateStressAlongAxeSmooth(StressComponentsSmooth, "x", fixed_value, a, b, SmoothStress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
+    std::string path1 = "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + ".txt";
+    std::string path2 = "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/prak_results/out_stress_ " + FEMdata.get_name() + "_2.txt";
     std::cout << "StressComponents Size = " << StressComponents.size() << "\n";
     std::cout << "StressComponentsSmooth Size = " << StressComponentsSmooth.size() << "\n";
     fstream out1, out2;

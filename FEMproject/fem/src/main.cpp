@@ -24,16 +24,16 @@ int main(void) {
 
     CheckRunTime(__func__)
 
-    std::string name = "9task80";
+    std::string name = "task7_int10_factor20";
 
-    std::string project_directory = "C:/Users/mokin/Desktop/git/CudaFEMproject/";
+    std::string project_directory = "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/";
     std::string mesh_directory = project_directory + "prepared_meshes/" + std::to_string(DIM) + "D/";
     std::string results_directory = project_directory + "final_results/" + std::to_string(DIM) + "D/" + name + "/";
     _mkdir(results_directory.c_str());
     std::string output_vtk = results_directory + "results.vtk";
     std::string output_results = results_directory + "output.txt";
 
-    float poissonRatio = 0.25, youngModulus = 2e+07;
+    float poissonRatio = 0.25, youngModulus = 2e+11;
 
     FEMdataKeeper FEMdata(name);
     FEMdata.ParseFiles(mesh_directory, poissonRatio, youngModulus);
