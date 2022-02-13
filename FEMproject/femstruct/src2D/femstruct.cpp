@@ -32,6 +32,11 @@ void Element::CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets
         B(2, 2 * i + 0) = IC(2, i);
         B(2, 2 * i + 1) = IC(1, i);
     }
+//    B(0, 0) = y[2] - y[3]; B(0, 2) = y[3] - y[1]; B(0, 4) = y[1] - y[2];
+//    B(1, 1) = x[3] - x[2]; B(1, 3) = x[1] - x[3]; B(1, 5) = x[2] - x[1];
+
+//    B(2, 0) = x[3] - y[2]; B(2, 1) = y[2] - y[3]; B(2, 2) = x[1] - x[3];
+//    B(2, 3) = y[3] - y[1]; B(2, 4) = x[2] - x[1]; B(2, 5) = y[1] - y[2];
     //B.Show();
 
     Matrix K(6, 6);
@@ -101,7 +106,7 @@ void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY) {
     Matrix IC(3, 3);
     //C.Show();
     C.inverse(IC, 3, 0);
-
+    double determinant = C.det(3);
 
     for (int i = 0; i < 3; i++) {
         B(0, 2 * i + 0) = IC(1, i);
@@ -111,12 +116,19 @@ void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY) {
         B(2, 2 * i + 0) = IC(2, i);
         B(2, 2 * i + 1) = IC(1, i);
     }
-    //B.Show();
+//    B(0, 0) = y[1] - y[2]; B(0, 2) = y[2] - y[0]; B(0, 4) = y[0] - y[1];
+//    B(1, 1) = x[2] - x[1]; B(1, 3) = x[0] - x[2]; B(1, 5) = x[1] - x[0];
+
+//    B(2, 0) = x[2] - x[1]; B(2, 1) = y[1] - y[2]; B(2, 2) = x[0] - x[2];
+//    B(2, 3) = y[2] - y[0]; B(2, 4) = x[1] - x[0]; B(2, 5) = y[0] - y[1];
+
+//    float s = std::abs(1.0 / (determinant));
+//    B.scale(s);
 
     Matrix temp1(6, 3);
     Matrix temp2(6, 3);
     Matrix temp_B(3, 6);
-    double determinant = C.det(3);
+
 
     //K = B.transpose() * D * B * std::abs(C.det()) / 2.0;
 

@@ -16,18 +16,19 @@ using namespace std;
 
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata);
 
-void MakeResults(FEMdataKeeper &FEMdata, std::string output_vtk);
+void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata);
+void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string output_vtk);
 
 void FindConstraints(const std::vector<Constraint> constraints, std::vector<int> &indicesToConstraint);
 void ApplyConstraints(SparseMatrixCOO& K, MyArray& F, const std::vector<Constraint>& constraints, int n);
 
-void CalculateStressAlongAxe(std::vector<float> &StressComponents,
+void CalculateStressAlongAxis(std::vector<float> &StressComponents,
                              std::string axe,
                              std::string stress_component,
                              float fixed_value,
                              float a,
                              float b,
-                             std::vector<MyArray> Stress,
+                             std::vector<MyArray> &Stress,
                              MyArray nodesX,
                              MyArray nodesY,
                              std::vector<Element> elements);

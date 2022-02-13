@@ -1,23 +1,25 @@
 #ifndef FEMDATA_H
 #define FEMDATA_H
 
+#include <string.h>
+#include <iostream>
+#include <vector>
+#include <sstream>
+
 #include "Linal2.h"
 #include "Tools.h"
 #include "femstruct.h"
-#include <iostream>
-#include <vector>
 
 using namespace std;
 
-
-
 class FEMdataKeeper {
 public:
-    FEMdataKeeper(std::string name){
+    FEMdataKeeper(std::string name, std::string project_directory) {
         this->name = name;
+        this->proj_dir = project_directory;
     }
 
-    void ParseFiles(std::string dir, float poissonRatio, float youngModulus);
+    void ParseFiles(float poissonRatio, float youngModulus);
     void ShowInfo() {
         std::cout << "==========INFO==========" <<
                      "\nTask name = " << name <<
@@ -58,6 +60,7 @@ public:
     }
 
     std::string name;
+    std::string proj_dir;
 
     int nodesCount;
     int elementsCount;
@@ -75,6 +78,33 @@ public:
     MyArray loads;
     MyArray displacements;
     MyArray pressure;
+
+};
+
+class ResultsDataKeeper {
+public:
+    ResultsDataKeeper(bool withSmooth, bool withMises, int nodesCount) {
+        this->withMises = withMises;
+        this->withSmooth = withSmooth;
+        SmoothStress.Resize(nodesCount);
+    }
+
+    void AllocateDynamicMemory() {
+        //SmoothStress.Resize();
+    }
+
+    bool withSmooth;
+    bool withMises;
+
+    std::vector<MyArray> Deformation;
+    std::vector<MyArray> Stress;
+    std::vector<float> sigma_mises;
+    std::vector<float> epsilon_mises;
+    std::vector<float> StressComponents;
+    std::vector<float> MisesComponents;
+    std::vector<float> StressComponentsSmooth;
+
+    MyArray SmoothStress;
 };
 
 #endif

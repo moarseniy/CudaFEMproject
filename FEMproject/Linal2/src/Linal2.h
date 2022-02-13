@@ -16,7 +16,8 @@ public:
 	MyArray();
 	MyArray(int array_size);
 	MyArray(const MyArray &a);
-	~MyArray();
+    MyArray(int array_size, float a, float b);
+    ~MyArray();
     void Resize(int new_size);
 	void Show();
 	void zap();

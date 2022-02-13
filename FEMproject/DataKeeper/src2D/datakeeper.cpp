@@ -1,19 +1,18 @@
 
 #include "datakeeper.h"
 
-
 using namespace std;
 
-void FEMdataKeeper::ParseFiles(std::string dir, float poissonRatio, float youngModulus) {
+void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     CheckRunTime(__func__)
 
     fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
 
-    nodes_file.open         (dir + name + "/nodes.txt",         fstream::in);
-    elements_file.open      (dir + name + "/elements.txt",      fstream::in);
-    loads_file.open         (dir + name + "/loads.txt",         fstream::in);
-    constraints_file.open   (dir + name + "/constraints.txt",   fstream::in);
-    stress_file.open        (dir + name + "/stress.txt",        fstream::in);
+    nodes_file.open         (proj_dir + "prepared_meshes/" + std::to_string(DIM) + "D/" + name + "/nodes.txt",         fstream::in);
+    elements_file.open      (proj_dir + "prepared_meshes/" + std::to_string(DIM) + "D/" + name + "/elements.txt",      fstream::in);
+    loads_file.open         (proj_dir + "prepared_meshes/" + std::to_string(DIM) + "D/" + name + "/loads.txt",         fstream::in);
+    constraints_file.open   (proj_dir + "prepared_meshes/" + std::to_string(DIM) + "D/" + name + "/constraints.txt",   fstream::in);
+    stress_file.open        (proj_dir + "prepared_meshes/" + std::to_string(DIM) + "D/" + name + "/stress.txt",        fstream::in);
 
     nodes_file          >> nodesCount;
     elements_file       >> elementsCount;

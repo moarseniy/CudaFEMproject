@@ -30,6 +30,22 @@ MyArray::MyArray(const MyArray &a) {
 	}
 }
 
+MyArray::MyArray(int array_size, float a, float b) {
+    if (array_size == 0)
+        MyArray();
+    else {
+        this->array_size = array_size;
+        this->p = new float[array_size];
+        for (int i = 0; i < array_size; i++) {
+            p[i] = 0.0;
+        }
+        float h = (b - a) / (array_size - 1.0);
+        for (int i = 1; i < array_size; ++i) {
+            p[i] = p[i - 1] + h;
+        }
+    }
+}
+
 
 MyArray::~MyArray() {
 	delete [] p;
