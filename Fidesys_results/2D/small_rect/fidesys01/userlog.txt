@@ -1,7 +1,0 @@
-Calculation started at 2021-03-31 22:40:24
-Using 4 CPU physical cores of 4 available.
-Step  1. SubStep  1. Load time 1.00000000. Load step  1.00000000e+00. Done. Successfully.
-Case 1. Done. Successfully.
-Calculation has finished successfully.
-Peak memory (RAM) consumption is: 194.57812500 MB
-Calculation finished successfully at 2021-03-31 22:40:32

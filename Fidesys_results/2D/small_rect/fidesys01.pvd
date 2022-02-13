@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<VTKFile type="Collection" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">
-  <Collection>
-    <DataSet timestep="0.000000" part="0" file="fidesys01/fidesys01_case1_step00.vtu" name="Asmb: Part: Matl:ELASTIC"/>
-    <DataSet timestep="1.000000" part="0" file="fidesys01/fidesys01_case1_step01_substep01.vtu" name="Asmb: Part: Matl:ELASTIC"/>
-  </Collection>
-</VTKFile>
