@@ -2,6 +2,13 @@ import re, os
 import math
 import collections
 
+# Write a line to the beginning of file. Used in prepare_constraints() method
+def line_prepender(filename, line):
+    with open(filename, 'r+') as f:
+        content = f.read()
+        f.seek(0, 0)
+        f.write(line.rstrip('\r\n') + '\n' + content)
+
 class FileParser:
     def __init__(self, filename, prepared_mesh_dir, raw_mesh_dir,
                  task_name, dim):
@@ -165,12 +172,14 @@ class FileParser:
             print('Problem!!')
             return
 
+        num_constraints = 0
         print('Prepare and writing constraints and sets in new files start...')
         with open(self.dir_name + '/constraints.txt', 'w') as write_file:
             for constraint in constraints:
                 for set_num in set_nodes.keys():
                     if (constraint[0] == set_num):
-                        write_file.write(str(len(set_nodes[set_num])) + '\n')
+                        #write_file.write(str(len(set_nodes[set_num])) + '\n')
+                        num_constraints += len(set_nodes[set_num])
                         for j in range(0, len(set_nodes[set_num])):
                             line = str(set_nodes[set_num][j])
                             if dim == 2:
@@ -196,7 +205,8 @@ class FileParser:
                                 elif int(constraint[2])==1 and int(constraint[3])==1 and int(constraint[4])==1:
                                     line += ' ' + str(7) + '\n'
                             write_file.write(line)
-                
+
+        line_prepender(self.dir_name + '/constraints.txt', str(num_constraints))        
         print('Prepare and writing constraints and sets in new files end.')
         print('OK')
 
