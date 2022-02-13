@@ -4,6 +4,16 @@ project(FemProject)
 
 option(TOOLS_TIMER CACHED ON)
 option(FEM3D CACHED ON)
+option(SMOOTH CACHED ON)
+option(MISES CACHED OFF)
+
+if (SMOOTH)
+    add_definitions(-DSMOOTH)
+endif()
+
+if (MISES)
+    add_definitions(-DMISES)
+endif()
 
 if (TOOLS_TIMER)
     add_definitions(-DTOOLS_TIMER)

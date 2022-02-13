@@ -473,6 +473,7 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
     CalculateStressAlongAxis(RESdata.StressComponents,
                              "x", "xx", fixed_value, a, b,
                              RESdata.Stress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
+
     if (RESdata.withSmooth) {
         SmoothResults("xx", RESdata.SmoothStress, RESdata.Stress, FEMdata.nodesCount, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
         CalculateStressAlongAxisSmooth(RESdata.StressComponentsSmooth,
@@ -491,9 +492,9 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
 }
 
 void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string output_vtk) {
-    std::string path_stress = FEMdata.proj_dir + "workshop_results/out_stress_" + FEMdata.get_name() + ".txt";
-    std::string path_stress_smooth = FEMdata.proj_dir + "workshop_results/out_stress_" + FEMdata.get_name() + "_smooth.txt";
-    std::string path_stress_mises = FEMdata.proj_dir + "workshop_results/out_stress_" + FEMdata.get_name() + "_mises.txt";
+    std::string path_stress = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + ".txt";
+    std::string path_stress_smooth = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_smooth.txt";
+    std::string path_stress_mises = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_mises.txt";
 
     std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
     std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
@@ -507,16 +508,20 @@ void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string 
         out1 << RESdata.StressComponents[i] << " " << RESdata.StressComponents[i + 1] << "\n";
     }
 
-    out2.open(path_stress_smooth, fstream::out);
-    out2 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
-    for (int i = 0; i < RESdata.StressComponentsSmooth.size(); i+=2) {
-        out2 << RESdata.StressComponentsSmooth[i] << " " << RESdata.StressComponentsSmooth[i + 1] << "\n";
+    if (RESdata.withSmooth) {
+        out2.open(path_stress_smooth, fstream::out);
+        out2 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
+        for (int i = 0; i < RESdata.StressComponentsSmooth.size(); i+=2) {
+            out2 << RESdata.StressComponentsSmooth[i] << " " << RESdata.StressComponentsSmooth[i + 1] << "\n";
+        }
     }
 
-    out3.open(path_stress_mises, fstream::out);
-    out3 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
-    for (int i = 0; i < RESdata.MisesComponents.size(); i+=2) {
-        out3 << RESdata.MisesComponents[i] << " " << RESdata.MisesComponents[i + 1] << "\n";
+    if (RESdata.withMises) {
+        out3.open(path_stress_mises, fstream::out);
+        out3 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
+        for (int i = 0; i < RESdata.MisesComponents.size(); i+=2) {
+            out3 << RESdata.MisesComponents[i] << " " << RESdata.MisesComponents[i + 1] << "\n";
+        }
     }
 
     MakeVTKfile2D(output_vtk, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements,

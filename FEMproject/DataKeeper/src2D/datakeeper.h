@@ -14,9 +14,14 @@ using namespace std;
 
 class FEMdataKeeper {
 public:
-    FEMdataKeeper(std::string name, std::string project_directory) {
+    FEMdataKeeper(std::string name,
+                  std::string project_directory,
+                  std::string prepared_meshes_directory,
+                  std::string results_directory) {
         this->name = name;
         this->proj_dir = project_directory;
+        this->prep_mesh_dir = prepared_meshes_directory;
+        this->res_dir = results_directory;
     }
 
     void ParseFiles(float poissonRatio, float youngModulus);
@@ -61,6 +66,8 @@ public:
 
     std::string name;
     std::string proj_dir;
+    std::string prep_mesh_dir;
+    std::string res_dir;
 
     int nodesCount;
     int elementsCount;
@@ -86,7 +93,7 @@ public:
     ResultsDataKeeper(bool withSmooth, bool withMises, int nodesCount) {
         this->withMises = withMises;
         this->withSmooth = withSmooth;
-        SmoothStress.Resize(nodesCount);
+        SmoothStress.Resize(nodesCount); //take it out somewhere else!!
     }
 
     void AllocateDynamicMemory() {

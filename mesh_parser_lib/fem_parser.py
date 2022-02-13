@@ -1,16 +1,16 @@
-from mesh_parser_lib.file_parser import FileParser
+from mesh_parser_lib.parser import FileParser
 import os
 
-def run_parser(filename, dim):
+def run_parser(proj_dir, prep_mesh_dir, filename, dim):
     
     raw_mesh_dir = 'raw_meshes/' + str(dim) + 'D'   # Folder with raw meshes
-    prepared_mesh_dir = 'prepared_meshes/' + str(dim) + 'D'  # Folder for prepared meshes
+    prepared_mesh_dir = prep_mesh_dir + str(dim) + 'D'  # Folder for prepared meshes
 
     if not os.path.splitext(filename)[1]:
         filename += '.k'
     task_name = os.path.splitext(filename)[0]         # Folder for results
 
-    parser = FileParser(filename, prepared_mesh_dir, raw_mesh_dir, task_name, dim)
+    parser = FileParser(filename, prepared_mesh_dir, raw_mesh_dir, task_name, int(dim))
     parser.make_directory()
 
     parser.parse_nodes()
@@ -28,8 +28,9 @@ def run_parser(filename, dim):
 
 
 if __name__ == '__main__':
+    # UPDATE IT!!!
     print('Write task dimension:')
     dim = int(input())
     print('Write filename to parse mesh from:')
-    filename = str(input())                     
-    run_parser(filename, dim)
+    filename = str(input())                   
+    run_parser(proj_dir, prep_mesh_dir, filename, dim)

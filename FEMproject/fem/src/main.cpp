@@ -4,18 +4,16 @@
 #include <fstream>
 #include <string>
 #include <time.h>
-#include <direct.h>     // for _mkdir (Visual Studio specific)
 
 #include "Tools.h"
 #include "Linal2.h"
-//#include <cmath>
 #include "femfunc.h"
 #include "VTKfile.h"
 #include "init.h"
 #include "datakeeper.h"
 #include "tests.h"
 
-int main(void) {
+int main(int argc, char *argv[]) {
 //    std::vector<Element> elems;
 //    std::vector<float*> m_e;
 //    std::vector<float*> b_e;
@@ -24,26 +22,28 @@ int main(void) {
 
     CheckRunTime(__func__)
 
-    std::string name = "9task40";
+    std::string name = argv[1];
+    std::string project_directory = argv[2];
+    std::string prepared_meshes_directory = argv[3];
+    std::string results_directory = argv[4] + std::to_string(DIM) + "D/" + name + "/";
 
-    std::string project_directory = "C:/Users/mokin/Desktop/git/CudaFEMproject/";
-    std::string results_directory = project_directory + "final_results/" + std::to_string(DIM) + "D/" + name + "/";
-    _mkdir(results_directory.c_str());
     std::string output_vtk = results_directory + "results.vtk";
 
-    float poissonRatio = 0.25, youngModulus = 2e+7;
+    float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
 
-    FEMdataKeeper FEMdata(name, project_directory);
+    bool withSmooth = SMOOTH;
+    bool withMises = MISES;
+
+    FEMdataKeeper FEMdata(name, project_directory, prepared_meshes_directory, results_directory);
     FEMdata.ParseFiles(poissonRatio, youngModulus);
     FEMdata.ShowInfo();
 
     CalculateFiniteElementMethod(FEMdata);
 
-    bool withSmooth = true;
-    bool withMises = true;
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 
     MakeResults(FEMdata, RESdata);
     WriteResults(FEMdata, RESdata, output_vtk);
+
     return 0;
 }
