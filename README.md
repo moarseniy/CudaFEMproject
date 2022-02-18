@@ -29,7 +29,7 @@ Project
 * Run project in Release mode
 * Open and change run_config in configs directory
 
-'''javascript
+```javascript
 {
 	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
 	"results_path": "C:/Users/mokin/Desktop/fem_stuff/fem_results/",
@@ -40,7 +40,7 @@ Project
 	"youngModulus": 0.25,
 	"poissonRatio": 2e+07
 }
-'''
+```
 
 * Open terminal in CudaFEMproject and start **python run_fem.py C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json**
 
