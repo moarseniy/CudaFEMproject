@@ -1,8 +1,8 @@
 # CudaFEMproject
 Finite Element Method (3D/2D) + CUDA + CMake implementation
-Arseniy Mokin moarseniy@yandex.ru
+* Arseniy Mokin moarseniy@yandex.ru
+* Grigory Sabinin gvsabinin@gmail.com
 
-Grigory Sabinin gvsabinin@gmail.com
 ## How to use?
 0. [Description](#Description)
 1. [Required software](#Required-software)
@@ -28,6 +28,7 @@ Project
 * Open CMakeLists.txt file contained in repository through Qt Creator
 * Run project in Release mode
 * Open and change run_config in configs directory
+
 '''javascript
 {
 	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
@@ -40,6 +41,7 @@ Project
 	"poissonRatio": 2e+07
 }
 '''
+
 * Open terminal in CudaFEMproject and start **python run_fem.py C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json**
 
 ## Postprocessing
