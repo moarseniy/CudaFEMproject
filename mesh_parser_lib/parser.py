@@ -22,16 +22,16 @@ class FileParser:
         print('Make new directory named: ' + self.task_name
               + ' in ' + self.prepared_mesh_dir)
 
-        self.dir_name = self.prepared_mesh_dir + '/' + self.task_name
+        self.prepared_mesh_dir = self.prepared_mesh_dir
         try:
-            os.mkdir(self.dir_name)
+            os.mkdir(self.prepared_mesh_dir)
         except Exception as e:
             print('This directory already exists!')
             return
         print('OK')
 
     def parse_nodes(self):
-        filename = self.raw_mesh_dir + '/' + self.filename
+        filename = self.raw_mesh_dir
         nodes = {}#collections.OrderedDict()
 
         print('Parsing file for nodes start...')
@@ -59,7 +59,7 @@ class FileParser:
             return
 
         print('Prepare and writing nodes in new file start...')
-        with open(self.dir_name + '/nodes.txt', 'w') as write_file:
+        with open(self.prepared_mesh_dir + '/nodes.txt', 'w') as write_file:
             write_file.write(str(len(nodes)) + '\n')
             for node in range(len(nodes.keys())):
                 k = list(nodes[list(nodes.keys())[node]])
@@ -70,7 +70,7 @@ class FileParser:
         print('OK')
 
     def parse_elements(self):
-        filename = self.raw_mesh_dir + '/' + self.filename
+        filename = self.raw_mesh_dir
         elements = []
 
         print('Parsing file for elements start...')
@@ -99,7 +99,7 @@ class FileParser:
 
         print('Prepare and writing elements in new file start...')
 
-        with open(self.dir_name + '/elements.txt', 'w') as write_file:
+        with open(self.prepared_mesh_dir + '/elements.txt', 'w') as write_file:
             write_file.write(str(len(elements)) + '\n')
             for element in elements:
                 line = element[2:]
@@ -128,7 +128,7 @@ class FileParser:
 
     def parse_constraints_and_sets(self):
 
-        filename = self.raw_mesh_dir + '/' + self.filename
+        filename = self.raw_mesh_dir
         constraints = []
         set_nodes = {}
         nodes = self.raw_nodes
@@ -174,7 +174,7 @@ class FileParser:
 
         num_constraints = 0
         print('Prepare and writing constraints and sets in new files start...')
-        with open(self.dir_name + '/constraints.txt', 'w') as write_file:
+        with open(self.prepared_mesh_dir + '/constraints.txt', 'w') as write_file:
             for constraint in constraints:
                 for set_num in set_nodes.keys():
                     if (constraint[0] == set_num):
@@ -206,12 +206,12 @@ class FileParser:
                                     line += ' ' + str(7) + '\n'
                             write_file.write(line)
 
-        line_prepender(self.dir_name + '/constraints.txt', str(num_constraints))        
+        line_prepender(self.prepared_mesh_dir + '/constraints.txt', str(num_constraints))        
         print('Prepare and writing constraints and sets in new files end.')
         print('OK')
 
     def parse_loads(self):
-        filename = self.raw_mesh_dir + '/' + self.filename
+        filename = self.raw_mesh_dir
         forces = {}
         load_node_sets = []
         load_segments = []
@@ -264,7 +264,7 @@ class FileParser:
             return
         print('Prepare and writing loads in new files start...')
         
-        with open(self.dir_name + '/loads.txt', 'w') as write_file:
+        with open(self.prepared_mesh_dir + '/loads.txt', 'w') as write_file:
             if len(load_node_sets) == 0:
                 write_file.write(str(len(load_node_sets)))
             for load in load_node_sets:
@@ -289,7 +289,7 @@ class FileParser:
                                             line += '0.0 0.0 ' + str(float(forces[force_num]))
                             write_file.write(line + '\n')
                             
-        with open(self.dir_name + '/stress.txt', 'w') as write_file:
+        with open(self.prepared_mesh_dir + '/stress.txt', 'w') as write_file:
             write_file.write(str(len(load_segments)) + '\n')
             for load in load_segments:
                 if dim == 2:

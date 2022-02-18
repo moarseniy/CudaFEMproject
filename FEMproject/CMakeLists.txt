@@ -8,11 +8,15 @@ option(SMOOTH CACHED ON)
 option(MISES CACHED OFF)
 
 if (SMOOTH)
-    add_definitions(-DSMOOTH)
+    add_definitions(-DSMOOTH=true)
+else()
+    add_definitions(-DSMOOTH=false)
 endif()
 
 if (MISES)
-    add_definitions(-DMISES)
+    add_definitions(-DMISES=true)
+else()
+    add_definitions(-DMISES=false)
 endif()
 
 if (TOOLS_TIMER)

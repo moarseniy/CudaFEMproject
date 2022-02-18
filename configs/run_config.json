@@ -2,7 +2,7 @@
 	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
 	"results_path": "C:/Users/mokin/Desktop/fem_stuff/fem_results/",
 	"prepared_meshes_path": "C:/Users/mokin/Desktop/fem_stuff/prepared_meshes/",
-	"task": "9task_3",
+	"task": ["9task_3", "9task_4", "9task_5"],
 	"DIM": 2,
 	"parser": true,
 	"youngModulus": 0.25,
