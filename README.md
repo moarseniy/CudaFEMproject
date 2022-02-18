@@ -18,7 +18,7 @@ Finite Element Method (3D/2D) + CUDA + CMake implementation
 Project
 
 ## Required software
-* gcc (C/C++)
+* Any C/C++ compiler (e.g., gcc)
 * CMake
 * Python 3.7+
 * QtCreator (optional)
