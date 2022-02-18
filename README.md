@@ -17,18 +17,18 @@ Grigory Sabinin gvsabinin@gmail.com
 Project
 
 ## Required software
-*gcc (C/C++)
-*CMake
-*Python 3.7+
-*QtCreator (optional)
-*CUDA Toolkit (optinal)
+* gcc (C/C++)
+* CMake
+* Python 3.7+
+* QtCreator (optional)
+* CUDA Toolkit (optinal)
 
 ## Run project
 * git clone https://github.com/moarseniy/CudaFEMproject.git
 * Open CMakeLists.txt file contained in repository through Qt Creator
 * Run project in Release mode
 * Open and change run_config in configs directory
-'''json
+'''javascript
 {
 	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
 	"results_path": "C:/Users/mokin/Desktop/fem_stuff/fem_results/",
