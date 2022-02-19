@@ -374,6 +374,50 @@ void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::v
 //    }
 }
 
+void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem) {
+    // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
+    // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
+
+    float gamma = 0.0;
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        // (0a)
+        it->r = it->Flocal;
+
+        // (0b)
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
+            for (int i = 0; i < adjElems.size(); ++i) {
+                it->m[local_node * 2 + 0] += FEMdata.elements[i].Klocal(local_node * 2 + 0, local_node * 2 + 0);
+                it->m[local_node * 2 + 1] += FEMdata.elements[i].Klocal(local_node * 2 + 1, local_node * 2 + 1);
+            }
+        }
+
+        // (0c)
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / it->m[local_node * 2 + 0];
+            it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / it->m[local_node * 2 + 1];
+        }
+
+    }
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        // (0d)
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
+            for (int i = 0; i < adjElems.size(); ++i) {
+                it->s[local_node * 2 + 0] += FEMdata.elements[i].z[local_node * 2 + 0];
+                it->s[local_node * 2 + 1] += FEMdata.elements[i].z[local_node * 2 + 1];
+            }
+        }
+
+        gamma += it->r.dot_product(it->s);
+
+        // (0e)
+        it->p = it->s;
+    }
+}
+
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);

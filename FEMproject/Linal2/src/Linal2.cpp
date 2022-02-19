@@ -141,6 +141,16 @@ void MyArray::grad(float (*f)(MyArray x), MyArray &res, float eps) {
 }
 
 
+float MyArray::dot_product(MyArray &v2) {
+    assert(this->array_size == v2.get_size());
+
+    float res = 0.0;
+    for (int i = 0; i < this->array_size; ++i) {
+        res += this->p[i]*v2[i];
+    }
+
+    return res;
+}
 
 void MyArray::Hessian(float (*f)(MyArray x), Matrix &matr, float eps) {
 	float tau = 0.1 * sqrt(eps);
