@@ -1,12 +1,13 @@
 #ifndef FEMSTRUCT_H
 #define FEMSTRUCT_H
 
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+
 #include "Linal2.h"
 #include "Tools.h"
 //#include "femfunc.h"
-
-#include <iostream>
-#include <vector>
 
 using namespace std;
 
@@ -33,12 +34,14 @@ struct Element {
         Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
         Flocal.Resize(6 * (DIM - 1));
         //Q.Resize();
+        m.Resize(3 * DIM);
     }
     //void FindSparseSize(std::vector<couple> &Sparse);
     Matrix B;
     Matrix Klocal;
     MyArray Flocal;
     //Matrix Q;
+    MyArray m;
     int nodesIds[3];
     //float jacobian; // node 1 -> (0,0) ; node 2 -> (1,0) ; node 3 -> (0,1)
 };

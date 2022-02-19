@@ -354,6 +354,26 @@ void CalculateMisesAlongLineMises(std::vector<float> &MisesComponents,
     }
 }
 
+void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::vector<int>> &a) {
+    int n = 0;
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        a[it->nodesIds[0]].push_back(n);
+        a[it->nodesIds[1]].push_back(n);
+        a[it->nodesIds[2]].push_back(n);
+        n++;
+    }
+//    auto print_key_value = [](int key, std::vector<int> v) {
+//        std::cout << "Key:[" << key << "] Vector:[";
+//        for (int i = 0; i < v.size(); ++i) {
+//            std::cout << v[i] << " ";
+//        }
+//        std::cout << "]\n";
+//    };
+//    for( const auto& j : a ) {
+//        print_key_value(j.first, j.second);
+//    }
+}
+
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);

@@ -10,11 +10,13 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <unordered_map>
 
 using namespace std;
 
 
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata);
+void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::vector<int>> &a);
 
 void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata);
 void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string output_vtk);

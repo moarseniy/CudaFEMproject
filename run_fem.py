@@ -16,7 +16,6 @@ if __name__ == '__main__':
         prep_meshes_dir = str(config_data['prepared_meshes_path'])
         task_list = config_data['task']
         dim = str(config_data['DIM'])
-        parser = str(config_data['parser'])
         youngModulus = str(config_data['youngModulus'])
         poissonRatio = str(config_data['poissonRatio'])
 

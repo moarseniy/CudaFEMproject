@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <time.h>
+#include <unordered_map>
 
 #include "Tools.h"
 #include "Linal2.h"
@@ -37,6 +38,9 @@ int main(int argc, char *argv[]) {
     FEMdataKeeper FEMdata(name, project_directory, prepared_meshes_directory, results_directory);
     FEMdata.ParseFiles(poissonRatio, youngModulus);
     FEMdata.ShowInfo();
+
+    std::unordered_map <int, std::vector<int>> nodeAdjElem;
+    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
     CalculateFiniteElementMethod(FEMdata);
 
