@@ -120,6 +120,15 @@ MyArray AssemblyF(FEMdataKeeper &FEMdata) {
     return F;
 }
 
+void AssemblyX(FEMdataKeeper &FEMdata) {
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        for (int i = 0; i < 3; ++i) {
+            FEMdata.displacements[2 * it->nodesIds[i] + 0] += it->x[2 * i + 0];
+            FEMdata.displacements[2 * it->nodesIds[i] + 1] += it->x[2 * i + 1];
+        }
+    }
+}
+
 void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
                                    std::vector<MyArray> &Stress,
                                    std::vector<float> &epsilon_mises,
@@ -378,7 +387,11 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
     // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
 
+    float eps = 1e-6;
+    float eps_div = 1e-30;
+    float gamma0 = 0.0;
     float gamma = 0.0;
+    float gamma_new = 0.0;
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0a)
@@ -395,11 +408,12 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
         // (0c)
         for (int local_node = 0; local_node < 3; ++local_node) {
-            it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / it->m[local_node * 2 + 0];
-            it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / it->m[local_node * 2 + 1];
+            it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / std::max(eps_div, it->m[local_node * 2 + 0]);
+            it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / std::max(eps_div, it->m[local_node * 2 + 1]);
         }
 
     }
+
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0d)
@@ -411,11 +425,61 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
             }
         }
 
-        gamma += it->r.dot_product(it->s);
+        gamma0 += it->r.dot_product(it->s);
 
         // (0e)
         it->p = it->s;
     }
+
+    gamma = gamma0;
+
+    do {
+    std::cout << gamma << " ";
+    float sumElem = 0.0;
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        // (1a-d)
+        it->u = it->Klocal.Product(it->p);
+        sumElem += it->p.dot_product(it->u);
+    }
+
+    float alpha = gamma / std::max(eps_div, sumElem);
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        // (2a)
+        it->x.add_weighted(it->p, 1.0, alpha);
+        // (2b)
+        it->r.add_weighted(it->u, 1.0, -1.0 * alpha);
+
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / std::max(eps_div, it->m[local_node * 2 + 0]);
+            it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / std::max(eps_div, it->m[local_node * 2 + 1]);
+        }
+    }
+
+    gamma_new = 0.0;
+    // (4 a-e)
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
+            for (int i = 0; i < adjElems.size(); ++i) {
+                it->s[local_node * 2 + 0] += FEMdata.elements[i].z[local_node * 2 + 0];
+                it->s[local_node * 2 + 1] += FEMdata.elements[i].z[local_node * 2 + 1];
+            }
+        }
+
+        gamma_new += it->r.dot_product(it->s);
+    }
+
+    if (gamma_new < eps * gamma0)
+        break;
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->p.add_weighted(it->s, gamma_new / std::max(eps_div, gamma), 1.0);
+    }
+
+    gamma = gamma_new;
+
+    } while (1);
 }
 
 void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
@@ -428,29 +492,25 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
         FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
     }
 
-    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
-    //globalK.resize();
+    std::unordered_map <int, std::vector<int>> nodeAdjElem;
+    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    //SparseMatrixCOO globalK2(nonzero);
-    //globalK2 = globalK.DeleteZeros();
+    PCG_EbE(FEMdata, nodeAdjElem);
+    AssemblyX(FEMdata);
 
-    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
-    F.add(FEMdata.loads);
+//    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
 
-    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
+//    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
+//    F.add(FEMdata.loads);
 
-    globalK.SortIt();
+//    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
 
-    int nonzero = globalK.CountNonZero();
-    cout << "nonzero = " << nonzero << endl;
+//    globalK.SortIt();
 
-    //globalK.ShowAsMatrixNumber(0, globalK.get_size(), 2*FEMdata.nodesCount);
+//    int nonzero = globalK.CountNonZero();
+//    cout << "nonzero = " << nonzero << endl;
 
-//    Matrix temp(2*FEMdata.nodesCount);
-//    globalK.ConvertToMatrix(temp);
-//    temp.LU_solve(temp, F, FEMdata.displacements, 2*FEMdata.nodesCount);
-
-    globalK.CGM_solve(F, FEMdata.displacements, 1e-5);
+//    globalK.CGM_solve(F, FEMdata.displacements, 1e-5);
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,

@@ -22,13 +22,15 @@ public:
 	void Show();
 	void zap();
 	void Set(int index, float value);
-    void add(const MyArray &a);
+    void add(MyArray a);
+    void add_weighted(MyArray a, float v1, float v2);
+    void scale(float value);
     int get_size();
     float* get_data();
 	float & operator [](int index);
 	MyArray operator =(const MyArray &a);
 	float norma();
-    float dot_product(MyArray &v2);
+    float dot_product(MyArray v2);
 
 	void grad(float (*f)(MyArray x), MyArray &res, float eps);
 	void Hessian(float (*f)(MyArray x), Matrix &matr, float eps);

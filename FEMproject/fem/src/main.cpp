@@ -39,9 +39,6 @@ int main(int argc, char *argv[]) {
     FEMdata.ParseFiles(poissonRatio, youngModulus);
     FEMdata.ShowInfo();
 
-    std::unordered_map <int, std::vector<int>> nodeAdjElem;
-    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
-
     CalculateFiniteElementMethod(FEMdata);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);

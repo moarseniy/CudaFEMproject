@@ -75,10 +75,23 @@ void MyArray::Set(int index, float value) {
 	}
 }
 
-void MyArray::add(const MyArray &a) {
-    assert(this->array_size != a.array_size);
+void MyArray::add(MyArray a) {
+    assert(this->array_size != a.get_size());
     for (int i = 0; i < array_size; ++i) {
-        p[i] += a.p[i];
+        p[i] += a[i];
+    }
+}
+
+void MyArray::add_weighted(MyArray a, float v1, float v2) {
+    assert(this->array_size != a.get_size());
+    for (int i = 0; i < array_size; ++i) {
+        p[i] = v1 * p[i] + v2 * a[i];
+    }
+}
+
+void MyArray::scale(float value) {
+    for (int i = 0; i < array_size; i++) {
+        p[i] *= value;
     }
 }
 
@@ -141,12 +154,12 @@ void MyArray::grad(float (*f)(MyArray x), MyArray &res, float eps) {
 }
 
 
-float MyArray::dot_product(MyArray &v2) {
+float MyArray::dot_product(MyArray v2) {
     assert(this->array_size == v2.get_size());
 
     float res = 0.0;
     for (int i = 0; i < this->array_size; ++i) {
-        res += this->p[i]*v2[i];
+        res += this->p[i] * v2[i];
     }
 
     return res;
