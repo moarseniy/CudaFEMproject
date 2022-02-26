@@ -484,13 +484,23 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0d)
+//        cout << "Element " << enum_it++ << std::endl;
         for (int local_node = 0; local_node < 3; ++local_node) {
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
-                it->s[local_node * 2 + 0] += FEMdata.elements[i].z[local_node * 2 + 0];
-                it->s[local_node * 2 + 1] += FEMdata.elements[i].z[local_node * 2 + 1];
+                it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 0];
+                it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 1];
             }
         }
+
+//        std::cout << "it->m: ";
+//        it->m.Show();
+//        std::cout << "it->r: ";
+//        it->r.Show();
+//        std::cout << "it->z: ";
+//        it->z.Show();
+//        std::cout << "it->s: ";
+//        it->s.Show();
 
         gamma0 += it->r.dot_product(it->s);
 
@@ -501,12 +511,19 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     gamma = gamma0;
 
     do {
-    std::cout << gamma << " ";
+    int enum_it = 0;
+    std::cout << std::endl << "gamma = " << gamma << std::endl;
     float sumElem = 0.0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+//        cout << "Element " << enum_it++ << std::endl;
         // (1a-d)
         it->u = it->Klocal.Product(it->p);
         sumElem += it->p.dot_product(it->u);
+//        std::cout << "it->p: ";
+//        it->p.Show();
+//        std::cout << "it->u: ";
+//        it->u.Show();
+//        std::cout << "sumElem: " << sumElem << std::endl;
     }
 
     float alpha = gamma / std::max(eps_div, sumElem);
@@ -517,6 +534,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         // (2b)
         it->r.add_weighted(it->u, 1.0, -1.0 * alpha);
 
+        // (3)
         for (int local_node = 0; local_node < 3; ++local_node) {
             it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / std::max(eps_div, it->m[local_node * 2 + 0]);
             it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / std::max(eps_div, it->m[local_node * 2 + 1]);
@@ -529,17 +547,19 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         for (int local_node = 0; local_node < 3; ++local_node) {
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
-                it->s[local_node * 2 + 0] += FEMdata.elements[i].z[local_node * 2 + 0];
-                it->s[local_node * 2 + 1] += FEMdata.elements[i].z[local_node * 2 + 1];
+                it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 0];
+                it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 1];
             }
         }
 
         gamma_new += it->r.dot_product(it->s);
     }
 
+    // (5)
     if (gamma_new < eps * gamma0)
         break;
 
+    // (6)
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->p.add_weighted(it->s, gamma_new / std::max(eps_div, gamma), 1.0);
     }
@@ -562,30 +582,31 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    // Assembly global stiffness matrix, then apply constraints
-    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
-    Matrix m_globalK;
-    globalK.ConvertToMatrix(m_globalK);
-    MyArray F = AssemblyF(FEMdata);
-    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
+//    // Assembly global stiffness matrix, then apply constraints
+//    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
+//    Matrix m_globalK;
+//    globalK.ConvertToMatrix(m_globalK);
+//    MyArray F = AssemblyF(FEMdata);
+//    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
 
-    // First apply constraints (EbE), then assembly global stiffness matrix
+//    // First apply constraints (EbE), then assembly global stiffness matrix
+//    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
+//    SparseMatrixCOO globalK_EbE = AssemblyStiffnessMatrix   (FEMdata);
+//    Matrix m_globalK_EbE;
+//    globalK.ConvertToMatrix(m_globalK_EbE);
+//    MyArray F_EbE = AssemblyF(FEMdata);
+
+//    std::cout << "equalsToMatrix 1\n";
+//    m_globalK.equalsToMatrix(m_globalK_EbE, 1e-20);
+//    std::cout << "equalsToMatrix 2\n";
+
+//    std::cout << "equalsToArray 1\n";
+//    F.equalsToArray(F_EbE, 1e-20);
+//    std::cout << "equalsToArray 2\n";
+
     ApplyConstraints_EbE(FEMdata, nodeAdjElem);
-    SparseMatrixCOO globalK_EbE = AssemblyStiffnessMatrix   (FEMdata);
-    Matrix m_globalK_EbE;
-    globalK.ConvertToMatrix(m_globalK_EbE);
-    MyArray F_EbE = AssemblyF(FEMdata);
-
-    std::cout << "equalsToMatrix 1\n";
-    m_globalK.equalsToMatrix(m_globalK_EbE, 1e-20);
-    std::cout << "equalsToMatrix 2\n";
-
-    std::cout << "equalsToArray 1\n";
-    F.equalsToArray(F_EbE, 1e-20);
-    std::cout << "equalsToArray 2\n";
-
-//    PCG_EbE(FEMdata, nodeAdjElem);
-//    AssemblyX(FEMdata);
+    PCG_EbE(FEMdata, nodeAdjElem);
+    AssemblyX(FEMdata);
 
 //    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
 
