@@ -165,6 +165,23 @@ float MyArray::dot_product(MyArray v2) {
     return res;
 }
 
+bool MyArray::equalsToArray(MyArray a, float eps) {
+    if (this->array_size != a.get_size()) {
+        std::cout << "Dimension mismatch!\n";
+        return false;
+    }
+
+    for (int i = 0; i < this->array_size; ++i) {
+        if (std::abs(this->p[i] - a[i]) >= eps) {
+            std::cout << "Array element " << i << " mismatch!\n";
+            std::cout << this->p[i] << " vs " << a[i] << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void MyArray::Hessian(float (*f)(MyArray x), Matrix &matr, float eps) {
 	float tau = 0.1 * sqrt(eps);
 	int k = 0, n = array_size;
@@ -319,6 +336,24 @@ void Matrix::Show() {
 		cout << endl;		
 	}
 	cout << endl;
+}
+
+bool Matrix::equalsToMatrix(Matrix &a, float eps) {
+    if (col != a.get_col() || row != a.get_row()) {
+        std::cout << "Dimension mismatch!\n";
+        return false;
+    }
+    for (int i = 0; i < row; i++) {
+        for (int j = 0; j < col; j++) {
+            if (std::abs(m[j + i * col] - a(j,i)) >= eps) {
+                std::cout << "Matrix element (" << j << ", " << i << ") mismatch!\n";
+                std::cout << m[j + i * col] << " vs " << a(j,i) << std::endl;
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 void Matrix::Set(int index1, int index2, float value) {

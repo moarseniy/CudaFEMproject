@@ -383,6 +383,66 @@ void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::v
 //    }
 }
 
+void ApplyConstraints_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &nodeAdjElem) {
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        for (std::vector<Constraint>::const_iterator itc = FEMdata.constraints.begin(); itc != FEMdata.constraints.end(); ++itc) {
+            for (int local_node = 0; local_node < 3; ++local_node) {
+                if (it->nodesIds[local_node] == itc->node) {
+                    std::vector<int> adjElems = nodeAdjElem[itc->node];
+                    for (int i = 0; i < adjElems.size(); ++i) {
+                        Element adj_elem = FEMdata.elements[adjElems[i]];
+
+                        for (int adj_local_node = 0; adj_local_node < 3; ++adj_local_node) {
+                            if (adj_elem.nodesIds[adj_local_node] == itc->node) {
+//                                std::cout << "Before aplying constraints:" << std::endl;
+//                                adj_elem.Klocal.Show();
+                                if (itc->type & Constraint::UX) {
+                                    int mIdx = 2 * adj_local_node + 0;
+
+                                    adj_elem.Flocal[mIdx] = 0.0;
+
+                                    adj_elem.Klocal(mIdx, (mIdx + 1) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 2) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 3) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 4) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 5) % 6) = 0.0;
+                                    adj_elem.Klocal((mIdx + 1) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 2) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 3) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 4) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 5) % 6, mIdx) = 0.0;
+                                }
+                                if (itc->type & Constraint::UY) {
+                                    int mIdx = 2 * adj_local_node + 1;
+
+                                    adj_elem.Flocal[mIdx] = 0.0;
+
+                                    adj_elem.Klocal(mIdx, (mIdx + 1) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 2) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 3) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 4) % 6) = 0.0;
+                                    adj_elem.Klocal(mIdx, (mIdx + 5) % 6) = 0.0;
+                                    adj_elem.Klocal((mIdx + 1) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 2) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 3) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 4) % 6, mIdx) = 0.0;
+                                    adj_elem.Klocal((mIdx + 5) % 6, mIdx) = 0.0;
+                                }
+
+//                                std::cout << "After aplying constraints:" << std::endl;
+//                                adj_elem.Klocal.Show();
+//                                std::cout << std::endl << std::endl;
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem) {
     // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
     // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
@@ -393,16 +453,23 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     float gamma = 0.0;
     float gamma_new = 0.0;
 
+    int enum_it = 0;
+
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0a)
         it->r = it->Flocal;
+//        cout << "Element " << enum_it++ << std::endl;
+//        cout << "Flocal: "; it->Flocal.Show();
 
         // (0b)
         for (int local_node = 0; local_node < 3; ++local_node) {
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
-                it->m[local_node * 2 + 0] += FEMdata.elements[i].Klocal(local_node * 2 + 0, local_node * 2 + 0);
-                it->m[local_node * 2 + 1] += FEMdata.elements[i].Klocal(local_node * 2 + 1, local_node * 2 + 1);
+//                cout << "Klocal(" << local_node * 2 + 0 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 0, local_node * 2 + 0) << std::endl;
+//                cout << "Klocal(" << local_node * 2 + 1 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 1, local_node * 2 + 1) << std::endl;
+//                cout << std::endl;
+                it->m[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 0, local_node * 2 + 0);
+                it->m[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 1, local_node * 2 + 1);
             }
         }
 
@@ -495,8 +562,30 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    PCG_EbE(FEMdata, nodeAdjElem);
-    AssemblyX(FEMdata);
+    // Assembly global stiffness matrix, then apply constraints
+    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
+    Matrix m_globalK;
+    globalK.ConvertToMatrix(m_globalK);
+    MyArray F = AssemblyF(FEMdata);
+    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
+
+    // First apply constraints (EbE), then assembly global stiffness matrix
+    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
+    SparseMatrixCOO globalK_EbE = AssemblyStiffnessMatrix   (FEMdata);
+    Matrix m_globalK_EbE;
+    globalK.ConvertToMatrix(m_globalK_EbE);
+    MyArray F_EbE = AssemblyF(FEMdata);
+
+    std::cout << "equalsToMatrix 1\n";
+    m_globalK.equalsToMatrix(m_globalK_EbE, 1e-20);
+    std::cout << "equalsToMatrix 2\n";
+
+    std::cout << "equalsToArray 1\n";
+    F.equalsToArray(F_EbE, 1e-20);
+    std::cout << "equalsToArray 2\n";
+
+//    PCG_EbE(FEMdata, nodeAdjElem);
+//    AssemblyX(FEMdata);
 
 //    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
 

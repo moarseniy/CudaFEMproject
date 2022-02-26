@@ -31,6 +31,7 @@ public:
 	MyArray operator =(const MyArray &a);
 	float norma();
     float dot_product(MyArray v2);
+    bool equalsToArray(MyArray a, float eps);
 
 	void grad(float (*f)(MyArray x), MyArray &res, float eps);
 	void Hessian(float (*f)(MyArray x), Matrix &matr, float eps);
@@ -88,6 +89,7 @@ public:
 	Matrix Product(Matrix &a);
     MyArray Product(MyArray &v);
 	Matrix & transpose();
+    bool equalsToMatrix(Matrix &a, float eps);
 
     void transpose2();
     void transpose_not_square();
