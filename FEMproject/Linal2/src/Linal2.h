@@ -123,7 +123,7 @@ struct couple{
 class SparseMatrixCOO {
 public:
     SparseMatrixCOO();
-	SparseMatrixCOO(int sparse_size);
+    SparseMatrixCOO(int sparse_size);
     SparseMatrixCOO(const SparseMatrixCOO &m);
     SparseMatrixCOO operator =(const SparseMatrixCOO &m);
 	~SparseMatrixCOO();
@@ -135,6 +135,9 @@ public:
     void ConvertToCSR(int *ptr, int *ind, float *data_csr, int n);
     void SparseLU();
     void CGM_solve(MyArray B, MyArray &x_k, float eps);
+    void PCG_solve(MyArray B, MyArray &x_k, float eps);
+    void set_diag_elements();
+    std::vector<float> get_diag_elements();
     int get_size();
     int get_x(int index);
     int get_y(int index);
@@ -143,6 +146,7 @@ public:
     int* get_y();
     float* get_data();
     void ShowData();
+    bool isSorted();
 
     void set_value(int row, int col, float value);
     void pop(int row, int col);
@@ -155,8 +159,11 @@ public:
     void ShowAsMatrixSymbol(int start, int end, int n);
 private:
 	std::vector<Triplet> v;
+    std::vector<float> diag_elems;
 	int nonzero;
-	int sparse_size;
+    int sparse_size;
+    bool sorted;
+
 	int *x;
 	int *y;
     float *data;

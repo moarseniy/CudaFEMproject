@@ -26,9 +26,9 @@ int main(int argc, char *argv[]) {
     std::string name = argv[1];
     std::string project_directory = argv[2];
     std::string prepared_meshes_directory = argv[3];
-    std::string results_directory = argv[4] + std::to_string(DIM) + "D/" + name + "/";
+    std::string results_directory = argv[4];
 
-    std::string output_vtk = results_directory + "results.vtk";
+    std::string output_vtk = results_directory + "/results.vtk";
 
     float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
 

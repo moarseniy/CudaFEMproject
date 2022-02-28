@@ -604,23 +604,29 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 //    F.equalsToArray(F_EbE, 1e-20);
 //    std::cout << "equalsToArray 2\n";
 
-    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
-    PCG_EbE(FEMdata, nodeAdjElem);
-    AssemblyX(FEMdata);
+//    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
+//    PCG_EbE(FEMdata, nodeAdjElem);
+//    AssemblyX(FEMdata);
 
-//    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
+    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
 
-//    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
-//    F.add(FEMdata.loads);
+    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
+    F.add(FEMdata.loads);
 
-//    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
+    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
 
-//    globalK.SortIt();
+    globalK.SortIt();
+    globalK.set_diag_elements();
+    globalK.Show();
+    std::vector<float> diag_elem = globalK.get_diag_elements();
+    for (int i = 0; i < diag_elem.size(); ++i) {
+        std::cout << diag_elem[i] << " ";
+    }
+    std::cout << std::endl;
+    int nonzero = globalK.CountNonZero();
+    cout << "nonzero = " << nonzero << endl;
 
-//    int nonzero = globalK.CountNonZero();
-//    cout << "nonzero = " << nonzero << endl;
-
-//    globalK.CGM_solve(F, FEMdata.displacements, 1e-5);
+    globalK.PCG_solve(F, FEMdata.displacements, 1e-5);
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,

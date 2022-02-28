@@ -811,13 +811,15 @@ SparseMatrixCOO::SparseMatrixCOO() {
     this->x = nullptr;
     this->y = nullptr;
     this->data = nullptr;
+    this->sorted = false;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(int size) {
     this->sparse_size = size;
 	this->x = new int[sparse_size];
 	this->y = new int[sparse_size];
-	this->data = new float[sparse_size];
+    this->data = new float[sparse_size];
+    this->sorted = false;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
@@ -825,6 +827,7 @@ SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
     this->x = new int[sparse_size];
     this->y = new int[sparse_size];
     this->data = new float[sparse_size];
+    this->sorted = false;
 
     for (int i = 0; i < sparse_size; i++) {
         x[i] = m.x[i];
@@ -1010,7 +1013,6 @@ void SparseMatrixCOO::ConvertTripletToSparse(std::vector<Triplet> t) {
     int index = 0;
     bool changeme = false;
 
-
     x[0] = t[0].x_value;
     y[0] = t[0].y_value;
     data[0] = t[0].value;
@@ -1141,6 +1143,11 @@ void SparseMatrixCOO::SortIt() {
             }
         }
     }
+    this->sorted = true;
+}
+
+bool SparseMatrixCOO::isSorted() {
+    return this->sorted;
 }
 
 void SparseMatrixCOO::ConvertToCSR(int *ptr, int *ind, float *data_csr, int n) {
@@ -1246,6 +1253,22 @@ void SparseMatrixCOO::SparseLU() {
 //    }
 }
 
+void SparseMatrixCOO::set_diag_elements() {
+    if (!this->sorted) {
+        this->SortIt();
+    }
+    for (int i = 0; i < sparse_size; ++i) {
+        if (x[i] == y[i]) {
+            this->diag_elems.push_back(data[i]);
+        }
+    }
+}
+
+std::vector<float> SparseMatrixCOO::get_diag_elements() {
+    assert(diag_elems.size()!=0);
+    return this->diag_elems;
+}
+
 void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, float eps) {
     CheckRunTime(__func__)
     int n = B.get_size();
@@ -1259,7 +1282,7 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, float eps) {
 
   for (int i = 0; i < n; i++) {
     mf += B[i] * B[i];
-    x_k[i] = 0.0;       // Grisha: Why do you choose exactly this initial value?
+    x_k[i] = 0.0;
   }
 
   for (int i = 0; i < n; i++) {
@@ -1313,6 +1336,72 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, float eps) {
   delete [] r_k;
 }
 
+void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
+    CheckRunTime(__func__)
+    int n = B.get_size();
+    int k = 1;
+
+    float *z_k = new float[n];
+    float *r_k = new float[n];
+    float *Az = new float[n];
+    float alpha, beta, mf = 0.0;
+    float Spr, Spr1, Spz;
+
+  for (int i = 0; i < n; i++) {
+    mf += B[i] * B[i]; // change stop condition
+    x_k[i] = 0.0;
+  }
+
+  for (int i = 0; i < n; i++) {
+    Az[i] = 0.0;
+  }
+  for (int i = 0; i < sparse_size; i++) {
+      Az[x[i]] += data[i] * x_k[y[i]];
+  }
+  for (int i = 0; i < n; i++) {
+    r_k[i] = B[i] - Az[i];
+    z_k[i] = r_k[i];
+  }
+
+  do{
+    Spz=0.0;
+    Spr=0.0;
+    for (int i = 0; i < n; i++) {
+      Az[i] = 0.0;
+    }
+    for (int i = 0; i < sparse_size; i++) {
+        Az[x[i]] += data[i] * z_k[y[i]];
+    }
+    for (int i = 0; i < n; ++i) {
+      Spz += Az[i] * z_k[i];
+      Spr += r_k[i] * r_k[i] / this->diag_elems[i];
+    }
+    alpha = Spr / Spz;
+
+    Spr1 = 0.0;
+    for (int i = 0; i < n; ++i) {
+      x_k[i] += alpha * z_k[i];
+      r_k[i] -= alpha * Az[i];
+      Spr1 += r_k[i] * r_k[i] / this->diag_elems[i];
+      //cout << "Iter #" << k;
+      //cout << " " << "X[" << i << "] = " << x_k[i] << endl;
+    }
+    //cout << endl;
+    k++;
+
+    beta = Spr1 / Spr;
+
+    for (int i = 0; i < n; ++i) {
+      z_k[i] = r_k[i] / this->diag_elems[i] + beta * z_k[i];
+    }
+  } while(Spr1 / mf > eps * eps);
+
+  //cout << endl;
+
+  delete [] Az;
+  delete [] z_k;
+  delete [] r_k;
+}
 
 
 void SparseMatrixCOO::Show() {

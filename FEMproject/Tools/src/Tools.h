@@ -2,6 +2,7 @@
 #define TOOLS_H
 
 #include <iostream>
+#include <ctime>
 
 class Timer{
 public:
