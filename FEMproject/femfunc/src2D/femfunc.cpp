@@ -462,6 +462,8 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
         // (0b)
         for (int local_node = 0; local_node < 3; ++local_node) {
+//            it->m[local_node * 2 + 0] = FEMdata.elements[enum_it].Klocal(local_node * 2 + 0, local_node * 2 + 0);
+//            it->m[local_node * 2 + 1] = FEMdata.elements[enum_it].Klocal(local_node * 2 + 1, local_node * 2 + 1);
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
 //                cout << "Klocal(" << local_node * 2 + 0 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 0, local_node * 2 + 0) << std::endl;
@@ -478,13 +480,20 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
             it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / std::max(eps_div, it->m[local_node * 2 + 1]);
         }
 
+        ++enum_it;
+
     }
 
 
+    enum_it = 0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0d)
 //        cout << "Element " << enum_it++ << std::endl;
         for (int local_node = 0; local_node < 3; ++local_node) {
+//            it->s[local_node * 2 + 0] = FEMdata.elements[enum_it].z[local_node * 2 + 0];
+//            it->s[local_node * 2 + 1] = FEMdata.elements[enum_it].z[local_node * 2 + 1];
+            it->s[local_node * 2 + 0] = 0.0;
+            it->s[local_node * 2 + 1] = 0.0;
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
                 it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 0];
@@ -505,6 +514,8 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
         // (0e)
         it->p = it->s;
+
+        ++enum_it;
     }
 
     gamma = gamma0;
@@ -550,8 +561,13 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     gamma_new = 0.0;
     // (4 a-e)
+    enum_it = 0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         for (int local_node = 0; local_node < 3; ++local_node) {
+//            it->s[local_node * 2 + 0] = FEMdata.elements[enum_it].z[local_node * 2 + 0];
+//            it->s[local_node * 2 + 1] = FEMdata.elements[enum_it].z[local_node * 2 + 1];
+            it->s[local_node * 2 + 0] = 0.0;
+            it->s[local_node * 2 + 1] = 0.0;
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
                 it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 0];
@@ -560,6 +576,8 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         }
 
         gamma_new += it->r.dot_product(it->s);
+
+        ++enum_it;
     }
 
     // (5)
@@ -618,7 +636,7 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 //    std::cout << "equalsToArray 2\n";
 
     ApplyConstraints_EbE(FEMdata, nodeAdjElem);
-    PCG_EbE(FEMdata, nodeAdjElem, 1e-5);
+    PCG_EbE(FEMdata, nodeAdjElem, 1e-10);
     AssemblyX(FEMdata);
 
 //    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
