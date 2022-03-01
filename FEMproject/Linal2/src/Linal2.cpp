@@ -1360,10 +1360,13 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
   }
   for (int i = 0; i < n; i++) {
     r_k[i] = B[i] - Az[i];
-    z_k[i] = r_k[i];
+    z_k[i] = r_k[i] / this->diag_elems[i];
   }
 
+  int n_iter = 0;
   do{
+    ++n_iter;
+    std::cout << "Iteration #" << n_iter << std::endl;
     Spz=0.0;
     Spr=0.0;
     for (int i = 0; i < n; i++) {
@@ -1377,6 +1380,9 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
       Spr += r_k[i] * r_k[i] / this->diag_elems[i];
     }
     alpha = Spr / Spz;
+    std::cout << "alpha\t\t\t= " << alpha << std::endl;
+    std::cout << "alpha numerator (gamma)\t= " << Spr << std::endl;
+    std::cout << "alpha denominator\t= " << Spz << std::endl;
 
     Spr1 = 0.0;
     for (int i = 0; i < n; ++i) {
@@ -1391,9 +1397,14 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
 
     beta = Spr1 / Spr;
 
+    std::cout << "beta\t\t\t= " << beta << std::endl;
+    std::cout << "gamma_new\t\t= " << Spr1 << std::endl;
+
     for (int i = 0; i < n; ++i) {
       z_k[i] = r_k[i] / this->diag_elems[i] + beta * z_k[i];
     }
+    std::cout << std::endl;
+//    if (n_iter == 3) break;
   } while(Spr1 / mf > eps * eps);
 
   //cout << endl;

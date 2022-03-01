@@ -443,11 +443,10 @@ void ApplyConstraints_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::
     }
 }
 
-void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem) {
+void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem, float eps) {
     // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
     // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
 
-    float eps = 1e-6;
     float eps_div = 1e-30;
     float gamma0 = 0.0;
     float gamma = 0.0;
@@ -510,9 +509,13 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     gamma = gamma0;
 
+    std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
+
+    int n_iter;
     do {
+    ++n_iter;
     int enum_it = 0;
-    std::cout << std::endl << "gamma = " << gamma << std::endl;
+    std::cout << "Iteration #" << n_iter << std::endl;
     float sumElem = 0.0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
 //        cout << "Element " << enum_it++ << std::endl;
@@ -527,6 +530,10 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     }
 
     float alpha = gamma / std::max(eps_div, sumElem);
+
+    std::cout << "alpha\t\t\t= " << alpha << std::endl;
+    std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
+    std::cout << "alpha denominator\t= " << sumElem << std::endl;
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (2a)
@@ -564,7 +571,13 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         it->p.add_weighted(it->s, gamma_new / std::max(eps_div, gamma), 1.0);
     }
 
+    std::cout << "beta\t\t\t= " << gamma_new / gamma << std::endl;
+    std::cout << "gamma_new\t\t= " << gamma_new << std::endl;
+
     gamma = gamma_new;
+
+    std::cout << std::endl;
+    //if (n_iter == 3) break;
 
     } while (1);
 }
@@ -604,29 +617,24 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 //    F.equalsToArray(F_EbE, 1e-20);
 //    std::cout << "equalsToArray 2\n";
 
-//    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
-//    PCG_EbE(FEMdata, nodeAdjElem);
-//    AssemblyX(FEMdata);
+    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
+    PCG_EbE(FEMdata, nodeAdjElem, 1e-5);
+    AssemblyX(FEMdata);
 
-    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
+//    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
 
-    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
-    F.add(FEMdata.loads);
+//    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
+//    F.add(FEMdata.loads);
 
-    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
+//    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
 
-    globalK.SortIt();
-    globalK.set_diag_elements();
-    globalK.Show();
-    std::vector<float> diag_elem = globalK.get_diag_elements();
-    for (int i = 0; i < diag_elem.size(); ++i) {
-        std::cout << diag_elem[i] << " ";
-    }
-    std::cout << std::endl;
-    int nonzero = globalK.CountNonZero();
-    cout << "nonzero = " << nonzero << endl;
+//    globalK.SortIt();
+//    globalK.set_diag_elements();
+//    std::vector<float> diag_elem = globalK.get_diag_elements();
+//    int nonzero = globalK.CountNonZero();
+//    cout << "nonzero = " << nonzero << endl;
 
-    globalK.PCG_solve(F, FEMdata.displacements, 1e-5);
+//    globalK.PCG_solve(F, FEMdata.displacements, 1e-5);
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,
