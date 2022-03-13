@@ -447,7 +447,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
     // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
 
-    float eps_div = 1e-30;
+    float eps_div = 1e-3;
     float gamma0 = 0.0;
     float gamma = 0.0;
     float gamma_new = 0.0;
@@ -457,6 +457,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0a)
         it->r = it->Flocal;
+
 //        cout << "Element " << enum_it++ << std::endl;
 //        cout << "Flocal: "; it->Flocal.Show();
 
@@ -469,10 +470,12 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 //                cout << "Klocal(" << local_node * 2 + 0 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 0, local_node * 2 + 0) << std::endl;
 //                cout << "Klocal(" << local_node * 2 + 1 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 1, local_node * 2 + 1) << std::endl;
 //                cout << std::endl;
-                it->m[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 0, local_node * 2 + 0);
-                it->m[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 1, local_node * 2 + 1);
+                int tmp = FEMdata.elements[adjElems[i]].Global2LocalNode(it->nodesIds[local_node]);
+                it->m[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 0, tmp * 2 + 0);
+                it->m[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 1, tmp * 2 + 1);
             }
         }
+//        it->m.Show();
 
         // (0c)
         for (int local_node = 0; local_node < 3; ++local_node) {
@@ -496,8 +499,9 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
             it->s[local_node * 2 + 1] = 0.0;
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
-                it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 0];
-                it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 1];
+                int tmp = FEMdata.elements[adjElems[i]].Global2LocalNode(it->nodesIds[local_node]);
+                it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[tmp * 2 + 0];
+                it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[tmp * 2 + 1];
             }
         }
 
@@ -514,6 +518,8 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
         // (0e)
         it->p = it->s;
+//        std::cout << "it->s: ";
+//        it->p.Show();
 
         ++enum_it;
     }
@@ -522,7 +528,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
 
-    int n_iter;
+    int n_iter = 0;
     do {
     ++n_iter;
     int enum_it = 0;
@@ -570,8 +576,9 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
             it->s[local_node * 2 + 1] = 0.0;
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
-                it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 0];
-                it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[local_node * 2 + 1];
+                int tmp = FEMdata.elements[adjElems[i]].Global2LocalNode(it->nodesIds[local_node]);
+                it->s[local_node * 2 + 0] += FEMdata.elements[adjElems[i]].z[tmp * 2 + 0];
+                it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[tmp * 2 + 1];
             }
         }
 
@@ -605,6 +612,10 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
 
+//    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+//        it->CalculateFlocal(*it,);
+//    }
+
     int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
         FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
@@ -620,7 +631,7 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 //    MyArray F = AssemblyF(FEMdata);
 //    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
 
-//    // First apply constraints (EbE), then assembly global stiffness matrix
+    // First apply constraints (EbE), then assembly global stiffness matrix
 //    ApplyConstraints_EbE(FEMdata, nodeAdjElem);
 //    SparseMatrixCOO globalK_EbE = AssemblyStiffnessMatrix   (FEMdata);
 //    Matrix m_globalK_EbE;
@@ -634,6 +645,8 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 //    std::cout << "equalsToArray 1\n";
 //    F.equalsToArray(F_EbE, 1e-20);
 //    std::cout << "equalsToArray 2\n";
+
+//////////////////////////////////////////////////
 
     ApplyConstraints_EbE(FEMdata, nodeAdjElem);
     PCG_EbE(FEMdata, nodeAdjElem, 1e-10);

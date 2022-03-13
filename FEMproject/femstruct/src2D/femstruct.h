@@ -29,6 +29,7 @@ struct Element {
     void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY);
     void CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY);
     void CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY,  float pressure_value);
+    int Global2LocalNode(int glob_num);
     Element() {
         B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
         Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));

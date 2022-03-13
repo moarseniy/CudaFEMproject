@@ -203,4 +203,13 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
 
 }
 
+int Element::Global2LocalNode(int glob_num) {
+    if (glob_num == this->nodesIds[0])
+        return 0;
+    if (glob_num == this->nodesIds[1])
+        return 1;
+    if (glob_num == this->nodesIds[2])
+        return 2;
+    assert(false);
+}
 
