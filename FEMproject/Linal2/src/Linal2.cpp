@@ -84,7 +84,7 @@ void MyArray::add(MyArray a) {
 
 void MyArray::add_weighted(MyArray a, float v1, float v2) {
     assert(this->array_size != a.get_size());
-    for (int i = 0; i < array_size; ++i) {
+    for (int i = 0; i < this->array_size; ++i) {
         p[i] = v1 * p[i] + v2 * a[i];
     }
 }
@@ -1104,6 +1104,15 @@ void SparseMatrixCOO::ConvertToMatrix(Matrix &M) {
 	}
 }
 
+MyArray SparseMatrixCOO::MyltiplyByVector(MyArray v) {
+    MyArray res(v.get_size());
+    for (int i = 0; i < this->sparse_size; ++i) {
+        res[this->x[i]] += this->data[i] * v[this->y[i]];
+    }
+
+    return res;
+}
+
 void SparseMatrixCOO::SortIt() {
     CheckRunTime(__func__)
 	int temp;
@@ -1345,7 +1354,7 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
     float *r_k = new float[n];
     float *Az = new float[n];
     float alpha, beta, mf = 0.0;
-    float Spr, Spr1, Spz;
+    float Spr, Spr1, Spz, Spr_initial = 0.0;
 
   for (int i = 0; i < n; i++) {
     mf += B[i] * B[i]; // change stop condition
@@ -1361,7 +1370,11 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
   for (int i = 0; i < n; i++) {
     r_k[i] = B[i] - Az[i];
     z_k[i] = r_k[i] / this->diag_elems[i];
+    Spr_initial += r_k[i] * r_k[i] / this->diag_elems[i];
   }
+
+  std::cout.precision(16);
+  std::cout << "gamma0\t\t= " << Spr_initial << std::endl;
 
   int n_iter = 0;
   do{
@@ -1380,6 +1393,7 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
       Spr += r_k[i] * r_k[i] / this->diag_elems[i];
     }
     alpha = Spr / Spz;
+    std::cout << "sumElem\t\t\t= " << Spz << std::endl;
     std::cout << "alpha\t\t\t= " << alpha << std::endl;
     std::cout << "alpha numerator (gamma)\t= " << Spr << std::endl;
     std::cout << "alpha denominator\t= " << Spz << std::endl;
@@ -1404,8 +1418,8 @@ void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
       z_k[i] = r_k[i] / this->diag_elems[i] + beta * z_k[i];
     }
     std::cout << std::endl;
-//    if (n_iter == 3) break;
-  } while(Spr1 / mf > eps * eps);
+//  } while(Spr1 / mf > eps * eps);
+    } while(Spr1 > eps * Spr_initial);
 
   //cout << endl;
 

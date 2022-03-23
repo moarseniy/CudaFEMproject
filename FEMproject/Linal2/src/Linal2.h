@@ -136,6 +136,7 @@ public:
     void SparseLU();
     void CGM_solve(MyArray B, MyArray &x_k, float eps);
     void PCG_solve(MyArray B, MyArray &x_k, float eps);
+    MyArray MyltiplyByVector(MyArray v);
     void set_diag_elements();
     std::vector<float> get_diag_elements();
     int get_size();
