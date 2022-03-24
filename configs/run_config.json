@@ -3,6 +3,6 @@
 	"working_path": "C:/Users/mokin/Desktop/fem_stuff_test/",
 	"task": ["9task_3"],
 	"DIM": 2,
-	"youngModulus": 0.25,
-	"poissonRatio": 2e+07
+	"youngModulus": 2e+07,
+	"poissonRatio": 0.25
 }

@@ -67,7 +67,7 @@ if __name__ == '__main__':
         print('\nRUN calculation for ' + task_name)
         main_exe = 'build-FEMproject-Desktop_x86_windows_msvc2019_pe_64bit-Release/fem/main.exe'
         os.system(proj_dir + main_exe + ' ' + task_name + ' ' + proj_dir + ' ' + prep_mesh_task_dir + ' ' +
-                  results_dir + ' ' + youngModulus + ' ' + poissonRatio)
+                  results_dir + ' ' + poissonRatio + ' ' + youngModulus)
         print('FINISHED calculation for ' + task_name)
         
         print('\nRUN Postprocessing for ' + task_name)
