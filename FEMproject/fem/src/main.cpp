@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
     FEMdata.ParseFiles(poissonRatio, youngModulus);
     FEMdata.ShowInfo();
 
-    CalculateFiniteElementMethod(FEMdata);
+//    CalculateFEM(FEMdata);
+    CalculateFEM_EbE(FEMdata);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 

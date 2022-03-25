@@ -16,7 +16,8 @@
 using namespace std;
 
 
-void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata);
+void CalculateFEM(FEMdataKeeper &FEMdata);
+void CalculateFEM_EbE(FEMdataKeeper &FEMdata);
 void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::vector<int>> &a);
 
 void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata);

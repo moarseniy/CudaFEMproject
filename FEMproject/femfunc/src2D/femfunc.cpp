@@ -386,16 +386,6 @@ void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::v
         a[it->nodesIds[2]].push_back(n);
         n++;
     }
-    auto print_key_value = [](int key, std::vector<int> v) {
-        std::cout << "Key:[" << key << "] Vector:[";
-        for (int i = 0; i < v.size(); ++i) {
-            std::cout << v[i] << " ";
-        }
-        std::cout << "]\n";
-    };
-    for( const auto& j : a ) {
-        print_key_value(j.first, j.second);
-    }
 }
 
 void ApplyConstraints2(FEMdataKeeper &FEMdata) {
@@ -409,7 +399,6 @@ void ApplyConstraints2(FEMdataKeeper &FEMdata) {
         }
     }
 
-    std::cout << "CONSTRAINTS\n";
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         for (int c_id = 0; c_id < indicesToConstraint.size(); c_id++) {
             for (int i = 0; i < 3; ++i) {
@@ -420,7 +409,6 @@ void ApplyConstraints2(FEMdataKeeper &FEMdata) {
                                 2 * it->nodesIds[j] + jlocal == indicesToConstraint[c_id]) {
                                 if (2 * it->nodesIds[i] + ilocal != 2 * it->nodesIds[j] + jlocal) {
                                     it->Klocal(2 * i + ilocal, 2 * j + jlocal) = 0.0;
-                                    std::cout << 2 * i + ilocal << " " << 2 * j + jlocal << "\n";
                                 }
                             }
                         }
@@ -429,18 +417,6 @@ void ApplyConstraints2(FEMdataKeeper &FEMdata) {
             }
         }
     }
-    //exit(-1);
-
-//    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-//        for (int id = 0; id < indicesToConstraint.size(); id++) {
-//            for (int local_node = 0; local_node < 3; ++local_node) {
-//                int node_id = it->nodesIds[local_node];
-//                if (node_id == indicesToConstraint[id]) {
-//                    it->Klocal
-//                }
-//            }
-//        }
-//    }
 }
 
 void ApplyConstraints_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &nodeAdjElem) {
@@ -527,9 +503,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
                 it->m[local_node * 2 + 1] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 1, tmp * 2 + 1));
             }
         }
-        std::cout.precision(16);
-        std::cout << float(it->m[0]);
-        it->m.Show();
 
         // (0c)
         for (int local_node = 0; local_node < 3; ++local_node) {
@@ -582,7 +555,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     float alpha = gamma / sumElem;
 
-    std::cout << "sumElem\t\t\t= " << sumElem << std::endl;
     std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
     std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
     std::cout << "alpha denominator\t= " << sumElem << std::endl;
@@ -639,7 +611,33 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     } while (1);
 }
 
-void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
+void CalculateFEM(FEMdataKeeper &FEMdata) {
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
+    }
+
+    int num = 0;
+    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    }
+
+    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
+
+    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
+    F.add(FEMdata.loads);
+
+    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
+
+    globalK.SortIt();
+    globalK.set_diag_elements();
+    std::vector<float> diag_elem = globalK.get_diag_elements();
+    int nonzero = globalK.CountNonZero();
+    cout << "nonzero = " << nonzero << endl;
+
+    globalK.PCG_solve(F, FEMdata.displacements, 1e-10f);
+}
+
+void CalculateFEM_EbE(FEMdataKeeper &FEMdata) {
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
@@ -652,30 +650,9 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    // EbE PCG
-    // ---------------------------------------------------------------------------------
     ApplyConstraints2(FEMdata);
-    PCG_EbE(FEMdata, nodeAdjElem, 1e-10);
+    PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
     AssemblyX(FEMdata, nodeAdjElem);
-    // ---------------------------------------------------------------------------------
-
-//    // "Classical" method
-//    // ---------------------------------------------------------------------------------
-//    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
-
-//    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
-//    F.add(FEMdata.loads);
-
-//    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
-
-//    globalK.SortIt();
-//    globalK.set_diag_elements();
-//    std::vector<float> diag_elem = globalK.get_diag_elements();
-//    int nonzero = globalK.CountNonZero();
-//    cout << "nonzero = " << nonzero << endl;
-
-//    globalK.PCG_solve(F, FEMdata.displacements, 1e-10);
-//    // ---------------------------------------------------------------------------------
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,
