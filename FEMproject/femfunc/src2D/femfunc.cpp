@@ -518,18 +518,10 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         // (0a)
         it->r = it->Flocal;
 
-//        cout << "Element " << enum_it++ << std::endl;
-//        cout << "Flocal: "; it->Flocal.Show();
-
         // (0b)
         for (int local_node = 0; local_node < 3; ++local_node) {
-//            it->m[local_node * 2 + 0] = FEMdata.elements[enum_it].Klocal(local_node * 2 + 0, local_node * 2 + 0);
-//            it->m[local_node * 2 + 1] = FEMdata.elements[enum_it].Klocal(local_node * 2 + 1, local_node * 2 + 1);
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
-//                cout << "Klocal(" << local_node * 2 + 0 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 0, local_node * 2 + 0) << std::endl;
-//                cout << "Klocal(" << local_node * 2 + 1 << ") = " << FEMdata.elements[adjElems[i]].Klocal(local_node * 2 + 1, local_node * 2 + 1) << std::endl;
-//                cout << std::endl;
                 int tmp = FEMdata.elements[adjElems[i]].Global2LocalNode(it->nodesIds[local_node]);
                 it->m[local_node * 2 + 0] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 0, tmp * 2 + 0));
                 it->m[local_node * 2 + 1] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 1, tmp * 2 + 1));
@@ -552,10 +544,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     enum_it = 0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (0d)
-//        cout << "Element " << enum_it++ << std::endl;
         for (int local_node = 0; local_node < 3; ++local_node) {
-//            it->s[local_node * 2 + 0] = FEMdata.elements[enum_it].z[local_node * 2 + 0];
-//            it->s[local_node * 2 + 1] = FEMdata.elements[enum_it].z[local_node * 2 + 1];
             it->s[local_node * 2 + 0] = 0.0f;
             it->s[local_node * 2 + 1] = 0.0f;
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
@@ -565,22 +554,10 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
                 it->s[local_node * 2 + 1] += FEMdata.elements[adjElems[i]].z[tmp * 2 + 1];
             }
         }
-
-//        std::cout << "it->m: ";
-//        it->m.Show();
-//        std::cout << "it->r: ";
-//        it->r.Show();
-//        std::cout << "it->z: ";
-//        it->z.Show();
-//        std::cout << "it->s: ";
-//        it->s.Show();
-
         gamma0 += it->r.dot_product(it->s);
 
         // (0e)
         it->p = it->s;
-//        std::cout << "it->s: ";
-//        it->p.Show();
 
         ++enum_it;
     }
@@ -597,19 +574,10 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     std::cout << "Iteration #" << n_iter << std::endl;
     float sumElem = 0.0f;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-//        cout << "Element " << enum_it++ << std::endl;
         // (1a-d)
         it->u = it->Klocal.Product(it->p);
         float tmp = it->p.dot_product(it->u);
         sumElem += tmp;
-//        std::cout << "Element #" << enum_elem << std::endl;
-//        ++enum_elem;
-//        std::cout << "it->p: ";
-//        it->p.Show();
-//        std::cout << "it->u: ";
-//        it->u.Show();
-//        std::cout << "added:   " << tmp << std::endl;
-//        std::cout << "sumElem: " << sumElem << std::endl;
     }
 
     float alpha = gamma / sumElem;
@@ -619,7 +587,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
     std::cout << "alpha denominator\t= " << sumElem << std::endl;
 
-//    enum_elem = 0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (2a)
         it->x.add_weighted(it->p, 1.0f, alpha);
@@ -627,13 +594,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         it->r.add_weighted(it->u, 1.0f, -1.0f * alpha);
 
         // (3)
-//        std::cout << "Element #" << enum_elem << std::endl;
-//        ++enum_elem;
-//        std::cout << "it->r: ";
-//        it->r.Show();
-//        std::cout << "it->m: ";
-//        it->m.Show();
-//        std::cout << std::endl;
         for (int local_node = 0; local_node < 3; ++local_node) {
             it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / it->m[local_node * 2 + 0];
             it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / it->m[local_node * 2 + 1];
@@ -645,8 +605,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     enum_it = 0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         for (int local_node = 0; local_node < 3; ++local_node) {
-//            it->s[local_node * 2 + 0] = FEMdata.elements[enum_it].z[local_node * 2 + 0];
-//            it->s[local_node * 2 + 1] = FEMdata.elements[enum_it].z[local_node * 2 + 1];
             it->s[local_node * 2 + 0] = 0.0f;
             it->s[local_node * 2 + 1] = 0.0f;
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
@@ -677,7 +635,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     gamma = gamma_new;
 
     std::cout << std::endl;
-    //if (n_iter == 3) break;
 
     } while (1);
 }
@@ -687,10 +644,6 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
 
-//    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-//        it->CalculateFlocal(*it,);
-//    }
-
     int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
         FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
@@ -699,56 +652,15 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    // Assembly global stiffness matrix, then apply constraints
-    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
-    Matrix m_globalK;
-    globalK.ConvertToMatrix(m_globalK);
-    MyArray F = AssemblyF(FEMdata);
-    ApplyConstraints(globalK, F, FEMdata.constraints, FEMdata.nodesCount);
-
-    // First apply constraints (EbE), then assembly global stiffness matrix
-    //ApplyConstraints_EbE(FEMdata, nodeAdjElem);
+    // EbE PCG
+    // ---------------------------------------------------------------------------------
     ApplyConstraints2(FEMdata);
     PCG_EbE(FEMdata, nodeAdjElem, 1e-10);
     AssemblyX(FEMdata, nodeAdjElem);
-    SparseMatrixCOO globalK_EbE = AssemblyStiffnessMatrix   (FEMdata);
-    Matrix m_globalK_EbE;
-    globalK.ConvertToMatrix(m_globalK_EbE);
-    MyArray F_EbE = AssemblyF(FEMdata);
+    // ---------------------------------------------------------------------------------
 
-    std::cout << "globalK:" << std::endl;
-    globalK.SortIt();
-    globalK.Show();
-    std::cout << "globalK_EbE:" << std::endl;
-    globalK_EbE.SortIt();
-    globalK_EbE.Show();
-
-    std::cout << "F:" << std::endl;
-    F.Show();
-    std::cout << "F_EbE:" << std::endl;
-    F_EbE.Show();
-//    std::cout << "equalsToMatrix 1\n";
-//    m_globalK.equalsToMatrix(m_globalK_EbE, 1e-20);
-//    std::cout << "equalsToMatrix 2\n";
-
-//    std::cout << "equalsToArray 1\n";
-//    F.equalsToArray(F_EbE, 1e-20);
-//    std::cout << "equalsToArray 2\n";
-
-//////////////////////////////////////////////////
-
-//    // Debug for PCG EbE
-//    // -------------------------------------------------
-
-//    // Initialize element displacement vector, multiply by Klocal and store the result
-//    srand (420); //(static_cast <unsigned> (time(0)));
-//    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-//        for (int ilocal = 0; ilocal < 2 * DIM; ++ilocal) {
-//            it->x[ilocal] =  static_cast <float> (rand() % 100);
-//        }
-//        it->b = it->Klocal.Product(it->x);
-//    }
-
+//    // "Classical" method
+//    // ---------------------------------------------------------------------------------
 //    SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
 
 //    MyArray F = AssemblyF(FEMdata); // globalK * displacements = F
@@ -762,8 +674,8 @@ void CalculateFiniteElementMethod(FEMdataKeeper &FEMdata) {
 //    int nonzero = globalK.CountNonZero();
 //    cout << "nonzero = " << nonzero << endl;
 
-//    globalK.PCG_solve(F, FEMdata.displacements, 1e-15);
-//    //-------------------------------------------------
+//    globalK.PCG_solve(F, FEMdata.displacements, 1e-10);
+//    // ---------------------------------------------------------------------------------
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,

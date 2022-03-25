@@ -1092,6 +1092,7 @@ void SparseMatrixCOO::ConvertTripletToSparse(std::vector<Triplet> t) {
 // }
 
 void SparseMatrixCOO::ConvertToMatrix(Matrix &M) {
+    // Make sure you set the right dimensions for matrix M!!!
     int n = M.get_row();
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
