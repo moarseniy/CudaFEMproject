@@ -32,6 +32,8 @@ public:
 	float norma();
     float dot_product(MyArray v2);
     bool equalsToArray(MyArray a, float eps);
+    MyArray multiplyElementwise(MyArray a);
+    MyArray divideByElementwise(MyArray a);
 
 	void grad(float (*f)(MyArray x), MyArray &res, float eps);
 	void Hessian(float (*f)(MyArray x), Matrix &matr, float eps);
@@ -137,6 +139,7 @@ public:
     void CGM_solve(MyArray B, MyArray &x_k, float eps);
     void PCG_solve(MyArray B, MyArray &x_k, float eps);
     MyArray MyltiplyByVector(MyArray v);
+    MyArray MyltiplyTransposedByVector(MyArray v);
     void set_diag_elements();
     std::vector<float> get_diag_elements();
     int get_size();

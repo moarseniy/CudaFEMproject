@@ -165,6 +165,30 @@ float MyArray::dot_product(MyArray v2) {
     return res;
 }
 
+MyArray MyArray::multiplyElementwise(MyArray a) {
+    assert(this->array_size == a.get_size());
+
+    MyArray res(this->array_size);
+
+    for (int i = 0; i < this->array_size; ++i) {
+        res[i] = this->p[i] * a[i];
+    }
+
+    return res;
+}
+
+MyArray MyArray::divideByElementwise(MyArray a) {
+    assert(this->array_size == a.get_size());
+
+    MyArray res(this->array_size);
+
+    for (int i = 0; i < this->array_size; ++i) {
+        res[i] = this->p[i] / a[i];
+    }
+
+    return res;
+}
+
 bool MyArray::equalsToArray(MyArray a, float eps) {
     if (this->array_size != a.get_size()) {
         std::cout << "Dimension mismatch!\n";
@@ -1109,6 +1133,15 @@ MyArray SparseMatrixCOO::MyltiplyByVector(MyArray v) {
     MyArray res(v.get_size());
     for (int i = 0; i < this->sparse_size; ++i) {
         res[this->x[i]] += this->data[i] * v[this->y[i]];
+    }
+
+    return res;
+}
+
+MyArray SparseMatrixCOO::MyltiplyTransposedByVector(MyArray v) {
+    MyArray res(v.get_size());
+    for (int i = 0; i < this->sparse_size; ++i) {
+        res[this->y[i]] += this->data[i] * v[this->x[i]];
     }
 
     return res;

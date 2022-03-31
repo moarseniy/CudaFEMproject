@@ -479,6 +479,56 @@ void ApplyConstraints_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::
     }
 }
 
+void PCG_EbE_vec(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem, float eps) {
+    int n_elems = FEMdata.elementsCount;
+
+    MyArray r(3 * DIM * n_elems), diag(3 * DIM * n_elems), m(3 * DIM * n_elems),
+            z(3 * DIM * n_elems), s(3 * DIM * n_elems), p(3 * DIM * n_elems);
+
+    // Create mask Q:
+    SparseMatrixCOO Q(3 * DIM * n_elems);
+    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+        Element elem = FEMdata.elements[eIdx];
+        Q.set_value(3 * DIM * eIdx + 0 * DIM + 0, elem.nodesIds[0] * DIM + 0, 1);
+        Q.set_value(3 * DIM * eIdx + 0 * DIM + 1, elem.nodesIds[0] * DIM + 1, 1);
+        Q.set_value(3 * DIM * eIdx + 1 * DIM + 0, elem.nodesIds[1] * DIM + 0, 1);
+        Q.set_value(3 * DIM * eIdx + 1 * DIM + 1, elem.nodesIds[1] * DIM + 1, 1);
+        Q.set_value(3 * DIM * eIdx + 2 * DIM + 0, elem.nodesIds[2] * DIM + 0, 1);
+        Q.set_value(3 * DIM * eIdx + 2 * DIM + 1, elem.nodesIds[2] * DIM + 1, 1);
+
+        diag[3 * DIM * eIdx + 0] = elem.Klocal(0, 0);
+        diag[3 * DIM * eIdx + 1] = elem.Klocal(1, 1);
+        diag[3 * DIM * eIdx + 2] = elem.Klocal(2, 2);
+        diag[3 * DIM * eIdx + 3] = elem.Klocal(3, 3);
+        diag[3 * DIM * eIdx + 4] = elem.Klocal(4, 4);
+        diag[3 * DIM * eIdx + 5] = elem.Klocal(5, 5);
+
+        // (0a)
+        // Initialize vector r^(e)
+        r[3 * DIM * eIdx + 0] = elem.Flocal[0];
+        r[3 * DIM * eIdx + 1] = elem.Flocal[1];
+        r[3 * DIM * eIdx + 2] = elem.Flocal[2];
+        r[3 * DIM * eIdx + 3] = elem.Flocal[3];
+        r[3 * DIM * eIdx + 4] = elem.Flocal[4];
+        r[3 * DIM * eIdx + 5] = elem.Flocal[5];
+    }
+
+    // (0b)
+    m = Q.MyltiplyByVector(Q.MyltiplyTransposedByVector(diag));
+
+    // (0c)
+    z = r.divideByElementwise(m);
+
+    // (0d)
+    s = Q.MyltiplyByVector(Q.MyltiplyTransposedByVector(z));
+    float gamma0 = r.dot_product(s);
+    float gamma = gamma0;
+
+    // (0e)
+    p = s;
+
+}
+
 void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem, float eps) {
     // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
     // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
