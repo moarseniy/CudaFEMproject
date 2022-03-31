@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
     FEMdata.ShowInfo();
 
 //    CalculateFEM(FEMdata);
-    CalculateFEM_EbE(FEMdata);
+//    CalculateFEM_EbE(FEMdata);
+    CalculateFEM_EbE_vec(FEMdata);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 

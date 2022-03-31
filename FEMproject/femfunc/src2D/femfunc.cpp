@@ -479,22 +479,34 @@ void ApplyConstraints_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::
     }
 }
 
-void PCG_EbE_vec(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem, float eps) {
-    int n_elems = FEMdata.elementsCount;
+void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
+    int n_elems  = FEMdata.elementsCount;
+    int n_gl_dofs = FEMdata.nodesCount * DIM;
 
-    MyArray r(3 * DIM * n_elems), diag(3 * DIM * n_elems), m(3 * DIM * n_elems),
-            z(3 * DIM * n_elems), s(3 * DIM * n_elems), p(3 * DIM * n_elems);
+    int grid_size = 3 * DIM * n_elems;
+    MyArray r(grid_size), diag(grid_size), m(grid_size),
+            z(grid_size), s(grid_size), p(grid_size),
+            u(grid_size), x(grid_size);
 
-    // Create mask Q:
-    SparseMatrixCOO Q(3 * DIM * n_elems);
+    MyArray n_adjelem(n_gl_dofs);
+
+    SparseMatrixCOO Q (grid_size);          // Reduction mask Q
+    SparseMatrixCOO Ae(3*DIM * 3*DIM * n_elems);    // Block diagonal matrix consisting of A^(e)
     for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
         Element elem = FEMdata.elements[eIdx];
-        Q.set_value(3 * DIM * eIdx + 0 * DIM + 0, elem.nodesIds[0] * DIM + 0, 1);
-        Q.set_value(3 * DIM * eIdx + 0 * DIM + 1, elem.nodesIds[0] * DIM + 1, 1);
-        Q.set_value(3 * DIM * eIdx + 1 * DIM + 0, elem.nodesIds[1] * DIM + 0, 1);
-        Q.set_value(3 * DIM * eIdx + 1 * DIM + 1, elem.nodesIds[1] * DIM + 1, 1);
-        Q.set_value(3 * DIM * eIdx + 2 * DIM + 0, elem.nodesIds[2] * DIM + 0, 1);
-        Q.set_value(3 * DIM * eIdx + 2 * DIM + 1, elem.nodesIds[2] * DIM + 1, 1);
+        Q.write_value(3 * DIM * eIdx + 0 * DIM + 0, elem.nodesIds[0] * DIM + 0, 1);
+        Q.write_value(3 * DIM * eIdx + 0 * DIM + 1, elem.nodesIds[0] * DIM + 1, 1);
+        Q.write_value(3 * DIM * eIdx + 1 * DIM + 0, elem.nodesIds[1] * DIM + 0, 1);
+        Q.write_value(3 * DIM * eIdx + 1 * DIM + 1, elem.nodesIds[1] * DIM + 1, 1);
+        Q.write_value(3 * DIM * eIdx + 2 * DIM + 0, elem.nodesIds[2] * DIM + 0, 1);
+        Q.write_value(3 * DIM * eIdx + 2 * DIM + 1, elem.nodesIds[2] * DIM + 1, 1);
+
+        n_adjelem[elem.nodesIds[0] * DIM + 0] += 1.0f;
+        n_adjelem[elem.nodesIds[0] * DIM + 1] += 1.0f;
+        n_adjelem[elem.nodesIds[1] * DIM + 0] += 1.0f;
+        n_adjelem[elem.nodesIds[1] * DIM + 1] += 1.0f;
+        n_adjelem[elem.nodesIds[2] * DIM + 0] += 1.0f;
+        n_adjelem[elem.nodesIds[2] * DIM + 1] += 1.0f;
 
         diag[3 * DIM * eIdx + 0] = elem.Klocal(0, 0);
         diag[3 * DIM * eIdx + 1] = elem.Klocal(1, 1);
@@ -502,6 +514,12 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<in
         diag[3 * DIM * eIdx + 3] = elem.Klocal(3, 3);
         diag[3 * DIM * eIdx + 4] = elem.Klocal(4, 4);
         diag[3 * DIM * eIdx + 5] = elem.Klocal(5, 5);
+
+        for (int xlocal = 0; xlocal < 3 * DIM; ++xlocal) {
+            for (int ylocal = 0; ylocal < 3 * DIM; ++ylocal) {
+                Ae.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Klocal(xlocal, ylocal));
+            }
+        }
 
         // (0a)
         // Initialize vector r^(e)
@@ -514,18 +532,74 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<in
     }
 
     // (0b)
-    m = Q.MyltiplyByVector(Q.MyltiplyTransposedByVector(diag));
+    m = Q.MultiplyByVector(Q.MultiplyTransposedByVector(diag, n_gl_dofs), grid_size);
 
     // (0c)
     z = r.divideByElementwise(m);
 
     // (0d)
-    s = Q.MyltiplyByVector(Q.MyltiplyTransposedByVector(z));
+    s = Q.MultiplyByVector(Q.MultiplyTransposedByVector(z, n_gl_dofs), grid_size);
     float gamma0 = r.dot_product(s);
     float gamma = gamma0;
+    float gamma_new = 0.0f;
 
     // (0e)
     p = s;
+
+    std::cout.precision(16);
+    std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
+
+    int n_iter = 0;
+    do {
+        ++n_iter;
+
+        // (1a)
+        u = Ae.MultiplyByVector(p, grid_size);
+        // (1b)
+        float sumElem = p.dot_product(u);
+        // (1c,d)
+        float alpha = gamma / sumElem;
+
+        // (2a)
+        x.add_weighted(p, 1.0f, alpha);
+        // (2b)
+        r.add_weighted(u, 1.0f, -1.0f * alpha);
+
+        // (3)
+        z = r.divideByElementwise(m);
+
+        // (4)
+        s = Q.MultiplyByVector(Q.MultiplyTransposedByVector(z, n_gl_dofs), grid_size);
+        gamma_new = r.dot_product(s);
+
+        // Verbose
+        // -----------------------------------------------------------------------
+        std::cout << "Iteration #" << n_iter << std::endl;
+        std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
+        std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
+        std::cout << "alpha denominator\t= " << sumElem << std::endl;
+        // -----------------------------------------------------------------------
+
+        // (5)
+        if (gamma_new < eps * gamma0)
+            break;
+
+        // (6)
+        p.add_weighted(s, gamma_new / gamma, 1.0f);
+
+        // Verbose
+        // -----------------------------------------------------------------------
+        std::cout << "beta\t\t\t= " << gamma_new / gamma << std::endl;
+        std::cout << "gamma_new\t\t= " << gamma_new << std::endl;
+        std::cout << std::endl;
+        // -----------------------------------------------------------------------
+
+        gamma = gamma_new;
+
+    } while (1);
+
+    res = Q.MultiplyTransposedByVector(x, n_gl_dofs);
+    res = res.divideByElementwise(n_adjelem);
 
 }
 
@@ -703,6 +777,20 @@ void CalculateFEM_EbE(FEMdataKeeper &FEMdata) {
     ApplyConstraints2(FEMdata);
     PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
     AssemblyX(FEMdata, nodeAdjElem);
+}
+
+void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata) {
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
+    }
+
+    int num = 0;
+    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    }
+
+    ApplyConstraints2(FEMdata);
+    PCG_EbE_vec(FEMdata, FEMdata.displacements, 1e-10f);
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,

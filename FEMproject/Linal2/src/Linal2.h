@@ -138,8 +138,8 @@ public:
     void SparseLU();
     void CGM_solve(MyArray B, MyArray &x_k, float eps);
     void PCG_solve(MyArray B, MyArray &x_k, float eps);
-    MyArray MyltiplyByVector(MyArray v);
-    MyArray MyltiplyTransposedByVector(MyArray v);
+    MyArray MultiplyByVector(MyArray v, int res_size);
+    MyArray MultiplyTransposedByVector(MyArray v, int res_size);
     void set_diag_elements();
     std::vector<float> get_diag_elements();
     int get_size();
@@ -153,6 +153,7 @@ public:
     bool isSorted();
 
     void set_value(int row, int col, float value);
+    void write_value(int row, int col, float value);
     void pop(int row, int col);
     int CountNonZero();
     SparseMatrixCOO DeleteZeros();
@@ -167,6 +168,7 @@ private:
 	int nonzero;
     int sparse_size;
     bool sorted;
+    int data_pointer;
 
 	int *x;
 	int *y;

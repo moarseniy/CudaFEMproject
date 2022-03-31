@@ -836,6 +836,7 @@ SparseMatrixCOO::SparseMatrixCOO() {
     this->y = nullptr;
     this->data = nullptr;
     this->sorted = false;
+    this->data_pointer = 0;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(int size) {
@@ -844,6 +845,7 @@ SparseMatrixCOO::SparseMatrixCOO(int size) {
 	this->y = new int[sparse_size];
     this->data = new float[sparse_size];
     this->sorted = false;
+    this->data_pointer = 0;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
@@ -852,6 +854,7 @@ SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
     this->y = new int[sparse_size];
     this->data = new float[sparse_size];
     this->sorted = false;
+    this->data_pointer = sparse_size;
 
     for (int i = 0; i < sparse_size; i++) {
         x[i] = m.x[i];
@@ -865,6 +868,7 @@ SparseMatrixCOO SparseMatrixCOO::operator =(const SparseMatrixCOO &m) {
     this->x = new int[sparse_size];
     this->y = new int[sparse_size];
     this->data = new float[sparse_size];
+    this->data_pointer = sparse_size;
 
     for (int i = 0; i < sparse_size; i++) {
         x[i] = m.x[i];
@@ -929,6 +933,19 @@ void SparseMatrixCOO::set_value(int row, int col, float value) {
         if (x[i] == row && y[i] == col) {
             data[i] = value;
         }
+    }
+
+}
+
+void SparseMatrixCOO::write_value(int row, int col, float value) {
+    assert(this->data_pointer < this->sparse_size);
+
+    if (!(value == 0.0f)) {
+        this->x[this->data_pointer] = row;
+        this->y[this->data_pointer] = col;
+        this->data[this->data_pointer] = value;
+
+        ++data_pointer;
     }
 
 }
@@ -1129,8 +1146,8 @@ void SparseMatrixCOO::ConvertToMatrix(Matrix &M) {
 	}
 }
 
-MyArray SparseMatrixCOO::MyltiplyByVector(MyArray v) {
-    MyArray res(v.get_size());
+MyArray SparseMatrixCOO::MultiplyByVector(MyArray v, int res_size) {
+    MyArray res(res_size);
     for (int i = 0; i < this->sparse_size; ++i) {
         res[this->x[i]] += this->data[i] * v[this->y[i]];
     }
@@ -1138,8 +1155,8 @@ MyArray SparseMatrixCOO::MyltiplyByVector(MyArray v) {
     return res;
 }
 
-MyArray SparseMatrixCOO::MyltiplyTransposedByVector(MyArray v) {
-    MyArray res(v.get_size());
+MyArray SparseMatrixCOO::MultiplyTransposedByVector(MyArray v, int res_size) {
+    MyArray res(res_size);
     for (int i = 0; i < this->sparse_size; ++i) {
         res[this->y[i]] += this->data[i] * v[this->x[i]];
     }
