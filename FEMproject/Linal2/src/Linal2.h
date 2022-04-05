@@ -87,6 +87,7 @@ public:
 	void CGM_solve(Matrix A, MyArray B, MyArray &result, int n);
 	void scale(float value);
     Matrix Sum(Matrix &a);
+    Matrix weightedSum(Matrix &a, float alpha, float beta);
 	Matrix Difference(Matrix &a);
 	Matrix Product(Matrix &a);
     MyArray Product(MyArray &v);

@@ -143,6 +143,26 @@ void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY) {
     Klocal.scale(std::abs(determinant) * 0.5);
 }
 
+void Element::CalculateMlocal(float rho, MyArray& nodesX, MyArray& nodesY, bool lumped) {
+    // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 16.2.3
+    float X0 = nodesX[nodesIds[0]], X1 = nodesX[nodesIds[1]], X2 = nodesX[nodesIds[2]];
+    float Y0 = nodesY[nodesIds[0]], Y1 = nodesY[nodesIds[1]], Y2 = nodesY[nodesIds[2]];
+    float area = 0.5 * std::abs( (X0 - X2) * (Y1 - Y2) - (X1 - X2) * (Y0 - Y2) );
+    float mass = rho * area;
+
+    if (lumped) {
+        Mlocal(0, 0) = Mlocal(1, 1) = Mlocal(2, 2) = Mlocal(3, 3) = Mlocal(4, 4) = Mlocal(5, 5) = mass / 3;
+    } else {
+        Mlocal(0, 0) = Mlocal(1, 1) = Mlocal(2, 2) = Mlocal(3, 3) = Mlocal(4, 4) = Mlocal(5, 5) = mass / 6;
+        Mlocal(2, 0) = Mlocal(3, 1) = Mlocal(4, 0) = Mlocal(5, 1) = Mlocal(4, 2) = Mlocal(5, 3) =
+        Mlocal(0, 2) = Mlocal(1, 3) = Mlocal(0, 4) = Mlocal(1, 5) = Mlocal(2, 4) = Mlocal(3, 5) = mass / 12;
+    }
+}
+
+void Element::CalculateClocal(float alpha, float beta) {
+    if (!(alpha == 0.0f && beta == 0.0f)) Clocal = Mlocal.weightedSum(Klocal, alpha, beta);
+}
+
 void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, float pressure_value) {
     float X0 = nodesX[edge.node0], X1 = nodesX[edge.node1];
     float Y0 = nodesY[edge.node0], Y1 = nodesY[edge.node1];
@@ -186,10 +206,9 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
     float X2 = nodesX[nodesIds[edge2elem_num[2]]];
     float Y2 = nodesY[nodesIds[edge2elem_num[2]]];
 
-    // Calculate area of element
-    float area = 0.5 * std::abs( (X0 - X2) * (Y1 - Y2) - (X1 - X2) * (Y0 - Y2) );
-
-    float a0 = X1 * Y2 - X2 * Y1, a1 = X2 * Y0 - Y2 * X0;
+//    // Calculate area of element
+//    float area = 0.5 * std::abs( (X0 - X2) * (Y1 - Y2) - (X1 - X2) * (Y0 - Y2) );
+//    float a0 = X1 * Y2 - X2 * Y1, a1 = X2 * Y0 - Y2 * X0;
 
 //    Flocal[edge2elem_num[0] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a0/area);
 //    Flocal[edge2elem_num[0] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a0/area);
@@ -213,3 +232,20 @@ int Element::Global2LocalNode(int glob_num) {
     assert(false);
 }
 
+void Load::update(float t) {
+    if (t < this->timeshift) {
+        this->value = 0.0f;
+    } else {
+        (this->*wavelet)(t - this->timeshift);
+    }
+}
+
+void Load::Constant(float t) {
+    this->value = ampl;
+}
+
+void Load::Ricker(float t) {
+    this->value = 2.0f / (std::sqrtf(3.0f * freq * std::sqrtf(M_PI))) *
+            (1.0f - t*t/freq/freq) * std::exp(-1.0f * t*t/2.0f/freq/freq);
+    this->value *= this->ampl;
+}

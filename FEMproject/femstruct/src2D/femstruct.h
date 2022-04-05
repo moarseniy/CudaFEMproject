@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #include "Linal2.h"
 #include "Tools.h"
@@ -28,11 +30,15 @@ struct Element {
     // CalculateStiffnessMatrix will be deprecated!
     void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY);
     void CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY);
+    void CalculateMlocal(float rho, MyArray& nodesX, MyArray& nodesY, bool lumped);
+    void CalculateClocal(float alpha, float beta);
     void CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY,  float pressure_value);
     int Global2LocalNode(int glob_num);
     Element() {
         B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
         Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
+        Mlocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
+        Clocal.Resize(6 * (DIM - 1), 6 * (DIM - 1)); alpha = 0; beta = 0;
         Flocal.Resize(6 * (DIM - 1));
         //Q.Resize();
 
@@ -47,6 +53,8 @@ struct Element {
     //void FindSparseSize(std::vector<couple> &Sparse);
     Matrix B;
     Matrix Klocal;
+    Matrix Mlocal;
+    Matrix Clocal; float alpha, beta;   // C = alpha * M + beta * K;
     MyArray Flocal;
     //Matrix Q;
 
@@ -76,6 +84,23 @@ struct Constraint {
     };
     int node;
     Type type;
+};
+
+struct Load {
+    int dof;
+    float value;
+    float ampl, freq, timeshift;
+
+    void (Load::*wavelet)(float);
+
+    Load() {
+        wavelet = &Load::Constant;
+        timeshift = 0.0f;
+    }
+
+    void update(float t);
+    void Ricker(float t);
+    void Constant(float t);
 };
 
 struct Couple {

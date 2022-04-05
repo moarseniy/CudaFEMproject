@@ -58,7 +58,7 @@ public:
     void AllocateDynamicMemory() {
         nodesX.Resize(nodesCount);
         nodesY.Resize(nodesCount);
-        loads.Resize(DIM * nodesCount);
+        //loads.Resize(DIM * nodesCount);
         displacements.Resize(DIM * nodesCount);
         D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
         pressure.Resize(boundaryEdgesCount);
@@ -80,9 +80,10 @@ public:
     MyArray nodesY;
     std::vector<Element>        elements;
     std::vector<Constraint>     constraints;
+    std::vector<Load>           loads;
     std::vector<BoundaryEdge>	boundary;       // stores only those boundary edges
                                                 // that have nonzero boundary conditions
-    MyArray loads;
+    //MyArray loads;
     MyArray displacements;
     MyArray pressure;
 

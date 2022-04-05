@@ -56,12 +56,29 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     }
 
 //    std::cout << "LOADS" << std::endl;
+    // ToDO: Add parsing of time-dependant functions like Ricker
     for (int i = 0; i < loadsCount; ++i) {
-        int node;
-        float x, y;
-        loads_file >> node >> x >> y;
-        loads[2 * node + 0] = x;
-        loads[2 * node + 1] = y;
+        int node; float xampl, yampl;
+        loads_file >> node >> xampl >> yampl;
+        if (!(xampl == 0.0)) {
+            Load load;
+            load.dof = node * 2 + 0;
+            load.value = xampl;
+            load.ampl = xampl;
+            loads.push_back(load);
+        }
+        if (!(yampl == 0.0)) {
+            Load load;
+            load.dof = node * 2 + 1;
+            load.value = yampl;
+            load.ampl = yampl;
+            loads.push_back(load);
+        }
+//        int node;
+//        float x, y;
+//        loads_file >> node >> x >> y;
+//        loads[2 * node + 0] = x;
+//        loads[2 * node + 1] = y;
 //        std::cout << node << ' ' << x << ' ' << y << std::endl;
     }
 

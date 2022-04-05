@@ -455,6 +455,20 @@ Matrix Matrix::Sum(Matrix &a) {
     return temp;
 }
 
+Matrix Matrix::weightedSum(Matrix &a, float alpha, float beta) {
+    Matrix temp(a.row, a.col);
+    if (row == a.row || col == a.col) {
+        for (int i = 0; i < temp.row; i++) {
+            for (int j = 0; j < temp.col; j++) {
+                temp(i, j) = alpha * m[j + i * col] + beta * a(i, j);
+            }
+        }
+    } else {
+        cout << "ERROR! Sum: row1!=row2 or col1!=col2" << endl;
+    }
+    return temp;
+}
+
 Matrix Matrix::Difference(Matrix &a) {
 	Matrix temp(a.row, a.col);
     if (row == a.row || col == a.col) {
