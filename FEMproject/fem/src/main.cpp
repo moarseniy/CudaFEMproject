@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
     float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
     float rho = 2400.0f;                // Density. Consider making std::stof(argv[7])
-    float alpha = 1.0f, beta = 2.0f;    // C = alpha * M + beta * K;
+    float damping_alpha = 0.0f, damping_beta = 0.0f;    // C = alpha * M + beta * K;
 
     bool withSmooth = SMOOTH;
     bool withMises = MISES;
@@ -45,11 +45,13 @@ int main(int argc, char *argv[]) {
 //    CalculateFEM_EbE(FEMdata);
     CalculateFEM_EbE_vec(FEMdata);
 
+//    float endtime = 0.21f;
 //    float dx = 0.7810f; // 9task_3         // minimal linear size of an element
 //    float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
 //    float dt_coef = 0.8f;
 //    float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
-//    CalculateFEM_dyn(FEMdata, rho, alpha, beta, dt);
+//    dt = 0.01f; //0.00243826f;    // from Fidesys
+//    CalculateFEM_dyn(FEMdata, rho, damping_alpha, damping_beta, endtime, dt);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 

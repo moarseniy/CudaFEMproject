@@ -1,0 +1,8 @@
+{
+	"CudaFEMproject_path": "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/",
+	"working_path": "C:/Users/mexika/Desktop/fem_stuff/",
+	"task": ["point_source2"],
+	"DIM": 2,
+	"youngModulus": 35216992930.08641,
+	"poissonRatio": 0.2737627651217596
+}

@@ -19,9 +19,34 @@ void ApplyLoads(MyArray& F, const std::vector<Load>& loads) {
     }
 }
 
-void ApplyLoads_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem) {
+void AssignLoadElement(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem) {
     CheckRunTime(__func__)
-    for (std::vector<Load>::const_iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
+    for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
+        it->assignElement(nodeAdjElem);
+    }
+}
+
+// Make sure that elements are assigned to each load before calling this function!
+// (call AssignLoadElement before calling this function)
+void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, MyArray> &loadVectors, float t) {
+    CheckRunTime(__func__)
+    for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
+        assert(it->elem != -1);
+        it->update(t);
+        MyArray elem_load(6 * (DIM - 1));
+        elem_load[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] = it->value;
+        if (loadVectors.find(it->elem) == loadVectors.end())        // Key not present
+            loadVectors[it->elem] = elem_load;
+        else
+            loadVectors[it->elem].add(elem_load);
+    }
+}
+
+// Make sure that elements are assigned to each load before calling this function!
+// (call AssignLoadElement before calling this function)
+void ApplyLoads_EbE(FEMdataKeeper &FEMdata) {
+    CheckRunTime(__func__)
+    for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
         //        int n_elems = nodeAdjElem[it->node].size();
         //        for (std::vector<int>::const_iterator it_elem = nodeAdjElem[it->node].begin(); it_elem != nodeAdjElem[it->node].end(); ++it_elem) {
         //            Element *elem = &FEMdata.elements[*it_elem];
@@ -29,8 +54,8 @@ void ApplyLoads_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector
         //            elem->Flocal[elem->Global2LocalNode(it->node) * 2 + 0] += it->x / static_cast<float>(n_elems);
         //            elem->Flocal[elem->Global2LocalNode(it->node) * 2 + 1] += it->y / static_cast<float>(n_elems);
         //        }
-        Element *elem = &FEMdata.elements[nodeAdjElem[it->dof / DIM][0]];
-        elem->Flocal[it->dof] += it->value;
+        assert(it->elem != -1);
+        FEMdata.elements[it->elem].blocal[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] += it->value;
     }
 }
 
@@ -533,27 +558,27 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
         n_adjelem[elem.nodesIds[2] * DIM + 0] += 1.0f;
         n_adjelem[elem.nodesIds[2] * DIM + 1] += 1.0f;
 
-        diag[3 * DIM * eIdx + 0] = elem.Klocal(0, 0);
-        diag[3 * DIM * eIdx + 1] = elem.Klocal(1, 1);
-        diag[3 * DIM * eIdx + 2] = elem.Klocal(2, 2);
-        diag[3 * DIM * eIdx + 3] = elem.Klocal(3, 3);
-        diag[3 * DIM * eIdx + 4] = elem.Klocal(4, 4);
-        diag[3 * DIM * eIdx + 5] = elem.Klocal(5, 5);
+        diag[3 * DIM * eIdx + 0] = elem.Alocal(0, 0);
+        diag[3 * DIM * eIdx + 1] = elem.Alocal(1, 1);
+        diag[3 * DIM * eIdx + 2] = elem.Alocal(2, 2);
+        diag[3 * DIM * eIdx + 3] = elem.Alocal(3, 3);
+        diag[3 * DIM * eIdx + 4] = elem.Alocal(4, 4);
+        diag[3 * DIM * eIdx + 5] = elem.Alocal(5, 5);
 
         for (int xlocal = 0; xlocal < 3 * DIM; ++xlocal) {
             for (int ylocal = 0; ylocal < 3 * DIM; ++ylocal) {
-                Ae.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Klocal(xlocal, ylocal));
+                Ae.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Alocal(xlocal, ylocal));
             }
         }
 
         // (0a)
         // Initialize vector r^(e)
-        r[3 * DIM * eIdx + 0] = elem.Flocal[0];
-        r[3 * DIM * eIdx + 1] = elem.Flocal[1];
-        r[3 * DIM * eIdx + 2] = elem.Flocal[2];
-        r[3 * DIM * eIdx + 3] = elem.Flocal[3];
-        r[3 * DIM * eIdx + 4] = elem.Flocal[4];
-        r[3 * DIM * eIdx + 5] = elem.Flocal[5];
+        r[3 * DIM * eIdx + 0] = elem.blocal[0];
+        r[3 * DIM * eIdx + 1] = elem.blocal[1];
+        r[3 * DIM * eIdx + 2] = elem.blocal[2];
+        r[3 * DIM * eIdx + 3] = elem.blocal[3];
+        r[3 * DIM * eIdx + 4] = elem.blocal[4];
+        r[3 * DIM * eIdx + 5] = elem.blocal[5];
     }
 
     // (0b)
@@ -628,29 +653,30 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
 
 }
 
+// Note that instead of Klocal is Alocal
 void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem, float eps) {
     // see article "A distributed memory parallel element-by-element scheme based on Jacobi-conditioned conjugate gradient for 3D finite element analysis"
     // by Yaoru Liu, Weiyuan Zhou, Qiang Yang
     CheckRunTime(__func__)
 
-    float eps_div = 1e-30f;
     float gamma0 = 0.0f;
     float gamma = 0.0f;
     float gamma_new = 0.0f;
 
     int enum_it = 0;
 
-    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {        
         // (0a)
-        it->r = it->Flocal;
+        it->r = it->blocal;
+        //it->r.Show();
 
         // (0b)
         for (int local_node = 0; local_node < 3; ++local_node) {
             std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
             for (int i = 0; i < adjElems.size(); ++i) {
                 int tmp = FEMdata.elements[adjElems[i]].Global2LocalNode(it->nodesIds[local_node]);
-                it->m[local_node * 2 + 0] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 0, tmp * 2 + 0));
-                it->m[local_node * 2 + 1] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 1, tmp * 2 + 1));
+                it->m[local_node * 2 + 0] += float(FEMdata.elements[adjElems[i]].Alocal(tmp * 2 + 0, tmp * 2 + 0));
+                it->m[local_node * 2 + 1] += float(FEMdata.elements[adjElems[i]].Alocal(tmp * 2 + 1, tmp * 2 + 1));
             }
         }
 
@@ -698,7 +724,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     float sumElem = 0.0f;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (1a-d)
-        it->u = it->Klocal.Product(it->p);
+        it->u = it->Alocal.Product(it->p);
         float tmp = it->p.dot_product(it->u);
         sumElem += tmp;
     }
@@ -711,7 +737,7 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (2a)
-        it->x.add_weighted(it->p, 1.0f, alpha);
+        it->res.add_weighted(it->p, 1.0f, alpha);
         // (2b)
         it->r.add_weighted(it->u, 1.0f, -1.0f * alpha);
 
@@ -802,9 +828,21 @@ void CalculateFEM_EbE(FEMdataKeeper &FEMdata) {
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    ApplyLoads_EbE(FEMdata, nodeAdjElem);
     ApplyConstraints_EbE(FEMdata);
+    AssignLoadElement(FEMdata, nodeAdjElem);
+    ApplyLoads_EbE(FEMdata);
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->Alocal = it->Klocal;
+    }
+    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+        FEMdata.elements[it->adj_elem1].blocal.add(FEMdata.elements[it->adj_elem1].Flocal);
+    }
+
     PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->x = it->res;
+    }
     AssemblyX(FEMdata, nodeAdjElem);
 }
 
@@ -822,17 +860,33 @@ void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata) {
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    ApplyLoads_EbE(FEMdata, nodeAdjElem);
+    AssignLoadElement(FEMdata, nodeAdjElem);
+    ApplyLoads_EbE(FEMdata);
     ApplyConstraints_EbE(FEMdata);
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->Alocal = it->Klocal;
+    }
+    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+        FEMdata.elements[it->adj_elem1].blocal.add(FEMdata.elements[it->adj_elem1].Flocal);
+    }
+
     PCG_EbE_vec(FEMdata, FEMdata.displacements, 1e-10f);
 }
 
-void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float alpha, float beta, float dt) {
+void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt) {
+    // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
     CheckRunTime(__func__)
+    float beta1 = 1.0f;
+    float beta2 = 0.5f;
+    // beta2 = 0.0 -- explicit scheme (assuming both M and C are diagonal)
+    // implicit scheme: beta1 >= beta2 >= 1/2
+    assert(beta2 == 0.0f || beta2 >= beta1);
+
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
         it->CalculateMlocal(rho, FEMdata.nodesX, FEMdata.nodesY, false);
-        it->CalculateClocal(alpha, beta);
+        it->CalculateClocal(damping_alpha, damping_beta);
     }
 
     int num = 0;
@@ -843,10 +897,57 @@ void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float alpha, float beta
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
     CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-    ApplyLoads_EbE(FEMdata, nodeAdjElem); // Consider adding loads explicitly at every timestep, without rewriting the F vector
     ApplyConstraints_EbE(FEMdata);
-    //PCG_EbE_vec(FEMdata, FEMdata.displacements, 1e-10f);
-    PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->Alocal = it->Mlocal.weightedSum(it->Clocal, 1.0f, beta1 * dt);
+        it->Alocal = it->Alocal.weightedSum(it->Klocal, 1.0f, 0.5f * beta2 * dt*dt);
+    }
+
+    AssignLoadElement(FEMdata, nodeAdjElem);
+
+    std::unordered_map <int, MyArray> loadVectors;
+    //GetMapElement2Loadvector(FEMdata, loadVectors_old, 0.0f);
+
+    // Set initial condition. Assumed that zero. ToDO: add initial conditions to prepared_meshes
+
+    int endnt = static_cast<int>(endtime / dt);
+    int nt = 1;
+    while (nt <= endnt) {
+        float t = nt*dt;
+        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
+        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
+        for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+            it->x_pred = it->x;
+            it->x_pred.add_weighted(it->vel, 1.0, dt);
+            it->x_pred.add_weighted(it->res, 1.0f, 0.5f * (1 - beta2) * dt*dt);
+
+            it->vel_pred = it->vel;
+            it->vel_pred.add_weighted(it->res, 1.0f, (1 - beta1) * dt);
+
+            it->blocal = it->Clocal.Product(it->vel_pred);
+            it->blocal.add(it->Klocal.Product(it->x_pred));
+            it->blocal.scale(-1.0f);
+            it->blocal.add(it->Flocal);  // Seems to be the same (that is, Flocal), see formula (17.15)
+        }
+
+        GetMapElement2Loadvector(FEMdata, loadVectors, t);
+        for (auto& it: loadVectors) {
+            FEMdata.elements[it.first].blocal.add(loadVectors[it.first]);
+        }
+
+        PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
+        for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+            it->x = it->x_pred;
+            it->x.add_weighted(it->res, 1.0f, 0.5f * beta2 * dt*dt);
+            it->vel = it->vel_pred;
+            it->vel.add_weighted(it->res, 1.0f, beta1 * dt);
+        }
+
+        ++nt;
+        std::cout << std::endl;
+    }
+
     AssemblyX(FEMdata, nodeAdjElem);
 }
 

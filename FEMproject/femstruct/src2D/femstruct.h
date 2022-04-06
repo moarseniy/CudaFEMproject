@@ -39,13 +39,19 @@ struct Element {
         Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
         Mlocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
         Clocal.Resize(6 * (DIM - 1), 6 * (DIM - 1)); alpha = 0; beta = 0;
+        Alocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
         Flocal.Resize(6 * (DIM - 1));
+        blocal.Resize(6 * (DIM - 1));
+        res.Resize(6 * (DIM - 1));
         //Q.Resize();
 
         // for PCG EbE
         m.Resize(3 * DIM); x.Resize(3 * DIM); r.Resize(3 * DIM);
         z.Resize(3 * DIM); s.Resize(3 * DIM); p.Resize(3 * DIM);
         u.Resize(3 * DIM);
+
+        // for dynamics
+        x_pred.Resize(3 * DIM); vel_pred.Resize(3 * DIM); vel.Resize(3 * DIM);
 
         // for debug in PCG EbE. Delete after is done!
         b.Resize(3 * DIM);
@@ -56,7 +62,16 @@ struct Element {
     Matrix Mlocal;
     Matrix Clocal; float alpha, beta;   // C = alpha * M + beta * K;
     MyArray Flocal;
+
+    Matrix Alocal;
+    MyArray blocal;
+    MyArray res;
     //Matrix Q;
+
+    // for dynamics
+    // --------------------------
+    MyArray x_pred, vel_pred, vel;
+    // --------------------------
 
     // for PCG EbE
     // --------------------------
@@ -88,6 +103,8 @@ struct Constraint {
 
 struct Load {
     int dof;
+    int elem;   // For EbE. If the node has two or more adjacent element,
+                // then only one of these elements has the total load contribution
     float value;
     float ampl, freq, timeshift;
 
@@ -96,8 +113,10 @@ struct Load {
     Load() {
         wavelet = &Load::Constant;
         timeshift = 0.0f;
+        elem = -1; // no element assigned
     }
 
+    void assignElement(std::unordered_map <int, std::vector<int>> nodeAdjElem);
     void update(float t);
     void Ricker(float t);
     void Constant(float t);

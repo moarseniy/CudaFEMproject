@@ -232,6 +232,10 @@ int Element::Global2LocalNode(int glob_num) {
     assert(false);
 }
 
+void Load::assignElement(std::unordered_map <int, std::vector<int>> nodeAdjElem) {
+    this->elem = nodeAdjElem[this->dof / DIM][0];
+}
+
 void Load::update(float t) {
     if (t < this->timeshift) {
         this->value = 0.0f;
@@ -245,7 +249,11 @@ void Load::Constant(float t) {
 }
 
 void Load::Ricker(float t) {
-    this->value = 2.0f / (std::sqrtf(3.0f * freq * std::sqrtf(M_PI))) *
-            (1.0f - t*t/freq/freq) * std::exp(-1.0f * t*t/2.0f/freq/freq);
+//    this->value = 2.0f / (std::sqrtf(3.0f * freq * std::sqrtf(M_PI))) *
+//            (1.0f - t*t/freq/freq) * std::exp(-1.0f * t*t/2.0f/freq/freq); // Wikipedia
+    float tmp = M_PI * this->freq * t - M_PI;
+    this->value = (1.0f - 2.0f * tmp*tmp) *
+            std::exp(-1.0f * tmp*tmp); // Fidesys
+
     this->value *= this->ampl;
 }

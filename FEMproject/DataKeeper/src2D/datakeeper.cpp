@@ -70,8 +70,11 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
         if (!(yampl == 0.0)) {
             Load load;
             load.dof = node * 2 + 1;
+            // EDITED!!!! For Ricker
+            load.wavelet = &Load::Ricker;
             load.value = yampl;
             load.ampl = yampl;
+            load.freq = 15;
             loads.push_back(load);
         }
 //        int node;
