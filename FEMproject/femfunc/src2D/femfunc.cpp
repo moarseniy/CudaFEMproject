@@ -529,7 +529,6 @@ void ApplyConstraints_EbE_erroneous(FEMdataKeeper &FEMdata, std::unordered_map <
 }
 
 void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
-    CheckRunTime(__func__)
     int n_elems  = FEMdata.elementsCount;
     int n_gl_dofs = FEMdata.nodesCount * DIM;
 
@@ -541,7 +540,7 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
     MyArray n_adjelem(n_gl_dofs);
 
     SparseMatrixCOO Q (grid_size);          // Reduction mask Q
-    SparseMatrixCOO Ae(3*DIM * 3*DIM * n_elems);    // Block diagonal matrix consisting of A^(e)
+    SparseMatrixCOO Ae(FEMdata.nonzeroMatrixNumCount);    // Block diagonal matrix consisting of A^(e)
     for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
         Element elem = FEMdata.elements[eIdx];
         Q.write_value(3 * DIM * eIdx + 0 * DIM + 0, elem.nodesIds[0] * DIM + 0, 1);
@@ -862,7 +861,13 @@ void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata) {
 
     AssignLoadElement(FEMdata, nodeAdjElem);
     ApplyLoads_EbE(FEMdata);
+
+    int nonzero_matrix_numbers = 0;
     ApplyConstraints_EbE(FEMdata);
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        nonzero_matrix_numbers += it->Klocal.CountNonzero();
+    }
+    FEMdata.nonzeroMatrixNumCount = nonzero_matrix_numbers;
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         it->Alocal = it->Klocal;

@@ -189,6 +189,38 @@ MyArray MyArray::divideByElementwise(MyArray a) {
     return res;
 }
 
+//void MyArray::multiplyElementwise(MyArray a) {
+//    assert(this->array_size == a.get_size());
+
+//    for (int i = 0; i < this->array_size; ++i) {
+//        this->p[i] = this->p[i] * a[i];
+//    }
+//}
+
+//void MyArray::divideByElementwise(MyArray a) {
+//    assert(this->array_size == a.get_size());
+
+//    for (int i = 0; i < this->array_size; ++i) {
+//        this->p[i] = this->p[i] / a[i];
+//    }
+//}
+
+//void MyArray::multiplyElementwise(MyArray a, MyArray &res) {
+//    assert(this->array_size == a.get_size());
+
+//    for (int i = 0; i < this->array_size; ++i) {
+//        res[i] = this->p[i] * a[i];
+//    }
+//}
+
+//void MyArray::divideByElementwise(MyArray a, MyArray &res) {
+//    assert(this->array_size == a.get_size());
+
+//    for (int i = 0; i < this->array_size; ++i) {
+//        res[i] = this->p[i] / a[i];
+//    }
+//}
+
 bool MyArray::equalsToArray(MyArray a, float eps) {
     if (this->array_size != a.get_size()) {
         std::cout << "Dimension mismatch!\n";
@@ -360,6 +392,17 @@ void Matrix::Show() {
 		cout << endl;		
 	}
 	cout << endl;
+}
+
+int Matrix::CountNonzero() {
+    int count = 0;
+    for (int i = 0; i < row; i++) {
+        for (int j = 0; j < col; j++) {
+            if (!(m[j + i * col] == 0.0f)) ++count;
+        }
+    }
+
+    return count;
 }
 
 bool Matrix::equalsToMatrix(Matrix &a, float eps) {
@@ -1177,6 +1220,18 @@ MyArray SparseMatrixCOO::MultiplyTransposedByVector(MyArray v, int res_size) {
 
     return res;
 }
+
+//void SparseMatrixCOO::MultiplyByVector(MyArray v, MyArray &res) {
+//    for (int i = 0; i < this->sparse_size; ++i) {
+//        res[this->x[i]] += this->data[i] * v[this->y[i]];
+//    }
+//}
+
+//void SparseMatrixCOO::MultiplyTransposedByVector(MyArray v, MyArray &res) {
+//    for (int i = 0; i < this->sparse_size; ++i) {
+//        res[this->y[i]] += this->data[i] * v[this->x[i]];
+//    }
+//}
 
 void SparseMatrixCOO::SortIt() {
     CheckRunTime(__func__)

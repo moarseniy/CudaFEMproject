@@ -34,6 +34,10 @@ public:
     bool equalsToArray(MyArray a, float eps);
     MyArray multiplyElementwise(MyArray a);
     MyArray divideByElementwise(MyArray a);
+//    void multiplyElementwise(MyArray a);
+//    void divideByElementwise(MyArray a);
+//    void multiplyElementwise(MyArray a, MyArray &res);
+//    void divideByElementwise(MyArray a, MyArray &res);
 
 	void grad(float (*f)(MyArray x), MyArray &res, float eps);
 	void Hessian(float (*f)(MyArray x), Matrix &matr, float eps);
@@ -91,6 +95,7 @@ public:
 	Matrix Difference(Matrix &a);
 	Matrix Product(Matrix &a);
     MyArray Product(MyArray &v);
+    int CountNonzero();
 	Matrix & transpose();
     bool equalsToMatrix(Matrix &a, float eps);
 
@@ -139,6 +144,8 @@ public:
     void SparseLU();
     void CGM_solve(MyArray B, MyArray &x_k, float eps);
     void PCG_solve(MyArray B, MyArray &x_k, float eps);
+//    void MultiplyByVector(MyArray v, MyArray &res);
+//    void MultiplyTransposedByVector(MyArray v, MyArray &res);
     MyArray MultiplyByVector(MyArray v, int res_size);
     MyArray MultiplyTransposedByVector(MyArray v, int res_size);
     void set_diag_elements();

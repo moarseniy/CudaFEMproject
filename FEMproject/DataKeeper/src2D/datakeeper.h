@@ -22,6 +22,8 @@ public:
         this->proj_dir = project_directory;
         this->prep_mesh_dir = prepared_meshes_directory;
         this->res_dir = results_directory;
+
+        this->nonzeroMatrixNumCount = -1;
     }
 
     void ParseFiles(float poissonRatio, float youngModulus);
@@ -74,6 +76,7 @@ public:
     int boundaryEdgesCount;
     int loadsCount;
     int constraintsCount;
+    int nonzeroMatrixNumCount;
 
     Matrix D;
     MyArray nodesX;
