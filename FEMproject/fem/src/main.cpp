@@ -43,15 +43,15 @@ int main(int argc, char *argv[]) {
 
 //    CalculateFEM(FEMdata);
 //    CalculateFEM_EbE(FEMdata);
-    CalculateFEM_EbE_vec(FEMdata);
+//    CalculateFEM_EbE_vec(FEMdata);
 
-//    float endtime = 0.21f;
-//    float dx = 0.7810f; // 9task_3         // minimal linear size of an element
-//    float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
-//    float dt_coef = 0.8f;
-//    float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
-//    dt = 0.01f; //0.00243826f;    // from Fidesys
-//    CalculateFEM_dyn(FEMdata, rho, damping_alpha, damping_beta, endtime, dt);
+    float endtime = 0.15f;
+    float dx = 0.7810f; // 9task_3         // minimal linear size of an element
+    float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
+    float dt_coef = 0.8f;
+    float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
+    dt = 0.002f; //0.00243826f;    // from Fidesys
+    CalculateFEM_dyn_vec(FEMdata, rho, damping_alpha, damping_beta, endtime, dt);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 

@@ -898,18 +898,18 @@ SparseMatrixCOO::SparseMatrixCOO() {
 
 SparseMatrixCOO::SparseMatrixCOO(int size) {
     this->sparse_size = size;
-	this->x = new int[sparse_size];
-	this->y = new int[sparse_size];
-    this->data = new float[sparse_size];
+    this->x = size == 0? nullptr : new int[sparse_size];
+    this->y = size == 0? nullptr : new int[sparse_size];
+    this->data = size == 0? nullptr : new float[sparse_size];
     this->sorted = false;
     this->data_pointer = 0;
 }
 
 SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
     sparse_size = m.sparse_size;
-    this->x = new int[sparse_size];
-    this->y = new int[sparse_size];
-    this->data = new float[sparse_size];
+    this->x = sparse_size == 0? nullptr : new int[sparse_size];
+    this->y = sparse_size == 0? nullptr : new int[sparse_size];
+    this->data = sparse_size == 0? nullptr : new float[sparse_size];
     this->sorted = false;
     this->data_pointer = sparse_size;
 

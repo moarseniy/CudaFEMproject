@@ -20,6 +20,7 @@ void CalculateFEM(FEMdataKeeper &FEMdata);
 void CalculateFEM_EbE(FEMdataKeeper &FEMdata);
 void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata);
 void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float alpha, float beta, float endtime, float dt);
+void CalculateFEM_dyn_vec(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt);
 void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::vector<int>> &a);
 void AssignLoadElement(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem);
 void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, MyArray> &loadVectors, float t);

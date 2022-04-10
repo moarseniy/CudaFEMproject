@@ -528,7 +528,8 @@ void ApplyConstraints_EbE_erroneous(FEMdataKeeper &FEMdata, std::unordered_map <
     }
 }
 
-void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
+void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float eps) {
+    CheckRunTime(__func__)
     int n_elems  = FEMdata.elementsCount;
     int n_gl_dofs = FEMdata.nodesCount * DIM;
 
@@ -647,8 +648,11 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, float eps) {
 
     } while (1);
 
-    res = Q.MultiplyTransposedByVector(x, n_gl_dofs);
-    res = res.divideByElementwise(n_adjelem);
+    if (doAssemblyRes) {
+        res = Q.MultiplyTransposedByVector(x, n_gl_dofs);
+        res = res.divideByElementwise(n_adjelem);
+    } else
+        res = x;
 
 }
 
@@ -667,7 +671,6 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {        
         // (0a)
         it->r = it->blocal;
-        //it->r.Show();
 
         // (0b)
         for (int local_node = 0; local_node < 3; ++local_node) {
@@ -876,14 +879,14 @@ void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata) {
         FEMdata.elements[it->adj_elem1].blocal.add(FEMdata.elements[it->adj_elem1].Flocal);
     }
 
-    PCG_EbE_vec(FEMdata, FEMdata.displacements, 1e-10f);
+    PCG_EbE_vec(FEMdata, FEMdata.displacements, true, 1e-10f);
 }
 
 void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt) {
     // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
     CheckRunTime(__func__)
-    float beta1 = 1.0f;
-    float beta2 = 0.5f;
+    const float beta1 = 0.55f;
+    const float beta2 = 0.5f;
     // beta2 = 0.0 -- explicit scheme (assuming both M and C are diagonal)
     // implicit scheme: beta1 >= beta2 >= 1/2
     assert(beta2 == 0.0f || beta2 >= beta1);
@@ -954,6 +957,162 @@ void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float damping_alpha, fl
     }
 
     AssemblyX(FEMdata, nodeAdjElem);
+}
+
+void CalculateFEM_dyn_vec(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt) {
+    // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
+    CheckRunTime(__func__)
+    const float beta1 = 0.55f; //0.55f;
+    const float beta2 = 0.5f; //0.5f;
+    // beta2 = 0.0 -- explicit scheme (assuming both M and C are diagonal -- make sure to lump mass matrix!)
+    // implicit scheme: beta1 >= beta2 >= 1/2
+    assert(beta2 == 0.0f || (beta1 >= beta2 && beta2 >= 0.5f));
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
+        it->CalculateMlocal(rho, FEMdata.nodesX, FEMdata.nodesY, false);
+        it->CalculateClocal(damping_alpha, damping_beta);
+    }
+
+    int num = 0;
+    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    }
+
+    std::unordered_map <int, std::vector<int>> nodeAdjElem;
+    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
+
+    ApplyConstraints_EbE(FEMdata);
+
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        it->Alocal = it->Mlocal.weightedSum(it->Clocal, 1.0f, beta1 * dt);
+        it->Alocal = it->Mlocal;
+        it->Alocal = it->Alocal.weightedSum(it->Klocal, 1.0f, 0.5f * beta2 * dt*dt);
+    }
+
+    AssignLoadElement(FEMdata, nodeAdjElem);
+
+    std::unordered_map <int, MyArray> loadVectors;
+
+    // Set initial condition. Assumed that zero. ToDO: add initial conditions to prepared_meshes
+
+    // ----------------------------------------------------------------------------------------------------------------
+    int n_elems  = FEMdata.elementsCount;
+    int n_gl_dofs = FEMdata.nodesCount * DIM;
+
+    int grid_size = 3 * DIM * n_elems;
+    MyArray x(grid_size), x_pred(grid_size), vel(grid_size),
+            vel_pred(grid_size), b(grid_size), res(grid_size),
+            F(grid_size);
+    MyArray n_adjelem(n_gl_dofs);
+    SparseMatrixCOO Q (grid_size);
+
+    int nonzeroK = 0, nonzeroA = 0, nonzeroC = 0;
+    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+        nonzeroK += it->Klocal.CountNonzero();
+        nonzeroA += it->Alocal.CountNonzero();
+        nonzeroC += it->Clocal.CountNonzero();
+    }
+
+    FEMdata.nonzeroMatrixNumCount = nonzeroA;
+
+    SparseMatrixCOO K(nonzeroK), C(nonzeroC);
+    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+        Element elem = FEMdata.elements[eIdx];
+
+        Q.write_value(3 * DIM * eIdx + 0 * DIM + 0, elem.nodesIds[0] * DIM + 0, 1);
+        Q.write_value(3 * DIM * eIdx + 0 * DIM + 1, elem.nodesIds[0] * DIM + 1, 1);
+        Q.write_value(3 * DIM * eIdx + 1 * DIM + 0, elem.nodesIds[1] * DIM + 0, 1);
+        Q.write_value(3 * DIM * eIdx + 1 * DIM + 1, elem.nodesIds[1] * DIM + 1, 1);
+        Q.write_value(3 * DIM * eIdx + 2 * DIM + 0, elem.nodesIds[2] * DIM + 0, 1);
+        Q.write_value(3 * DIM * eIdx + 2 * DIM + 1, elem.nodesIds[2] * DIM + 1, 1);
+
+        n_adjelem[elem.nodesIds[0] * DIM + 0] += 1.0f;
+        n_adjelem[elem.nodesIds[0] * DIM + 1] += 1.0f;
+        n_adjelem[elem.nodesIds[1] * DIM + 0] += 1.0f;
+        n_adjelem[elem.nodesIds[1] * DIM + 1] += 1.0f;
+        n_adjelem[elem.nodesIds[2] * DIM + 0] += 1.0f;
+        n_adjelem[elem.nodesIds[2] * DIM + 1] += 1.0f;
+
+        for (int xlocal = 0; xlocal < 3 * DIM; ++xlocal) {
+            for (int ylocal = 0; ylocal < 3 * DIM; ++ylocal) {
+                K.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Klocal(xlocal, ylocal));
+                if (nonzeroC != 0)
+                    C.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Clocal(xlocal, ylocal));
+            }
+        }
+
+        // (0a)
+        // Initialize vector F
+        F[3 * DIM * eIdx + 0] = elem.Flocal[0];
+        F[3 * DIM * eIdx + 1] = elem.Flocal[1];
+        F[3 * DIM * eIdx + 2] = elem.Flocal[2];
+        F[3 * DIM * eIdx + 3] = elem.Flocal[3];
+        F[3 * DIM * eIdx + 4] = elem.Flocal[4];
+        F[3 * DIM * eIdx + 5] = elem.Flocal[5];
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+
+    int endnt = static_cast<int>(endtime / dt);
+    int nt = 1;
+    while (nt <= endnt) {
+        float t = nt*dt;
+        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
+        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
+        x_pred = x;
+        x_pred.add_weighted(vel, 1.0f, dt);
+        x_pred.add_weighted(res, 1.0f, 0.5f * (1.0f - beta2) * dt*dt);
+
+        vel_pred = vel;
+        vel_pred.add_weighted(res, 1.0f, (1.0f - beta1) * dt);
+
+        b = C.MultiplyByVector(vel_pred, grid_size);
+        b.add(K.MultiplyByVector(x_pred, grid_size));
+        b.scale(-1.0f);
+        b.add(F);  // Seems to be the same (that is, F), see formula (17.15)
+
+        GetMapElement2Loadvector(FEMdata, loadVectors, t);
+        for (auto& it: loadVectors) {
+            b[3 * DIM * it.first + 0] += loadVectors[it.first][0];
+            b[3 * DIM * it.first + 1] += loadVectors[it.first][1];
+            b[3 * DIM * it.first + 2] += loadVectors[it.first][2];
+            b[3 * DIM * it.first + 3] += loadVectors[it.first][3];
+            b[3 * DIM * it.first + 4] += loadVectors[it.first][4];
+            b[3 * DIM * it.first + 5] += loadVectors[it.first][5];
+        }
+
+        for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+            FEMdata.elements[eIdx].blocal[0] = b[3 * DIM * eIdx + 0];
+            FEMdata.elements[eIdx].blocal[1] = b[3 * DIM * eIdx + 1];
+            FEMdata.elements[eIdx].blocal[2] = b[3 * DIM * eIdx + 2];
+            FEMdata.elements[eIdx].blocal[3] = b[3 * DIM * eIdx + 3];
+            FEMdata.elements[eIdx].blocal[4] = b[3 * DIM * eIdx + 4];
+            FEMdata.elements[eIdx].blocal[5] = b[3 * DIM * eIdx + 5];
+        }
+
+        PCG_EbE_vec(FEMdata, res, false, 1e-10f);
+//        PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
+//        for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+//            res[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].res[0];
+//            res[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].res[1];
+//            res[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].res[2];
+//            res[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].res[3];
+//            res[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].res[4];
+//            res[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].res[5];
+//        }
+
+        x = x_pred;
+        x.add_weighted(res, 1.0f, 0.5f * beta2 * dt*dt);
+        vel = vel_pred;
+        vel.add_weighted(res, 1.0f, beta1 * dt);
+
+        ++nt;
+        std::cout << std::endl;
+    }
+
+    FEMdata.displacements = Q.MultiplyTransposedByVector(x, n_gl_dofs);
+    FEMdata.displacements = FEMdata.displacements.divideByElementwise(n_adjelem);
 }
 
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,
