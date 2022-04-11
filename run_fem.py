@@ -2,7 +2,7 @@ import os, json, sys, shutil
 
 from mesh_parser_lib.fem_parser import run_parser
 from postprocessing.postprocessing import run_postprocessing
-
+from run_tests import run_tests
 
 if __name__ == '__main__':
     
@@ -73,6 +73,9 @@ if __name__ == '__main__':
         print('\nRUN Postprocessing for ' + task_name)
         run_postprocessing(results_dir + '/output/')
         print('FINISHED Postprocessing for ' + task_name)
-    
+    print('\nTESTING STARTED')
+    test_task_list = ['9task_3', 'test_rect_pcg']
+    run_tests(proj_dir, work_dir, test_task_list)
+    print('TESTING COMPLETED')
 
     

@@ -17,4 +17,4 @@ else ()
 endif()
 
 
-TARGET_LINK_LIBRARIES(femfunc Linal2 Tools datakeeper femstruct VTKfile)
+TARGET_LINK_LIBRARIES(femfunc Linal2 Tools datakeeper femstruct VTKfile cuda_lib)

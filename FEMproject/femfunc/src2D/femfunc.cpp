@@ -426,13 +426,10 @@ void CalculateMisesAlongLineMises(std::vector<float> &MisesComponents,
 }
 
 void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::vector<int>> &a) {
-    CheckRunTime(__func__)
-    int n = 0;
-    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-        a[it->nodesIds[0]].push_back(n);
-        a[it->nodesIds[1]].push_back(n);
-        a[it->nodesIds[2]].push_back(n);
-        n++;
+    for (int n = 0; n < FEMdata.elements.size(); ++n) {
+        a[FEMdata.elements[n].nodesIds[0]].push_back(n);
+        a[FEMdata.elements[n].nodesIds[1]].push_back(n);
+        a[FEMdata.elements[n].nodesIds[2]].push_back(n);
     }
 }
 
@@ -468,63 +465,45 @@ void ApplyConstraints_EbE(FEMdataKeeper &FEMdata) {
     }
 }
 
-void ApplyConstraints_EbE_erroneous(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &nodeAdjElem) {
+void PCG_EbE2(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &node2adj_elem, float eps) {
+    float gamma0 = 0.0f;
+    float gamma = 0.0f;
+    float gamma_new = 0.0f;
+
+    int enum_it = 0;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-        for (std::vector<Constraint>::const_iterator itc = FEMdata.constraints.begin(); itc != FEMdata.constraints.end(); ++itc) {
-            for (int local_node = 0; local_node < 3; ++local_node) {
-                if (it->nodesIds[local_node] == itc->node) {
-                    std::vector<int> adjElems = nodeAdjElem[itc->node];
-                    for (int i = 0; i < adjElems.size(); ++i) {
-                        Element adj_elem = FEMdata.elements[adjElems[i]];
+        // (0a)
+        it->r = it->Flocal;
 
-                        for (int adj_local_node = 0; adj_local_node < 3; ++adj_local_node) {
-                            if (adj_elem.nodesIds[adj_local_node] == itc->node) {
-//                                std::cout << "Before aplying constraints:" << std::endl;
-//                                adj_elem.Klocal.Show();
-                                if (itc->type & Constraint::UX) {
-                                    int mIdx = 2 * adj_local_node + 0;
-
-                                    adj_elem.Flocal[mIdx] = 0.0;
-
-                                    adj_elem.Klocal(mIdx, (mIdx + 1) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 2) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 3) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 4) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 5) % 6) = 0.0;
-                                    adj_elem.Klocal((mIdx + 1) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 2) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 3) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 4) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 5) % 6, mIdx) = 0.0;
-                                }
-                                if (itc->type & Constraint::UY) {
-                                    int mIdx = 2 * adj_local_node + 1;
-
-                                    adj_elem.Flocal[mIdx] = 0.0;
-
-                                    adj_elem.Klocal(mIdx, (mIdx + 1) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 2) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 3) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 4) % 6) = 0.0;
-                                    adj_elem.Klocal(mIdx, (mIdx + 5) % 6) = 0.0;
-                                    adj_elem.Klocal((mIdx + 1) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 2) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 3) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 4) % 6, mIdx) = 0.0;
-                                    adj_elem.Klocal((mIdx + 5) % 6, mIdx) = 0.0;
-                                }
-
-//                                std::cout << "After aplying constraints:" << std::endl;
-//                                adj_elem.Klocal.Show();
-//                                std::cout << std::endl << std::endl;
-
-                                break;
-                            }
-                        }
-                    }
-                }
+        // (0b)
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            std::vector<int> adjElems = node2adj_elem[it->nodesIds[local_node]];
+            for (int i = 0; i < adjElems.size(); ++i) {
+                int tmp = FEMdata.elements[adjElems[i]].Global2LocalNode(it->nodesIds[local_node]);
+                it->m[local_node * 2 + 0] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 0, tmp * 2 + 0));
+                it->m[local_node * 2 + 1] += float(FEMdata.elements[adjElems[i]].Klocal(tmp * 2 + 1, tmp * 2 + 1));
             }
         }
+
+        // (0c)
+        for (int local_node = 0; local_node < 3; ++local_node) {
+            it->z[local_node * 2 + 0] = it->r[local_node * 2 + 0] / it->m[local_node * 2 + 0];
+            it->z[local_node * 2 + 1] = it->r[local_node * 2 + 1] / it->m[local_node * 2 + 1];
+        }
+
+        ++enum_it;
+
+    }
+}
+
+void GenerateMask(FEMdataKeeper FEMdata, MyArray &mask) {
+    for (int eIdx = 0; eIdx < FEMdata.elementsCount; ++eIdx) {
+        mask[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].nodesIds[0] * DIM + 0;
+        mask[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].nodesIds[0] * DIM + 1;
+        mask[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].nodesIds[1] * DIM + 0;
+        mask[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].nodesIds[1] * DIM + 1;
+        mask[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].nodesIds[2] * DIM + 0;
+        mask[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].nodesIds[2] * DIM + 1;
     }
 }
 
@@ -536,7 +515,9 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
     int grid_size = 3 * DIM * n_elems;
     MyArray r(grid_size), diag(grid_size), m(grid_size),
             z(grid_size), s(grid_size), p(grid_size),
-            u(grid_size), x(grid_size);
+            u(grid_size), x(grid_size), mask(grid_size);
+
+    GenerateMask(FEMdata, mask);
 
     MyArray n_adjelem(n_gl_dofs);
 
@@ -573,6 +554,13 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
 
         // (0a)
         // Initialize vector r^(e)
+//        r[3 * DIM * eIdx + 0] = elem.Flocal[0];
+//        r[3 * DIM * eIdx + 1] = elem.Flocal[1];
+//        r[3 * DIM * eIdx + 2] = elem.Flocal[2];
+//        r[3 * DIM * eIdx + 3] = elem.Flocal[3];
+//        r[3 * DIM * eIdx + 4] = elem.Flocal[4];
+//        r[3 * DIM * eIdx + 5] = elem.Flocal[5];
+
         r[3 * DIM * eIdx + 0] = elem.blocal[0];
         r[3 * DIM * eIdx + 1] = elem.blocal[1];
         r[3 * DIM * eIdx + 2] = elem.blocal[2];
@@ -582,21 +570,28 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
     }
 
     // (0b)
-    m = Q.MultiplyByVector(Q.MultiplyTransposedByVector(diag, n_gl_dofs), grid_size);
+
+    //m = Q.MultiplyByVector(Q.MultiplyTransposedByVector(diag, n_gl_dofs), grid_size);
+    gpuReductionWithMaskAndTransform(diag.get_data(), mask.get_data(), grid_size, m.get_data(), n_gl_dofs);
 
     // (0c)
     z = r.divideByElementwise(m);
 
     // (0d)
-    s = Q.MultiplyByVector(Q.MultiplyTransposedByVector(z, n_gl_dofs), grid_size);
-    float gamma0 = r.dot_product(s);
+
+    //s = Q.MultiplyByVector(Q.MultiplyTransposedByVector(z, n_gl_dofs), grid_size);
+    gpuReductionWithMaskAndTransform(z.get_data(), mask.get_data(), grid_size, s.get_data(), n_gl_dofs);
+
+    //float gamma0 = r.dot_product(s);
+    float gamma0 = gpuDotProduct(r.get_data(), s.get_data(), grid_size);
+    std::cout << gamma0 << " ";
     float gamma = gamma0;
     float gamma_new = 0.0f;
 
     // (0e)
     p = s;
 
-    std::cout.precision(16);
+    //std::cout.precision(16);
     std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
 
     int n_iter = 0;
@@ -605,22 +600,30 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
 
         // (1a)
         u = Ae.MultiplyByVector(p, grid_size);
+
         // (1b)
-        float sumElem = p.dot_product(u);
+        //float sumElem = p.dot_product(u);
+        float sumElem = gpuDotProduct(p.get_data(), u.get_data(), grid_size);
         // (1c,d)
         float alpha = gamma / sumElem;
 
         // (2a)
-        x.add_weighted(p, 1.0f, alpha);
+        //x.add_weighted(p, 1.0f, alpha);
+        gpuAddWeighted(x.get_data(), p.get_data(), 1.0f, alpha, grid_size);
+
         // (2b)
-        r.add_weighted(u, 1.0f, -1.0f * alpha);
+        //r.add_weighted(u, 1.0f, -1.0f * alpha);
+        gpuAddWeighted(r.get_data(), u.get_data(), 1.0f, -1.0f * alpha, grid_size);
 
         // (3)
         z = r.divideByElementwise(m);
 
         // (4)
-        s = Q.MultiplyByVector(Q.MultiplyTransposedByVector(z, n_gl_dofs), grid_size);
-        gamma_new = r.dot_product(s);
+        //s = Q.MultiplyByVector(Q.MultiplyTransposedByVector(z, n_gl_dofs), grid_size);
+        gpuReductionWithMaskAndTransform(z.get_data(), mask.get_data(), grid_size, s.get_data(), n_gl_dofs);
+
+        //gamma_new = r.dot_product(s);
+        gamma_new = gpuDotProduct(r.get_data(), s.get_data(), grid_size);
 
         // Verbose
         // -----------------------------------------------------------------------
@@ -635,7 +638,8 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
             break;
 
         // (6)
-        p.add_weighted(s, gamma_new / gamma, 1.0f);
+        //p.add_weighted(s, gamma_new / gamma, 1.0f);
+        gpuAddWeighted(p.get_data(), s.get_data(), gamma_new / gamma, 1.0f, grid_size);
 
         // Verbose
         // -----------------------------------------------------------------------
@@ -647,12 +651,13 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
         gamma = gamma_new;
 
     } while (1);
-
     if (doAssemblyRes) {
-        res = Q.MultiplyTransposedByVector(x, n_gl_dofs);
+        //res = Q.MultiplyTransposedByVector(x, n_gl_dofs); //TODO: JUST REDUCTION
+        gpuReductionWithMask(x.get_data(), mask.get_data(), grid_size, res.get_data(), n_gl_dofs);
         res = res.divideByElementwise(n_adjelem);
-    } else
+    } else {
         res = x;
+    }
 
 }
 
@@ -715,14 +720,18 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     gamma = gamma0;
 
-    std::cout.precision(16);
-    std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
+    if (PRINT_DEBUG_INFO) {
+        //std::cout.precision(16);
+        std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
+    }
 
     int n_iter = 0;
     do {
     ++n_iter;
     int enum_it = 0;
-    std::cout << "Iteration #" << n_iter << std::endl;
+    if (PRINT_DEBUG_INFO) {
+        std::cout << "Iteration #" << n_iter << std::endl;
+    }
     float sumElem = 0.0f;
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (1a-d)
@@ -733,9 +742,11 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
 
     float alpha = gamma / sumElem;
 
-    std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
-    std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
-    std::cout << "alpha denominator\t= " << sumElem << std::endl;
+    if (PRINT_DEBUG_INFO) {
+        std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
+        std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
+        std::cout << "alpha denominator\t= " << sumElem << std::endl;
+    }
 
     for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
         // (2a)
@@ -779,12 +790,12 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
         it->p.add_weighted(it->s, gamma_new / gamma, 1.0f);
     }
 
-    std::cout << "beta\t\t\t= " << gamma_new / gamma << std::endl;
-    std::cout << "gamma_new\t\t= " << gamma_new << std::endl;
+    if (PRINT_DEBUG_INFO) {
+        std::cout << "beta\t\t\t= " << gamma_new / gamma << std::endl;
+        std::cout << "gamma_new\t\t= " << gamma_new << std::endl;
+    }
 
     gamma = gamma_new;
-
-    std::cout << std::endl;
 
     } while (1);
 }
@@ -808,10 +819,6 @@ void CalculateFEM(FEMdataKeeper &FEMdata) {
     ApplyConstraints(globalK, F, FEMdata.constraints); //, FEMdata.nodesCount);
 
     globalK.SortIt();
-    globalK.set_diag_elements();
-    std::vector<float> diag_elem = globalK.get_diag_elements();
-    int nonzero = globalK.CountNonZero();
-    cout << "nonzero = " << nonzero << endl;
 
     globalK.PCG_solve(F, FEMdata.displacements, 1e-10f);
 }
@@ -1219,14 +1226,10 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
 
 void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string output_vtk) {
     std::string path_stress = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + ".txt";
-    std::string path_stress_smooth = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_smooth.txt";
-    std::string path_stress_mises = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_mises.txt";
-
-    std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
-    std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
-    std::cout << "MisesComponents Size = " << RESdata.MisesComponents.size() << "\n";
-
-    fstream out1, out2, out3;
+    if (PRINT_DEBUG_INFO) {
+        std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
+    }
+    fstream out1;
 
     out1.open(path_stress, fstream::out);
     out1 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
@@ -1235,6 +1238,11 @@ void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string 
     }
 
     if (RESdata.withSmooth) {
+        fstream out2;
+        std::string path_stress_smooth = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_smooth.txt";
+        if (PRINT_DEBUG_INFO) {
+            std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
+        }
         out2.open(path_stress_smooth, fstream::out);
         out2 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
         for (int i = 0; i < RESdata.StressComponentsSmooth.size(); i+=2) {
@@ -1243,6 +1251,11 @@ void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string 
     }
 
     if (RESdata.withMises) {
+        fstream out3;
+        std::string path_stress_mises = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_mises.txt";
+        if (PRINT_DEBUG_INFO) {
+            std::cout << "MisesComponents Size = " << RESdata.MisesComponents.size() << "\n";
+        }
         out3.open(path_stress_mises, fstream::out);
         out3 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
         for (int i = 0; i < RESdata.MisesComponents.size(); i+=2) {

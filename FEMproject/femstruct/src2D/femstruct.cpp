@@ -126,7 +126,6 @@ void Element::CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY) {
 //    B.scale(s);
 
     Matrix temp1(6, 3);
-    Matrix temp2(6, 3);
     Matrix temp_B(3, 6);
 
 

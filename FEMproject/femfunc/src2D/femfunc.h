@@ -6,6 +6,7 @@
 #include "datakeeper.h"
 #include "femstruct.h"
 #include "VTKfile.h"
+#include "init.h"
 
 #include <iostream>
 #include <vector>

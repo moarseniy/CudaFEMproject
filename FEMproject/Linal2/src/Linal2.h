@@ -175,7 +175,9 @@ private:
     std::vector<float> diag_elems;
 	int nonzero;
     int sparse_size;
+
     bool sorted;
+    bool diag_elems_called;
     int data_pointer;
 
 	int *x;

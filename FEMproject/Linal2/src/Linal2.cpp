@@ -893,6 +893,7 @@ SparseMatrixCOO::SparseMatrixCOO() {
     this->y = nullptr;
     this->data = nullptr;
     this->sorted = false;
+    this->diag_elems_called = false;
     this->data_pointer = 0;
 }
 
@@ -902,6 +903,7 @@ SparseMatrixCOO::SparseMatrixCOO(int size) {
     this->y = size == 0? nullptr : new int[sparse_size];
     this->data = size == 0? nullptr : new float[sparse_size];
     this->sorted = false;
+    this->diag_elems_called = false;
     this->data_pointer = 0;
 }
 
@@ -911,6 +913,7 @@ SparseMatrixCOO::SparseMatrixCOO(const SparseMatrixCOO &m) {
     this->y = sparse_size == 0? nullptr : new int[sparse_size];
     this->data = sparse_size == 0? nullptr : new float[sparse_size];
     this->sorted = false;
+    this->diag_elems_called = false;
     this->data_pointer = sparse_size;
 
     for (int i = 0; i < sparse_size; i++) {
@@ -1383,13 +1386,16 @@ void SparseMatrixCOO::SparseLU() {
 }
 
 void SparseMatrixCOO::set_diag_elements() {
-    if (!this->sorted) {
-        this->SortIt();
-    }
-    for (int i = 0; i < sparse_size; ++i) {
-        if (x[i] == y[i]) {
-            this->diag_elems.push_back(data[i]);
+    if (!this->diag_elems_called) {
+        if (!this->sorted) {
+            this->SortIt();
         }
+        for (int i = 0; i < sparse_size; ++i) {
+            if (x[i] == y[i]) {
+                this->diag_elems.push_back(data[i]);
+            }
+        }
+        this->diag_elems_called = true;
     }
 }
 
@@ -1467,6 +1473,9 @@ void SparseMatrixCOO::CGM_solve(MyArray B, MyArray &x_k, float eps) {
 
 void SparseMatrixCOO::PCG_solve(MyArray B, MyArray &x_k, float eps) {
     CheckRunTime(__func__)
+
+    this->set_diag_elements();
+
     int n = B.get_size();
     int k = 1;
 
