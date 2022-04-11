@@ -1,0 +1,6 @@
+{
+	"task": ["9task_3"],
+	"DIM": 2,
+	"youngModulus": 2e+07,
+	"poissonRatio": 0.25
+}

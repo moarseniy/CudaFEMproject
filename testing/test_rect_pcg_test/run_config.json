@@ -1,0 +1,6 @@
+{
+	"task": ["test_rect_pcg"],
+	"DIM": 2,
+	"youngModulus": 2e+07,
+	"poissonRatio": 0.25
+}
