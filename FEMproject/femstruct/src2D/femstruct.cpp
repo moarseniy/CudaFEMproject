@@ -248,11 +248,9 @@ void Load::Constant(float t) {
 }
 
 void Load::Ricker(float t) {
-//    this->value = 2.0f / (std::sqrtf(3.0f * freq * std::sqrtf(M_PI))) *
-//            (1.0f - t*t/freq/freq) * std::exp(-1.0f * t*t/2.0f/freq/freq); // Wikipedia
     float tmp = M_PI * this->freq * t - M_PI;
     this->value = (1.0f - 2.0f * tmp*tmp) *
-            std::exp(-1.0f * tmp*tmp); // Fidesys
+            std::exp(-1.0f * tmp*tmp);
 
     this->value *= this->ampl;
 }

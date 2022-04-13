@@ -67,6 +67,13 @@ void MyArray::Show() {
 	cout << endl;
 }
 
+void MyArray::ShowNonzero() {
+    for (int i = 0; i < array_size; i++) {
+        if (!(p[i] == 0.0f)) cout << "v(" << i << ") = " << p[i] << "\n";
+    }
+    cout << endl;
+}
+
 void MyArray::Set(int index, float value) {
 	if (p != nullptr) {
 		if((index >= 0) && (index < array_size)) {

@@ -20,6 +20,7 @@ public:
     ~MyArray();
     void Resize(int new_size);
 	void Show();
+    void ShowNonzero();
 	void zap();
 	void Set(int index, float value);
     void add(MyArray a);
