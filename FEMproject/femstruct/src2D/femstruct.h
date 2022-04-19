@@ -11,7 +11,31 @@
 #include "Tools.h"
 //#include "femfunc.h"
 
+// https://stackoverflow.com/a/313990
+#include <algorithm>
+#include <cctype>
+#include <string>
+
 using namespace std;
+
+struct TimeDependentEntity {
+    float value;
+    float ampl, freq, timeshift;
+
+    void (TimeDependentEntity::*wavelet)(float);
+
+    TimeDependentEntity() {
+        wavelet = &TimeDependentEntity::Constant;
+        timeshift = 0.0f;
+        ampl = 0.0f;    // no stress applied
+    }
+
+    bool isFloat(const std::string& str);
+    void parseString(std::string& str);
+    void update(float t);
+    void Ricker(float t);
+    void Constant(float t);
+};
 
 struct Edge {
     int node0, node1;
@@ -19,7 +43,14 @@ struct Edge {
                                 // see BoundaryEdge structure
 };
 
-struct BoundaryEdge : Edge {
+//struct BoundaryEdge : Edge {
+//    BoundaryEdge() {
+//        adj_elem2 = -1;
+//    }
+//    float normal_x, normal_y;   // make sure it is normalized
+//};
+
+struct BoundaryEdge : Edge, TimeDependentEntity {
     BoundaryEdge() {
         adj_elem2 = -1;
     }
@@ -32,7 +63,7 @@ struct Element {
     void CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY);
     void CalculateMlocal(float rho, MyArray& nodesX, MyArray& nodesY, bool lumped);
     void CalculateClocal(float alpha, float beta);
-    void CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY,  float pressure_value);
+    void CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, float t);
     int Global2LocalNode(int glob_num);
     Element() {
         B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
@@ -101,25 +132,17 @@ struct Constraint {
     Type type;
 };
 
-struct Load {
+struct Load : TimeDependentEntity {
     int dof;
     int elem;   // For EbE. If the node has two or more adjacent element,
                 // then only one of these elements has the total load contribution
-    float value;
-    float ampl, freq, timeshift;
-
-    void (Load::*wavelet)(float);
 
     Load() {
-        wavelet = &Load::Constant;
-        timeshift = 0.0f;
+        TimeDependentEntity();
         elem = -1; // no element assigned
     }
 
     void assignElement(std::unordered_map <int, std::vector<int>> nodeAdjElem);
-    void update(float t);
-    void Ricker(float t);
-    void Constant(float t);
 };
 
 struct Couple {

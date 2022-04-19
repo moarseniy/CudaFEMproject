@@ -3,14 +3,6 @@
 
 using namespace std;
 
-// I always liked strtof since it lets you specify an end pointer. [ https://stackoverflow.com/a/57163016 ]
-bool isFloat(const std::string& str)
-{
-    char* ptr;
-    strtof(str.c_str(), &ptr);
-    return (*ptr) == '\0';
-}
-
 void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     CheckRunTime(__func__)
 
@@ -85,114 +77,18 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
             str = res.suffix();
         }
         std::cout << "X:\n";
-        if (isFloat(xstr)) {
-            float xstr_value = std::stof(xstr);
-            if (!(xstr_value == 0.0f)) {
-                Load load;
-                load.dof = node * 2 + 0;
-                load.value = xstr_value;
-                load.ampl = xstr_value;
-                loads.push_back(load);
-            }
-        } else {             // if xstr is a time-dependent function, not constant value
-            // parse string
-            // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
-
-            std::string wavelet_str = xstr.substr(0, xstr.find("("));
-            xstr.erase(0, xstr.find("(") + 1);
-            std::cout << "DEBUG : xstr = " << xstr << std::endl;
-            std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
-
-            std::string freq_str = xstr.substr(0, xstr.find(","));
-            xstr.erase(0, xstr.find(",") + 1);
-            std::cout << "DEBUG : xstr = " << xstr << std::endl;
-            std::cout << "DEBUG : freq_str = " << freq_str << std::endl;
-
-            std::string timeshift_str = xstr.substr(0, xstr.find(","));
-            xstr.erase(0, xstr.find(",") + 1);
-            std::cout << "DEBUG : xstr = " << xstr << std::endl;
-            std::cout << "DEBUG : timeshift_str = " << timeshift_str << std::endl;
-
-            std::string ampl_str = xstr.substr(0, xstr.find(")"));
-            //xstr.erase(0, xstr.find(")") + 1);
-            std::cout << "DEBUG : xstr = " << xstr << std::endl;
-            std::cout << "DEBUG : ampl_str = " << ampl_str << std::endl;
-
-            Load load;
-            load.dof   = node * 2 + 0;
-            load.value = std::stof(ampl_str);
-            load.ampl  = std::stof(ampl_str);
-
-            // Try reading if you want more elegancy:
-            // https://stackoverflow.com/questions/650162/why-the-switch-statement-cannot-be-applied-on-strings
-
-            // https://stackoverflow.com/a/313990
-            std::transform(wavelet_str.begin(), wavelet_str.end(), wavelet_str.begin(),
-                                           [](unsigned char c){ return std::tolower(c); });
-            if (wavelet_str == "ricker") {
-                load.wavelet = &Load::Ricker;
-            } // else if (wavelet_str == "berlage")
-
-            std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
-
-            load.timeshift = std::stof(timeshift_str);
-            load.freq      = std::stof(freq_str);
-            std::cout << "load.value = " << load.value << "; load.timeshift = " << load.timeshift << "; load.freq = " << load.freq << std::endl;
-            loads.push_back(load);
-
+        Load loadX;
+        loadX.parseString(xstr);
+        if (!(loadX.ampl == 0.0f)) {
+            loadX.dof = node * 2 + 0;
+            loads.push_back(loadX);
         }
-
         std::cout << "Y:\n";
-        if (isFloat(ystr)) {
-            float ystr_value = std::stof(ystr);
-            if (!(ystr_value == 0.0f)) {
-                Load load;
-                load.dof = node * 2 + 1;
-                load.value = ystr_value;
-                load.ampl = ystr_value;
-                loads.push_back(load);
-            }
-        } else {             // if ystr is a time-dependent function, not constant value
-            // parse string
-            // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
-
-            std::string wavelet_str = ystr.substr(0, ystr.find("("));
-            ystr.erase(0, ystr.find("(") + 1);
-            std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
-
-            std::string freq_str = ystr.substr(0, ystr.find(","));
-            ystr.erase(0, ystr.find(",") + 1);
-            std::cout << "DEBUG : freq_str = " << freq_str << std::endl;
-
-            std::string timeshift_str = ystr.substr(0, ystr.find(","));
-            ystr.erase(0, ystr.find(",") + 1);
-            std::cout << "DEBUG : timeshift_str = " << timeshift_str << std::endl;
-
-            std::string ampl_str = ystr.substr(0, ystr.find(")"));
-            //xstr.erase(0, ystr.find(")") + 1);
-            std::cout << "DEBUG : ampl_str = " << ampl_str << std::endl;
-
-            Load load;
-            load.dof   = node * 2 + 1;
-            load.value = std::stof(ampl_str);
-            load.ampl  = std::stof(ampl_str);
-
-            // Try reading if you want more elegancy:
-            // https://stackoverflow.com/questions/650162/why-the-switch-statement-cannot-be-applied-on-strings
-
-            // https://stackoverflow.com/a/313990
-            std::transform(wavelet_str.begin(), wavelet_str.end(), wavelet_str.begin(),
-                                           [](unsigned char c){ return std::tolower(c); });
-            if (wavelet_str == "ricker") {
-                load.wavelet = &Load::Ricker;
-            } // else if (wavelet_str == "berlage")
-
-            std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
-
-            load.timeshift = std::stof(timeshift_str);
-            load.freq      = std::stof(freq_str);
-            loads.push_back(load);
-
+        Load loadY;
+        loadY.parseString(ystr);
+        if (!(loadY.ampl == 0.0f)) {
+            loadY.dof = node * 2 + 1;
+            loads.push_back(loadY);
         }
 
 //        if (!(yampl == 0.0)) {
@@ -217,10 +113,21 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     for (int i = 0; i < boundaryEdgesCount; ++i) {
         BoundaryEdge edge;
         float normal_x, normal_y;
-        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
+//        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
+        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y;
+        string str;
+        std::getline(stress_file, str);
+        // https://stackoverflow.com/a/39080627
+        std::cout << "DEBUG pressure: " << str << std::endl;
+        std::regex wavelet_expression("(\\w+(\\((.*?)\\))|[+-]?(\\d+([.]\\d*)?([eE][+-]?\\d+)?|[.]\\d+([eE][+-]?\\d+)?))");
+        smatch res;
+        std::regex_search(str, res, wavelet_expression);
+        str = res[0];
+        std::cout << "DEBUG pressure 2: " << str << std::endl;
+        edge.parseString(str);
         float normal_length = std::sqrt(normal_x * normal_x + normal_y * normal_y);
         edge.normal_x = normal_x / normal_length;
-        edge.normal_y = normal_y / normal_length;
-        boundary.push_back(edge);
+        edge.normal_y = normal_y / normal_length; 
+        if (!(edge.ampl == 0.0f)) boundary.push_back(edge);
     }
 }

@@ -1,0 +1,8 @@
+{
+	"CudaFEMproject_path": "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/",
+	"working_path": "C:/Users/mexika/Desktop/fem_stuff/",
+	"task": ["quasi1Dwave"],
+	"DIM": 2,
+	"youngModulus": 38400000000,
+	"poissonRatio": 0.0
+}

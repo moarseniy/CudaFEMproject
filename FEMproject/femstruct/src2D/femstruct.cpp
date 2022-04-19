@@ -162,7 +162,9 @@ void Element::CalculateClocal(float alpha, float beta) {
     if (!(alpha == 0.0f && beta == 0.0f)) Clocal = Mlocal.weightedSum(Klocal, alpha, beta);
 }
 
-void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, float pressure_value) {
+void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, float t) {
+    edge.update(t);
+    float pressure_value = edge.value;
     float X0 = nodesX[edge.node0], X1 = nodesX[edge.node1];
     float Y0 = nodesY[edge.node0], Y1 = nodesY[edge.node1];
     float edge_length = std::sqrt((X1 - X0) * (X1 - X0) + (Y1 - Y0) * (Y1 - Y0));
@@ -235,7 +237,7 @@ void Load::assignElement(std::unordered_map <int, std::vector<int>> nodeAdjElem)
     this->elem = nodeAdjElem[this->dof / DIM][0];
 }
 
-void Load::update(float t) {
+void TimeDependentEntity::update(float t) {
     if (t < this->timeshift) {
         this->value = 0.0f;
     } else {
@@ -243,14 +245,72 @@ void Load::update(float t) {
     }
 }
 
-void Load::Constant(float t) {
+void TimeDependentEntity::Constant(float t) {
     this->value = ampl;
 }
 
-void Load::Ricker(float t) {
+void TimeDependentEntity::Ricker(float t) {
     float tmp = M_PI * this->freq * t - M_PI;
     this->value = (1.0f - 2.0f * tmp*tmp) *
             std::exp(-1.0f * tmp*tmp);
 
     this->value *= this->ampl;
+}
+
+// I always liked strtof since it lets you specify an end pointer. [ https://stackoverflow.com/a/57163016 ]
+bool TimeDependentEntity::isFloat(const std::string& str) {
+    char* ptr;
+    strtof(str.c_str(), &ptr);
+    return (*ptr) == '\0';
+}
+
+void TimeDependentEntity::parseString(std::string& str) {
+    if (this->isFloat(str)) {
+        float str_value = std::stof(str);
+        this->value = str_value;
+        this->ampl = str_value;
+    } else {             // if str is a time-dependent function, not constant value
+        // parse string
+        // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+
+        std::string wavelet_str = str.substr(0, str.find("("));
+        str.erase(0, str.find("(") + 1);
+        std::cout << "DEBUG : xstr = " << str << std::endl;
+        std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
+
+        std::string freq_str = str.substr(0, str.find(","));
+        str.erase(0, str.find(",") + 1);
+        std::cout << "DEBUG : xstr = " << str << std::endl;
+        std::cout << "DEBUG : freq_str = " << freq_str << std::endl;
+
+        std::string timeshift_str = str.substr(0, str.find(","));
+        str.erase(0, str.find(",") + 1);
+        std::cout << "DEBUG : xstr = " << str << std::endl;
+        std::cout << "DEBUG : timeshift_str = " << timeshift_str << std::endl;
+
+        std::string ampl_str = str.substr(0, str.find(")"));
+        //xstr.erase(0, xstr.find(")") + 1);
+        std::cout << "DEBUG : xstr = " << str << std::endl;
+        std::cout << "DEBUG : ampl_str = " << ampl_str << std::endl;
+
+        this->value = std::stof(ampl_str);
+        this->ampl  = std::stof(ampl_str);
+
+        // Try reading if you want more elegancy:
+        // https://stackoverflow.com/questions/650162/why-the-switch-statement-cannot-be-applied-on-strings
+
+        // https://stackoverflow.com/a/313990
+        std::transform(wavelet_str.begin(), wavelet_str.end(), wavelet_str.begin(),
+                                       [](unsigned char c){ return std::tolower(c); });
+        if (wavelet_str == "ricker") {
+            this->wavelet = &TimeDependentEntity::Ricker;
+        } // else if (wavelet_str == "berlage")
+
+        std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
+
+        this->timeshift = std::stof(timeshift_str);
+        this->freq      = std::stof(freq_str);
+        std::cout << "value = " << this->value << "; timeshift = " << this->timeshift << "; load.freq = " << this->freq << std::endl;
+
+    }
 }

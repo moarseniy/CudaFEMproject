@@ -33,7 +33,7 @@ void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, M
     CheckRunTime(__func__)
     for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
         assert(it->elem != -1);
-        it->update(t);
+        it->TimeDependentEntity::update(t);
         MyArray elem_load(6 * (DIM - 1));
         elem_load[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] = it->value;
         if (loadVectors.find(it->elem) == loadVectors.end())        // Key not present
@@ -617,13 +617,6 @@ void PCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float
 
         // (0a)
         // Initialize vector r^(e)
-//        r[3 * DIM * eIdx + 0] = elem.Flocal[0];
-//        r[3 * DIM * eIdx + 1] = elem.Flocal[1];
-//        r[3 * DIM * eIdx + 2] = elem.Flocal[2];
-//        r[3 * DIM * eIdx + 3] = elem.Flocal[3];
-//        r[3 * DIM * eIdx + 4] = elem.Flocal[4];
-//        r[3 * DIM * eIdx + 5] = elem.Flocal[5];
-
         r[3 * DIM * eIdx + 0] = elem.blocal[0];
         r[3 * DIM * eIdx + 1] = elem.blocal[1];
         r[3 * DIM * eIdx + 2] = elem.blocal[2];
@@ -997,9 +990,8 @@ void CalculateFEM(FEMdataKeeper &FEMdata) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
 
-    int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
     }
 
     SparseMatrixCOO globalK = AssemblyStiffnessMatrix   (FEMdata);
@@ -1020,9 +1012,8 @@ void CalculateFEM_EbE(FEMdataKeeper &FEMdata) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
 
-    int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
     }
 
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
@@ -1052,9 +1043,8 @@ void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata) {
         it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
     }
 
-    int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
     }
 
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
@@ -1095,9 +1085,8 @@ void CalculateFEM_dyn(FEMdataKeeper &FEMdata, float rho, float damping_alpha, fl
         it->CalculateClocal(damping_alpha, damping_beta);
     }
 
-    int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
     }
 
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
@@ -1174,9 +1163,8 @@ void CalculateFEM_dyn_vec(FEMdataKeeper &FEMdata, float rho, float damping_alpha
         it->CalculateClocal(damping_alpha, damping_beta);
     }
 
-    int num = 0;
     for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+        FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
     }
 
     std::unordered_map <int, std::vector<int>> nodeAdjElem;
@@ -1268,17 +1256,23 @@ void CalculateFEM_dyn_vec(FEMdataKeeper &FEMdata, float rho, float damping_alpha
         vel_pred.add_weighted(res, 1.0f, (1.0f - beta1) * dt);
 
         b = C.MultiplyByVector(vel_pred, grid_size);
-//        std::cout << "b = C*vel_pred\n";
-//        b.ShowNonzero();
 
         b.add(K.MultiplyByVector(x_pred, grid_size));
-//        std::cout << "b += K*x_pred\n";
-//        b.ShowNonzero();
 
         b.scale(-1.0f);
+
+        // update F
+        for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+            int eIdx = it->adj_elem1;
+            FEMdata.elements[eIdx].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, t);
+            F[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].Flocal[0];
+            F[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].Flocal[1];
+            F[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].Flocal[2];
+            F[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].Flocal[3];
+            F[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].Flocal[4];
+            F[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].Flocal[5];
+        }
         b.add(F);  // Seems to be the same (that is, F), see formula (17.15)
-//        std::cout << "b = F - b\n";
-//        b.ShowNonzero();
 
         // Think how not to use loadVectors! Too dificult!
         std::unordered_map <int, MyArray> loadVectors;
@@ -1296,8 +1290,6 @@ void CalculateFEM_dyn_vec(FEMdataKeeper &FEMdata, float rho, float damping_alpha
             loadVectors[it.first].ShowNonzero();
             std::cout << "\n";
         }
-//        std::cout << "b += loads\n";
-//        b.ShowNonzero();
 
         for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
             FEMdata.elements[eIdx].blocal[0] = b[3 * DIM * eIdx + 0];
@@ -1312,15 +1304,6 @@ void CalculateFEM_dyn_vec(FEMdataKeeper &FEMdata, float rho, float damping_alpha
             solve_diag_vec(FEMdata, res, false);
         } else {                      // implicit scheme
             PCG_EbE_vec_cpu(FEMdata, res, false, 1e-10f);
-//        PCG_EbE(FEMdata, nodeAdjElem, 1e-10f);
-//        for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
-//            res[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].res[0];
-//            res[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].res[1];
-//            res[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].res[2];
-//            res[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].res[3];
-//            res[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].res[4];
-//            res[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].res[5];
-//        }
         }
 
         x = x_pred;

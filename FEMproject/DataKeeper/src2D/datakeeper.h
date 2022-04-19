@@ -6,11 +6,6 @@
 #include <vector>
 #include <sstream>
 
-// https://stackoverflow.com/a/313990
-#include <algorithm>
-#include <cctype>
-//#include <string>
-
 // https://stackoverflow.com/q/21667295
 #include <regex>
 
