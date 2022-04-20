@@ -257,6 +257,18 @@ void TimeDependentEntity::Ricker(float t) {
     this->value *= this->ampl;
 }
 
+// Aldridge, D. F. (1990). The Berlage wavelet. GEOPHYSICS, 55(11), 1508–1511. doi:10.1190/1.1442799
+// CAE-Fidesys-4.0/preprocessor/bin/help/finite_element_model/non_exodus/time_formulas.htm
+void TimeDependentEntity::Berlage(float t) {
+    float w0 = 2 * M_PI * this->freq;
+    float w1 = w0 / sqrtf(3.0f);
+    this->value = w1*w1/4.0f*std::exp(-1.0f*w1*t)*(
+                std::sin(w0*t) * (1.0f/(w1*w1*w1) + t/(w1*w1) - t*t/w1) -
+                std::cos(w0*t) * std::sqrtf(3.0f) * (t*t/w1 + t/(w1*w1)) );
+
+    this->value *= this->ampl;
+}
+
 // I always liked strtof since it lets you specify an end pointer. [ https://stackoverflow.com/a/57163016 ]
 bool TimeDependentEntity::isFloat(const std::string& str) {
     char* ptr;
@@ -304,7 +316,9 @@ void TimeDependentEntity::parseString(std::string& str) {
                                        [](unsigned char c){ return std::tolower(c); });
         if (wavelet_str == "ricker") {
             this->wavelet = &TimeDependentEntity::Ricker;
-        } // else if (wavelet_str == "berlage")
+        } else if (wavelet_str == "berlage") {
+            this->wavelet = &TimeDependentEntity::Berlage;
+        }
 
         std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
 

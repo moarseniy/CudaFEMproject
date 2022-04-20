@@ -34,6 +34,7 @@ struct TimeDependentEntity {
     void parseString(std::string& str);
     void update(float t);
     void Ricker(float t);
+    void Berlage(float t);
     void Constant(float t);
 };
 
