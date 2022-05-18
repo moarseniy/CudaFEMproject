@@ -84,6 +84,11 @@ public:
     Matrix D;
     MyArray nodesX;
     MyArray nodesY;
+
+    MyArray CudaElements;
+    MyArray CudaIndicesToConstraints;
+    int CudaIndicesToConstraintsCount;
+
     std::vector<Element>        elements;
     std::vector<Constraint>     constraints;
     std::vector<Load>           loads;

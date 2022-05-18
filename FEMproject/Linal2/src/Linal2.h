@@ -100,6 +100,8 @@ public:
 	Matrix & transpose();
     bool equalsToMatrix(Matrix &a, float eps);
 
+    void inverse3x3(Matrix &res);
+
     void transpose2();
     void transpose_not_square();
 

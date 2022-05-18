@@ -39,7 +39,7 @@ def run_tests(proj_dir, work_dir, task_list):
         os.system(proj_dir + main_exe + ' ' + task_name + ' ' + proj_dir + ' ' + prep_mesh_task_dir + ' ' +
                   results_dir + ' ' + poissonRatio + ' ' + youngModulus)
 
-        eps = 1e-30
+        eps = 1e-5
         x_res = []
         y_res = []
         z_res = []
@@ -68,4 +68,6 @@ def run_tests(proj_dir, work_dir, task_list):
             np.linalg.norm(np.array(y_res) - np.array(y_test)) < eps and \
             np.linalg.norm(np.array(z_res) - np.array(z_test)) < eps:
                 print('Test for ' + task_name + ' completed successfuly')
+        else:
+            print('Test for ' + task_name + ' failed!!!')
 

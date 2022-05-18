@@ -74,7 +74,7 @@ if __name__ == '__main__':
         run_postprocessing(results_dir + '/output/')
         print('FINISHED Postprocessing for ' + task_name)
     print('\nTESTING STARTED')
-    test_task_list = ['9task_3', 'test_rect_pcg']
+    test_task_list = []#['9task_3', 'test_rect_pcg']
     run_tests(proj_dir, work_dir, test_task_list)
     print('TESTING COMPLETED')
 

@@ -35,14 +35,15 @@ int main(int argc, char *argv[]) {
     FEMdataKeeper FEMdata(name, project_directory, prepared_meshes_directory, results_directory);
     FEMdata.ParseFiles(poissonRatio, youngModulus);
 
+    bool PRINT_DEBUG_INFO = false;
+
 //    CalculateFEM(FEMdata);
-    CalculateFEM_EbE_vec(FEMdata);
-    std::cout << PRINT_DEBUG_INFO;
+    CalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 
     MakeResults(FEMdata, RESdata);
-    WriteResults(FEMdata, RESdata, output_vtk);
+    WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
 
     return 0;
 }

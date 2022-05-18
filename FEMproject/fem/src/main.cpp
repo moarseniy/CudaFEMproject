@@ -17,14 +17,6 @@
 int main(int argc, char *argv[]) {
     CheckRunTime(__func__)
 
-    const int N = 7;
-    float A[N] = {1, 3, 3, 3, 2, 2, 0}; // input keys
-    float B[N] = {9.f, 8.f, 7.f, 6.f, 5.f, 4.f, 3.f}; // input values
-    float B2[7];
-
-    //reductionWithMask(B, A, N, B2, 4);
-
-
     if (argc == 1) {
         std::cout << "RUN SUCCESS\n";
         return 0;
@@ -52,22 +44,26 @@ int main(int argc, char *argv[]) {
     FEMdata.ParseFiles(poissonRatio, youngModulus);
     FEMdata.ShowInfo();
 
+    bool PRINT_DEBUG_INFO = true;
+
 //    CalculateFEM(FEMdata);
 //    CalculateFEM_EbE(FEMdata);
 //    CalculateFEM_EbE_vec(FEMdata);
 
-    float endtime = 0.2f;
-    float dx = 0.7810f; // 9task_3         // minimal linear size of an element
-    float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
-    float dt_coef = 0.8f;
-    float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
-    dt = 5.16208900e-03; //0.002f; //0.00243826f;    // from Fidesys
-    CalculateFEM_dyn_vec(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2);
+    CalculateFEM_EbE_vec_GPU(FEMdata, PRINT_DEBUG_INFO);
+
+//    float endtime = 0.2f;
+//    float dx = 0.7810f; // 9task_3         // minimal linear size of an element
+//    float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
+//    float dt_coef = 0.8f;
+//    float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
+//    dt = 5.16208900e-03; //0.002f; //0.00243826f;    // from Fidesys
+//    CalculateFEM_dyn_vec(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
 
     ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 
     MakeResults(FEMdata, RESdata);
-    WriteResults(FEMdata, RESdata, output_vtk);
+    WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
 
     return 0;
 }

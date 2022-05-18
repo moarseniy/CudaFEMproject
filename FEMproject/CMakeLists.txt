@@ -6,13 +6,6 @@ option(TOOLS_TIMER CACHED ON)
 option(FEM3D CACHED OFF)
 option(SMOOTH CACHED OFF)
 option(MISES CACHED OFF)
-option(PRINT_DEBUG_INFO ON)
-
-if (PRINT_DEBUG_INFO)
-    add_definitions(-DPRINT_DEBUG_INFO=true)
-else()
-    add_definitions(-DPRINT_DEBUG_INFO=false)
-endif()
 
 if (SMOOTH)
     add_definitions(-DSMOOTH=true)
