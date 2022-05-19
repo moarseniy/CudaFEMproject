@@ -10,9 +10,9 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -arch=sm_52" )
 MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
 
 CUDA_ADD_LIBRARY(
-    cuda_lib
-    include/init.h
-    src/init.cu
+  cuda_lib
+  include/init.h
+  src/init.cu
 )
 
 TARGET_INCLUDE_DIRECTORIES(cuda_lib PUBLIC include)

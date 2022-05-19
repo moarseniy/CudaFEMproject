@@ -36,15 +36,15 @@ void FindConstraints(const std::vector<Constraint> constraints, std::vector<int>
 void ApplyConstraints(SparseMatrixCOO& K, MyArray& F, const std::vector<Constraint>& constraints, int n);
 
 void CalculateStressAlongAxis(std::vector<float> &StressComponents,
-                             std::string axe,
-                             std::string stress_component,
-                             float fixed_value,
-                             float a,
-                             float b,
-                             std::vector<MyArray> &Stress,
-                             MyArray nodesX,
-                             MyArray nodesY,
-                             std::vector<Element> elements);
+                              std::string axe,
+                              std::string stress_component,
+                              float fixed_value,
+                              float a,
+                              float b,
+                              std::vector<MyArray> &Stress,
+                              MyArray nodesX,
+                              MyArray nodesY,
+                              std::vector<Element> elements);
 
 void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
                                    std::vector<MyArray> &Stress,
