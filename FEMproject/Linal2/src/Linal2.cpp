@@ -141,6 +141,15 @@ float MyArray::norma() {
   return sqrt(abs(res));
 }
 
+float MyArray::CNorm() {
+    float res = std::fabs(this->p[0]);
+    for (int i = 1; i < this->array_size; ++i) {
+        float tmp = std::fabs(this->p[i]);
+        if (tmp > res) res = tmp;
+    }
+    return res;
+}
+
 void MyArray::grad(float (*f)(MyArray x), MyArray &res, float eps) {
   float tau = 0.1 * sqrt(eps);
   //float fx = f(x);

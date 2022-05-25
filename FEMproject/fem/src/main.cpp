@@ -13,6 +13,7 @@
 #include "init.h"
 #include "datakeeper.h"
 #include "tests.h"
+#include "init.h"
 
 int main(int argc, char *argv[]) {
   CheckRunTime(__func__)
@@ -29,13 +30,16 @@ int main(int argc, char *argv[]) {
 
   std::string output_vtk = results_directory + "/results.vtk";
 
-  float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
-  float rho = 2400.0f;                // Density. Consider making std::stof(argv[7])
-  float damping_alpha = 0.0f, damping_beta = 0.0f;    // C = alpha * M + beta * K;
-  // beta2 = 0.0 -- explicit scheme (assuming both M and C are diagonal -- make sure to lump mass matrix!)
-  // implicit scheme: beta1 >= beta2 >= 1/2
-  //float beta1 = 0.55f, beta2 = 0.5f;  // implicit
-  float beta1 = 0.5f, beta2 = 0.0f;  // explicit
+    float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
+    //float dt = 4e-06f, endtime = 0.3f; //0.01f; //0.7f;
+    float dt = 0.002f, endtime = 0.7f;
+          //dt = 0.002f; //0.00243826f;    // from Fidesys
+    float rho = 2400.0f;                // Density. Consider making std::stof(argv[7])
+    float damping_alpha = 1e-10f, damping_beta = 1e-10f;    // C = alpha * M + beta * K;
+    // beta2 = 0.0 -- explicit scheme (assuming both M and C are diagonal -- make sure to lump mass matrix!)
+    // implicit scheme: beta1 >= beta2 >= 1/2
+//    float beta1 = 0.55f, beta2 = 0.5f;  // implicit
+    float beta1 = 0.5f, beta2 = 0.0f;  // explicit
 
   bool withSmooth = SMOOTH;
   bool withMises = MISES;
@@ -50,15 +54,18 @@ int main(int argc, char *argv[]) {
   //    CalculateFEM_EbE(FEMdata);
   //    CalculateFEM_EbE_vec(FEMdata);
 
-  CalculateFEM_EbE_vec_GPU(FEMdata, PRINT_DEBUG_INFO);
+//  CalculateFEM_EbE_vec_GPU(FEMdata, PRINT_DEBUG_INFO);
 
-  //    float endtime = 0.2f;
-  //    float dx = 0.7810f; // 9task_3         // minimal linear size of an element
-  //    float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
-  //    float dt_coef = 0.8f;
-  //    float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
-  //    dt = 5.16208900e-03; //0.002f; //0.00243826f;    // from Fidesys
-  //    CalculateFEM_dyn_vec(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+//      float endtime = 0.2f;
+//      float dx = 0.7810f; // 9task_3         // minimal linear size of an element
+//      float Vp = std::sqrtf( ( (youngModulus*(1-poissonRatio)) / ((1+poissonRatio)*(1-2*poissonRatio)) ) / rho ); // P-wave velocity
+//      float dt_coef = 0.8f;
+//      float dt = dt_coef * std::sqrtf(2.0f)/2.0f * dx / Vp;
+//      CalculateFEM_dyn_vec(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+//      gpuCalculateFEM_dyn_relaxation(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1);
+//      gpuCalculateFEM_dyn_explicit(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1);
+
+  gpuCalculateFEM_explicit(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, PRINT_DEBUG_INFO);
 
   ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 

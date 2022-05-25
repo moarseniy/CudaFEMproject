@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <cassert>
+#include <stdio.h>
 
 #include "Tools.h"
 
@@ -31,6 +32,7 @@ public:
   float & operator [](int index);
   MyArray operator =(const MyArray &a);
   float norma();
+  float CNorm();
   float dot_product(MyArray v2);
   bool equalsToArray(MyArray a, float eps);
   MyArray multiplyElementwise(MyArray a);
