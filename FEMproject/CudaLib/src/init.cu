@@ -46,7 +46,7 @@ gpuDataKeeper::gpuDataKeeper(int elementsCount, int nodesCount, bool doAssemblyR
                                                       m(3 * DIM * elementsCount), z(3 * DIM * elementsCount), s(3 * DIM * elementsCount),
                                                       p(3 * DIM * elementsCount), u(3 * DIM * elementsCount),
                                                       x(3 * DIM * elementsCount, 0.0f), mask(3 * DIM * elementsCount),
-                                                      n_adjelem(DIM * nodesCount), gpuB(3 * 6 * elementsCount),
+                                                      n_adjelem(DIM * nodesCount), gpuB(3 * 6 * elementsCount), gpuElements(3 * elementsCount),
                                                       gpuKlocals(6 * 6 * elementsCount), gpuFlocals(3 * DIM * elementsCount), tmp(3 * DIM * elementsCount),
                                                       loads(3 * DIM * elementsCount)
 {
@@ -61,7 +61,7 @@ gpuDataKeeper::~gpuDataKeeper() {}
 //WeightedAddCoef::WeightedAddCoef(float v1, float v2, float v3): val1(v1), val2(v2), val3(v3) {}
 
 gpuDataKeeper_DYN::gpuDataKeeper_DYN(int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped) :
-  gpuDataKeeper{ elementsCount, nodesCount, doAssemblyRes },
+  gpuDataKeeper( elementsCount, nodesCount, doAssemblyRes ),
   vel(3 * DIM * elementsCount, 0.0f), displ(3 * DIM * elementsCount, 0.0f), displ_global(DIM * nodesCount) {
   // default: explicit scheme
   this->SLAU_matrix_coefs.val1 = 1.0f;
@@ -96,7 +96,7 @@ void gpuDataKeeper_DYN_DAMP::set_damping_coefs(float cM, float cK) {
 }
 
 gpuDataKeeper_DYN_DAMP::gpuDataKeeper_DYN_DAMP(int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped, float damping_alpha, float damping_beta) :
-  gpuDataKeeper_DYN{ elementsCount, nodesCount, doAssemblyRes, isLumped } {
+  gpuDataKeeper_DYN( elementsCount, nodesCount, doAssemblyRes, isLumped ) {
   this->damping_coefs.val1 = damping_alpha;
   this->damping_coefs.val2 = damping_beta;
 }
@@ -456,13 +456,16 @@ void gpuTransform_2N_to_6E(float *d_v, int n_gl_dofs, float *d_mask, float *d_re
     CheckRunTime(__func__)
     // Make parallel!
     thrust::host_vector<float> host_res(grid_size), host_v(n_gl_dofs), host_mask(grid_size);
-    gpuCopy(d_v, thrust::raw_pointer_cast(host_v.data()), n_gl_dofs);
-    gpuCopy(d_mask, thrust::raw_pointer_cast(host_mask.data()), grid_size);
+    gpuCopyDeviceToHost(d_v, thrust::raw_pointer_cast(host_v.data()), n_gl_dofs);
+    //gpuCopy(d_v, thrust::raw_pointer_cast(host_v.data()), n_gl_dofs);
+    gpuCopyDeviceToHost(d_mask, thrust::raw_pointer_cast(host_mask.data()), grid_size);
+    //gpuCopy(d_mask, thrust::raw_pointer_cast(host_mask.data()), grid_size);
     for (int i = 0; i < grid_size; ++i) {
         host_res[i] = host_v[static_cast<int>(host_mask[i])];
     }
 
-    gpuCopy(thrust::raw_pointer_cast(host_res.data()), d_res, grid_size);
+    gpuCopyHostToDevice(thrust::raw_pointer_cast(host_res.data()), d_res, grid_size);
+//    gpuCopy(thrust::raw_pointer_cast(host_res.data()), d_res, grid_size);
 
 }
 
@@ -591,6 +594,7 @@ __global__ void kernelCalculateKlocal2(int elementsCount, float *elements, float
       }
     }
 
+    // Grisha: Calculate separately!
     diag[6 * index + 0] = K[0 + 6 * 0 + 36 * index];
     diag[6 * index + 1] = K[1 + 6 * 1 + 36 * index];
     diag[6 * index + 2] = K[2 + 6 * 2 + 36 * index];
@@ -748,32 +752,56 @@ __global__ void kernelMultiply_2WeightedMatrix(int elementsCount, float *u, floa
 }
 
 __global__ void kernelMultiply_DAMP(int elementsCount, float *u, float *Mlocals, float *Klocals, float *p,
-                                    float cM, float cK, float cC, float damping_alpha, float damping_beta) {
+                                    float cM, float cK, float cC, float damping_alpha, float damping_beta, float isLumped) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < elementsCount) {
-    for (int j = 0; j < 6; j++) {
-      u[j + index * 6] = 0.0f;
-      for (int k = 0; k < 6; k++) {
-        u[j + index * 6] +=
-            (cM*Mlocals[k + j * 6 + index * 36] + cK*Klocals[k + j * 6 + index * 36] +
-            cC*(damping_alpha*Mlocals[k + j * 6 + index * 36] + damping_beta*Klocals[k + j * 6 + index * 36])) *
-            p[k + index * 6];
+    if (isLumped) {
+      for (int j = 0; j < 6; j++) {
+        u[j + index * 6] = 0.0f;
+        for (int k = 0; k < 6; k++) {
+          float factor = (cK + cC*damping_beta)*Klocals[k + j * 6 + index * 36];
+          if (k == j) factor += (cM + cC*damping_alpha)*Mlocals[k + index * 6];
+          u[j + index * 6] += factor * p[k + index * 6];
+        }
+      }
+    } else {
+      for (int j = 0; j < 6; j++) {
+        u[j + index * 6] = 0.0f;
+        for (int k = 0; k < 6; k++) {
+          u[j + index * 6] +=
+              (cM*Mlocals[k + j * 6 + index * 36] + cK*Klocals[k + j * 6 + index * 36] +
+              cC*(damping_alpha*Mlocals[k + j * 6 + index * 36] + damping_beta*Klocals[k + j * 6 + index * 36])) *
+              p[k + index * 6];
+       }
       }
     }
   }
 }
 
 __global__ void kernelMultiply_Clocal(int elementsCount, float *u, float *Mlocals, float *Klocals, float *p,
-                                      float damping_alpha, float damping_beta) {
+                                      float damping_alpha, float damping_beta, bool isLumped) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < elementsCount) {
-    for (int j = 0; j < 6; j++) {
-      u[j + index * 6] = 0.0f;
-      for (int k = 0; k < 6; k++) {
-        u[j + index * 6] +=
-            (damping_alpha*Mlocals[k + j * 6 + index * 36] + damping_beta*Klocals[k + j * 6 + index * 36]) *
-            p[k + index * 6];
+    if (isLumped) {
+      for (int j = 0; j < 6; j++) {
+        u[j + index * 6] = 0.0f;
+        for (int k = 0; k < 6; k++) {
+          // if lumped (explicit scheme), then damping_beta = 0 !!!
+          //float factor = 0.0f;
+          float factor = damping_beta*Klocals[k + j * 6 + index * 36];
+          if (k == j) factor += damping_alpha*Mlocals[k + index * 6];
+          u[j + index * 6] += factor * p[k + index * 6];
+        }
       }
+    } else {
+      for (int j = 0; j < 6; j++) {
+        u[j + index * 6] = 0.0f;
+        for (int k = 0; k < 6; k++) {
+          u[j + index * 6] +=
+              (damping_alpha*Mlocals[k + j * 6 + index * 36] + damping_beta*Klocals[k + j * 6 + index * 36]) *
+              p[k + index * 6];
+        }
+    }
     }
   }
 }
@@ -793,8 +821,13 @@ void gpuMultiplyMatrixByVec(float* Matr, float* Vec, float* Res, int elementsCou
 
 void gpuMultiplyClocalByVec(gpuDataKeeper_DYN_DAMP &gpu_data, float* Vec, float* Res, int elementsCount) {
   CheckRunTime(__func__)
-  kernelMultiply_Clocal<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Res, gpu_data.get_Mlocals(), gpu_data.get_Klocals(), Vec,
-                                                              gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2);
+  if (gpu_data.isLumped) {
+    kernelMultiply_Clocal<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Res, gpu_data.get_diagM(), gpu_data.get_Klocals(), Vec,
+                                                                gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2, true);
+  } else {
+    kernelMultiply_Clocal<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Res, gpu_data.get_Mlocals(), gpu_data.get_Klocals(), Vec,
+                                                                gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2, false);
+  }
 }
 
 void gpuMultiplyAlocalByVec(gpuDataKeeper_DYN &gpu_data, int elementsCount) {
@@ -809,9 +842,15 @@ void gpuMultiplyAlocalByVec_DAMP(gpuDataKeeper_DYN_DAMP &gpu_data, int elementsC
   CheckRunTime(__func__)
   float* u_ptr = gpu_data.get_u();//thrust::raw_pointer_cast( u.data() );
   float* p_ptr = gpu_data.get_p();//thrust::raw_pointer_cast( p.data() );
-  kernelMultiply_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount, u_ptr, gpu_data.get_Mlocals(), gpu_data.get_Klocals(), p_ptr,
-                                                            gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
-                                                            gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2);
+  if (gpu_data.isLumped) {
+    kernelMultiply_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount, u_ptr, gpu_data.get_diagM(), gpu_data.get_Klocals(), p_ptr,
+                                                              gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
+                                                              gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2, true);
+  } else {
+    kernelMultiply_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount, u_ptr, gpu_data.get_Mlocals(), gpu_data.get_Klocals(), p_ptr,
+                                                              gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
+                                                              gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2, false);
+  }
 }
 
 void gpuMultiplyAlocalByVec_DAMP(gpuDataKeeper &gpu_data, int elementsCount) {
@@ -855,6 +894,46 @@ void gpuGenerateMask(gpuDataKeeper &gpuD, int elementsCount) {
   kernelGenerateMask<<<(elementsCount + 255) / 256, 256>>>(elements, mask, elementsCount);
 }
 
+// needed for implicit scheme (isLumped = false)
+__global__ void kernelCalculateDiag_DAMP(int elementsCount, float *diag, float *Mlocals, float *Klocals,
+                                    float cM, float cK, float cC, float damping_alpha, float damping_beta) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < elementsCount) {
+    for (int j = 0; j < 6; ++j) {
+      diag[j + index * 6] =
+          cM*Mlocals[j + j * 6 + index * 36] + cK*Klocals[j + j * 6 + index * 36] +
+          cC*(damping_alpha*Mlocals[j + j * 6 + index * 36] + damping_beta*Klocals[j + j * 6 + index * 36]);
+    }
+  }
+}
+
+
+void gpuCalculateDiag_DAMP(gpuDataKeeper_DYN_DAMP &gpu_data, int elementsCount) {
+  kernelCalculateDiag_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount,
+                                                            gpu_data.get_diag(), gpu_data.get_Mlocals(), gpu_data.get_Klocals(),
+                                                            gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
+                                                            gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2);
+}
+
+// needed for implicit scheme (isLumped = false)
+__global__ void kernelCalculateDiag(int elementsCount, float *diag, float *Mlocals, float *Klocals,
+                                    float cM, float cK) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < elementsCount) {
+    for (int j = 0; j < 6; ++j) {
+      diag[j + index * 6] =
+          cM*Mlocals[j + j * 6 + index * 36] + cK*Klocals[j + j * 6 + index * 36];
+    }
+  }
+}
+
+
+void gpuCalculateDiag(gpuDataKeeper_DYN &gpu_data, int elementsCount) {
+  kernelCalculateDiag<<<(elementsCount + 255) / 256, 256>>>(elementsCount,
+                                                            gpu_data.get_diag(), gpu_data.get_Mlocals(), gpu_data.get_Klocals(),
+                                                            gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2);
+}
+
 void gpuDataKeeper::copyElementsFromHost(thrust::host_vector<float> v) {
   CheckRunTime(__func__)
   this->gpuElements = v;
@@ -878,6 +957,10 @@ void gpuCopyDeviceToHost(float *data, float *dest, int size) {
   thrust::copy(thrust::device_pointer_cast(data), thrust::device_pointer_cast(data + size), dest);
 }
 
+void gpuCopyHostToDevice(float *data, float *dest, int size) {
+  thrust::copy(data, data + size, thrust::device_pointer_cast(dest));
+}
+
 void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
   CheckRunTime(__func__)
   thrust::host_vector<float> HostElements(3 * FEMdata.elementsCount);
@@ -898,8 +981,10 @@ void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
 
     k++;
   }
-  gpuD.copyElementsFromHost(HostElements);
-  gpuD.copyFlocalFromHost(HostFlocal);
+  //gpuD.copyElementsFromHost(HostElements);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostElements.data()), gpuD.get_Elements(), 3 * FEMdata.elementsCount);
+  //gpuD.copyFlocalFromHost(HostFlocal);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * FEMdata.elementsCount);
 }
 
 void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
@@ -913,13 +998,12 @@ void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
     HostFlocal[3 * DIM * k + 3] = FEMdata.elements[k].Flocal[3];
     HostFlocal[3 * DIM * k + 4] = FEMdata.elements[k].Flocal[4];
     HostFlocal[3 * DIM * k + 5] = FEMdata.elements[k].Flocal[5];
-    std::cout << HostFlocal[3 * DIM * k + 0] << " ";
+    //std::cout << HostFlocal[3 * DIM * k + 0] << " ";
   }
-  std::cout << "\n";
+  //std::cout << "\n";
 
-  std::cout << "SUKA 05\n";
-  gpuD.copyFlocalFromHost(HostFlocal);
-  std::cout << "SUKA 06\n";
+  //gpuD.copyFlocalFromHost(HostFlocal);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * FEMdata.elementsCount);
 }
 
 void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVectors, int elementsCount) {
@@ -935,10 +1019,8 @@ void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVecto
       hLoad[3 * DIM * it.first + 5] = loadVectors[it.first][5];
   }
 
-  std::cout << "SUKA 01\n";
-  gpuD.copyLoadsFromHost(hLoad);
-  std::cout << "SUKA 02\n";
-
+//  gpuD.copyLoadsFromHost(hLoad);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(hLoad.data()), gpuD.get_loads(), 6 * elementsCount);
 }
 
 struct AddWeighted_functor
@@ -1016,7 +1098,6 @@ void gpuSolveDiag(float *diag, float *r, float *res,
                   thrust::raw_pointer_cast(diag_assemblied.data()),
                   n_gl_dofs,
                   thrust::raw_pointer_cast(temp.data()));       // temp = r_assemblied./diag_assemblied
-
     gpuTransform_2N_to_6E(thrust::raw_pointer_cast(temp.data()), n_gl_dofs, mask, res, grid_size);
   }
 }

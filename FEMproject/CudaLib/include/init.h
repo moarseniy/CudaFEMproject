@@ -139,8 +139,11 @@ void gpuMultiplyMatrixByVec(float* Matr, float* Vec, float* Res, int elementsCou
 void gpuMultiplyClocalByVec(gpuDataKeeper_DYN_DAMP &gpu_data, float* Vec, float* Res, int elementsCount);
 void gpuCalculateMlocal(gpuDataKeeper_DYN &gpu_data, int elementsCount,
                          float *h_nodesX, float *h_nodesY, int nodesCount, float rho);
+void gpuCalculateDiag(gpuDataKeeper_DYN &gpu_data, int elementsCount);
+void gpuCalculateDiag_DAMP(gpuDataKeeper_DYN_DAMP &gpu_data, int elementsCount);
 void gpuCopyDeviceToDevice(float *data, float *dest, int size);
 void gpuCopyDeviceToHost(float *data, float *dest, int size);
+void gpuCopyHostToDevice(float *data, float *dest, int size);
 void gpuCountNAdjElem(gpuDataKeeper &gpu_data, int grid_size);
 
 void gpuGenerateMask(gpuDataKeeper &gpuD, int elementsCount);

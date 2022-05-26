@@ -1272,21 +1272,229 @@ void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, fl
 
 }
 
+void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO) {
+  if (beta2 == 0.0f)    // explicit scheme
+    gpuCalculateFEM_explicit(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, PRINT_DEBUG_INFO);
+  else {                // implicit scheme
+    gpuCalculateFEM_implicit(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+  }
+}
+
+void gpuCalculateFEM_implicit(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO) {
+  bool is_damping = !((damping_alpha == 0.0f) && (damping_beta == 0.0f));
+  if (is_damping)
+    gpuCalculateFEM_implicit_DYN_DAMP(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+  else
+    gpuCalculateFEM_implicit_DYN(FEMdata, rho, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+}
+
+void gpuCalculateFEM_implicit_DYN(FEMdataKeeper &FEMdata, float rho, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO) {
+  // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
+  CheckRunTime(__func__)
+  //assert(beta2 >= beta1 && beta1 >= 0.5f);
+
+  int n_elems = FEMdata.elementsCount;
+  int n_gl_dofs = FEMdata.nodesCount * DIM;
+  int grid_size = 3 * DIM * n_elems;
+  bool doAssemblyRes = false;
+  bool isLumped = false;
+  float eps_PCG = 1e-4f;
+
+  for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+    // ERROR:
+    // FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
+  }
+
+//  std::unordered_map <int, std::vector<int>> nodeAdjElem;
+//  CalculateNodeAdjElem(FEMdata, nodeAdjElem);
+
+//  AssignLoadElement(FEMdata, nodeAdjElem);
+//  ApplyLoads_EbE(FEMdata);
+
+  ApplyConstraints_EbE(FEMdata);
+
+//    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+//        Element *elem = &FEMdata.elements[eIdx];
+//        elem->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
+//        elem->CalculateMlocal(rho, FEMdata.nodesX, FEMdata.nodesY, true); // Lumping on
+//        if (is_damping) elem->CalculateClocal(damping_alpha, damping_beta);
+//    }
+
+  gpuDataKeeper_DYN gpu_data(FEMdata.elementsCount, FEMdata.nodesCount, doAssemblyRes, isLumped);
+  gpu_data.set_SLAU_matrix_coefs(1.0f, 0.5f * beta2 * dt*dt);
+  copyElementsAndFlocals(FEMdata, gpu_data);
+  gpuGenerateMask(gpu_data, FEMdata.elementsCount);
+  gpuCountNAdjElem(gpu_data, grid_size);
+  gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
+                      FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
+                      FEMdata.CudaIndicesToConstraintsCount);
+  gpuCalculateMlocal(gpu_data, n_elems,
+                           FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
+  gpuCalculateDiag(gpu_data, n_elems);
+
+  int endnt = static_cast<int>(endtime / dt);
+  int nt = 1;
+  while (nt <= endnt) {
+      float t = nt*dt;
+      if (PRINT_DEBUG_INFO) {
+        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
+        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
+      }
+
+      gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_vel(), 1.0f, dt, grid_size);
+      gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * dt*dt, grid_size);
+      gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, (1.0f - beta1) * dt, grid_size);
+
+      gpuMultiplyMatrixByVec(gpu_data.get_Klocals(), gpu_data.get_displ(), gpu_data.get_r(), FEMdata.elementsCount);
+
+      // update F
+      for (int beIdx = 0; beIdx < FEMdata.boundaryEdgesCount; ++beIdx) {
+          BoundaryEdge bedge = FEMdata.boundary[beIdx];
+          int eIdx = bedge.adj_elem1;
+          FEMdata.elements[eIdx].CalculateFlocal(bedge, FEMdata.nodesX, FEMdata.nodesY, t);
+          // ToDO: ADD APPLY CONSTRAINTS FOR Flocal!
+      }
+      copyFlocals(FEMdata, gpu_data);
+
+      gpuAddWeighted2(gpu_data.get_r(), gpu_data.get_Flocals(), -1.0f, 1.0f, grid_size);
+
+      // Think how not to use loadVectors! Too dificult!
+      std::unordered_map <int, MyArray> loadVectors;
+      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
+                              // instead of assigned. See if-statement in for-loop in the function's body
+      GetMapElement2Loadvector(FEMdata, loadVectors, t);
+      copyLoads(gpu_data, loadVectors, n_elems);
+
+      gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), FEMdata.elementsCount);
+
+      gpuPCG_EbE_vec_DYN(FEMdata, gpu_data, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
+
+      gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, beta1 * dt, grid_size);
+
+
+      ++nt;
+      if (PRINT_DEBUG_INFO) {
+        std::cout << std::endl;
+      }
+  }
+
+  gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
+  gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
+
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), FEMdata.displacements.get_data(), n_gl_dofs);
+}
+
+void gpuCalculateFEM_implicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO) {
+  // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
+  CheckRunTime(__func__)
+  //assert(beta2 >= beta1 && beta1 >= 0.5f);
+
+  int n_elems = FEMdata.elementsCount;
+  int n_gl_dofs = FEMdata.nodesCount * DIM;
+  int grid_size = 3 * DIM * n_elems;
+  bool doAssemblyRes = false;
+  bool isLumped = false;
+  float eps_PCG = 1e-4f;
+
+  for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+    // ERROR:
+    // FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
+  }
+
+//  std::unordered_map <int, std::vector<int>> nodeAdjElem;
+//  CalculateNodeAdjElem(FEMdata, nodeAdjElem);
+
+//  AssignLoadElement(FEMdata, nodeAdjElem);
+//  ApplyLoads_EbE(FEMdata);
+
+  ApplyConstraints_EbE(FEMdata);
+
+//    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+//        Element *elem = &FEMdata.elements[eIdx];
+//        elem->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
+//        elem->CalculateMlocal(rho, FEMdata.nodesX, FEMdata.nodesY, true); // Lumping on
+//        if (is_damping) elem->CalculateClocal(damping_alpha, damping_beta);
+//    }
+
+  gpuDataKeeper_DYN_DAMP gpu_data(FEMdata.elementsCount, FEMdata.nodesCount, doAssemblyRes, isLumped, damping_alpha, damping_beta);
+  gpu_data.set_SLAU_matrix_coefs(1.0f, 0.5f * beta2 * dt*dt, beta1 * dt);
+  copyElementsAndFlocals(FEMdata, gpu_data);
+  gpuGenerateMask(gpu_data, FEMdata.elementsCount);
+  gpuCountNAdjElem(gpu_data, grid_size);
+  gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
+                      FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
+                      FEMdata.CudaIndicesToConstraintsCount);
+  gpuCalculateMlocal(gpu_data, n_elems,
+                           FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
+  gpuCalculateDiag_DAMP(gpu_data, n_elems);
+
+  int endnt = static_cast<int>(endtime / dt);
+  int nt = 1;
+  while (nt <= endnt) {
+      float t = nt*dt;
+      if (PRINT_DEBUG_INFO) {
+        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
+        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
+      }
+
+      gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_vel(), 1.0f, dt, grid_size);
+      gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * dt*dt, grid_size);
+      gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, (1.0f - beta1) * dt, grid_size);
+
+      gpuMultiplyMatrixByVec(gpu_data.get_Klocals(), gpu_data.get_displ(), gpu_data.get_r(), FEMdata.elementsCount);
+      //if (is_damping) {
+      gpuMultiplyClocalByVec(gpu_data, gpu_data.get_vel(), gpu_data.get_tmp(), FEMdata.elementsCount);
+      gpuAdd(gpu_data.get_r(), gpu_data.get_tmp(), FEMdata.elementsCount);
+      //}
+
+      // update F
+      for (int beIdx = 0; beIdx < FEMdata.boundaryEdgesCount; ++beIdx) {
+          BoundaryEdge bedge = FEMdata.boundary[beIdx];
+          int eIdx = bedge.adj_elem1;
+          FEMdata.elements[eIdx].CalculateFlocal(bedge, FEMdata.nodesX, FEMdata.nodesY, t);
+          // ToDO: ADD APPLY CONSTRAINTS FOR Flocal!
+      }
+      copyFlocals(FEMdata, gpu_data);
+
+      gpuAddWeighted2(gpu_data.get_r(), gpu_data.get_Flocals(), -1.0f, 1.0f, grid_size);
+
+      // Think how not to use loadVectors! Too dificult!
+      std::unordered_map <int, MyArray> loadVectors;
+      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
+                              // instead of assigned. See if-statement in for-loop in the function's body
+      GetMapElement2Loadvector(FEMdata, loadVectors, t);
+      copyLoads(gpu_data, loadVectors, n_elems);
+
+      gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), FEMdata.elementsCount);
+
+      gpuPCG_EbE_vec_DYN_DAMP(FEMdata, gpu_data, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
+
+      gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, beta1 * dt, grid_size);
+
+
+      ++nt;
+      if (PRINT_DEBUG_INFO) {
+        std::cout << std::endl;
+      }
+  }
+
+  gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
+  gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
+
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), FEMdata.displacements.get_data(), n_gl_dofs);
+}
+
 void gpuCalculateFEM_explicit(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO) {
     bool is_damping = !((damping_alpha == 0.0f) && (damping_beta == 0.0f));
     if (is_damping)
       gpuCalculateFEM_explicit_DYN_DAMP(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, PRINT_DEBUG_INFO);
     else
       gpuCalculateFEM_explicit_DYN(FEMdata, rho, endtime, dt, beta1, PRINT_DEBUG_INFO);
-
-
 }
 
 void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO) {
-  return;
-}
-
-void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO) {
   // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
   CheckRunTime(__func__)
 
@@ -1302,11 +1510,107 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
     FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
   }
 
-  //    std::unordered_map <int, std::vector<int>> nodeAdjElem;
-  //    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
+//  std::unordered_map <int, std::vector<int>> nodeAdjElem;
+//  CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-  //    AssignLoadElement(FEMdata, nodeAdjElem);
-  //    ApplyLoads_EbE(FEMdata);
+//  AssignLoadElement(FEMdata, nodeAdjElem);
+//  ApplyLoads_EbE(FEMdata);
+
+  ApplyConstraints_EbE(FEMdata);
+
+//    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
+//        Element *elem = &FEMdata.elements[eIdx];
+//        elem->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
+//        elem->CalculateMlocal(rho, FEMdata.nodesX, FEMdata.nodesY, true); // Lumping on
+//        if (is_damping) elem->CalculateClocal(damping_alpha, damping_beta);
+//    }
+
+  gpuDataKeeper_DYN gpu_data(FEMdata.elementsCount, FEMdata.nodesCount, doAssemblyRes, isLumped);
+  copyElementsAndFlocals(FEMdata, gpu_data);
+  gpuGenerateMask(gpu_data, FEMdata.elementsCount);
+  gpuCountNAdjElem(gpu_data, grid_size);
+  gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
+                      FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
+                      FEMdata.CudaIndicesToConstraintsCount);
+  gpuCalculateMlocal(gpu_data, FEMdata.elementsCount,
+                           FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
+
+  int endnt = static_cast<int>(endtime / dt);
+  int nt = 1;
+  while (nt <= endnt) {
+      float t = nt*dt;
+      if (PRINT_DEBUG_INFO) {
+        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
+        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
+      }
+
+      gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_vel(), 1.0f, dt, grid_size);
+      gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * dt*dt, grid_size);
+      gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, (1.0f - beta1) * dt, grid_size);
+
+      gpuMultiplyMatrixByVec(gpu_data.get_Klocals(), gpu_data.get_displ(), gpu_data.get_r(), FEMdata.elementsCount);
+
+      // update F
+      for (int beIdx = 0; beIdx < FEMdata.boundaryEdgesCount; ++beIdx) {
+          BoundaryEdge bedge = FEMdata.boundary[beIdx];
+          int eIdx = bedge.adj_elem1;
+          FEMdata.elements[eIdx].CalculateFlocal(bedge, FEMdata.nodesX, FEMdata.nodesY, t);
+          // ToDO: ADD APPLY CONSTRAINTS FOR Flocal!
+      }
+      copyFlocals(FEMdata, gpu_data);
+
+      gpuAddWeighted2(gpu_data.get_r(), gpu_data.get_Flocals(), -1.0f, 1.0f, grid_size);
+
+      // Think how not to use loadVectors! Too dificult!
+      std::unordered_map <int, MyArray> loadVectors;
+      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
+                              // instead of assigned. See if-statement in for-loop in the function's body
+      GetMapElement2Loadvector(FEMdata, loadVectors, t);
+      copyLoads(gpu_data, loadVectors, n_elems);
+
+      gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), FEMdata.elementsCount);
+
+      gpuSolveDiag(gpu_data.get_diagM(), gpu_data.get_r(),
+                   gpu_data.get_x(), gpu_data.get_mask(),
+                   gpu_data.get_n_adjelem(), grid_size, n_gl_dofs, doAssemblyRes);
+
+      gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, beta1 * dt, grid_size);
+
+
+      ++nt;
+      if (PRINT_DEBUG_INFO) {
+        std::cout << std::endl;
+      }
+  }
+
+  gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
+  gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
+
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), FEMdata.displacements.get_data(), n_gl_dofs);
+}
+
+void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO) {
+  // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
+  CheckRunTime(__func__)
+  assert(damping_beta == 0.0f); // ToDO: rewrite considering this!
+
+  int n_elems = FEMdata.elementsCount;
+  int n_gl_dofs = FEMdata.nodesCount * DIM;
+  int grid_size = 3 * DIM * n_elems;
+  bool doAssemblyRes = false;
+  bool isLumped = true;
+
+  for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
+    // ERROR:
+    // FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
+  }
+
+//  std::unordered_map <int, std::vector<int>> nodeAdjElem;
+//  CalculateNodeAdjElem(FEMdata, nodeAdjElem);
+
+//  AssignLoadElement(FEMdata, nodeAdjElem);
+//  ApplyLoads_EbE(FEMdata);
 
   ApplyConstraints_EbE(FEMdata);
 
@@ -1346,14 +1650,6 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
       gpuAdd(gpu_data.get_r(), gpu_data.get_tmp(), FEMdata.elementsCount);
       //}
 
-      // Think how not to use loadVectors! Too dificult!
-      std::unordered_map <int, MyArray> loadVectors;
-      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
-                              // instead of assigned. See if-statement in for-loop in the function's body
-      GetMapElement2Loadvector(FEMdata, loadVectors, t);
-      copyLoads(gpu_data, loadVectors, n_elems);
-
-      std::cout << "SUKA 03\n";
       // update F
       for (int beIdx = 0; beIdx < FEMdata.boundaryEdgesCount; ++beIdx) {
           BoundaryEdge bedge = FEMdata.boundary[beIdx];
@@ -1361,17 +1657,16 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
           FEMdata.elements[eIdx].CalculateFlocal(bedge, FEMdata.nodesX, FEMdata.nodesY, t);
           // ToDO: ADD APPLY CONSTRAINTS FOR Flocal!
       }
-      std::cout << "SUKA 04\n";
       copyFlocals(FEMdata, gpu_data);
 
       gpuAddWeighted2(gpu_data.get_r(), gpu_data.get_Flocals(), -1.0f, 1.0f, grid_size);
 
-//      // Think how not to use loadVectors! Too dificult!
-//      std::unordered_map <int, MyArray> loadVectors;
-//      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
-//                              // instead of assigned. See if-statement in for-loop in the function's body
-//      GetMapElement2Loadvector(FEMdata, loadVectors, t);
-//      copyLoads(gpu_data, loadVectors, n_elems);
+      // Think how not to use loadVectors! Too dificult!
+      std::unordered_map <int, MyArray> loadVectors;
+      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
+                              // instead of assigned. See if-statement in for-loop in the function's body
+      GetMapElement2Loadvector(FEMdata, loadVectors, t);
+      copyLoads(gpu_data, loadVectors, n_elems);
 
       gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), FEMdata.elementsCount);
 
@@ -1391,7 +1686,7 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
   gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
 
-  gpuCopy(gpu_data.get_displ_global(), FEMdata.displacements.get_data(), n_gl_dofs);
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), FEMdata.displacements.get_data(), n_gl_dofs);
 }
 
 void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, bool doAssemblyRes,  float eps, bool PRINT_DEBUG_INFO) {
@@ -1399,18 +1694,6 @@ void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, boo
   int n_elems  = FEMdata.elementsCount;
   int n_gl_dofs = FEMdata.nodesCount * DIM;
   int grid_size = 3 * DIM * n_elems;
-  float rho = 2400.f;
-
-  copyElementsAndFlocals(FEMdata, gpu_data);
-  gpuGenerateMask(gpu_data, FEMdata.elementsCount);
-  gpuCountNAdjElem(gpu_data, grid_size);
-
-  gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
-                      FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
-                      FEMdata.CudaIndicesToConstraintsCount);
-
-  gpuCalculateMlocal(gpu_data, FEMdata.elementsCount,
-                           FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
 
   // (0b)
   gpuReductionWithMaskAndTransform2(gpu_data.get_diag(), gpu_data.get_mask(), grid_size, gpu_data.get_m(), n_gl_dofs);
@@ -1433,6 +1716,9 @@ void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, boo
   int n_iter = 0;
   do {
     ++n_iter;
+    if (PRINT_DEBUG_INFO) {
+      std::cout << "Iteration #" << n_iter << std::endl;
+    }
 
     // (1a)
     //gpuMultiplyKlocalByVec(gpu_data, FEMdata.elementsCount);
@@ -1454,7 +1740,85 @@ void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, boo
     if (PRINT_DEBUG_INFO) {
       // Verbose
       // -----------------------------------------------------------------------
+      std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
+      std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
+      std::cout << "alpha denominator\t= " << sumElem << std::endl;
+      // -----------------------------------------------------------------------
+    }
+    // (5)
+    if (gamma_new < eps * gamma0)
+      break;
+
+    // (6)
+    gpuAddWeighted2(gpu_data.get_p(), gpu_data.get_s(), gamma_new / gamma, 1.0f, grid_size);
+    if (PRINT_DEBUG_INFO) {
+      // Verbose
+      // -----------------------------------------------------------------------
+      std::cout << "beta\t\t\t= " << gamma_new / gamma << std::endl;
+      std::cout << "gamma_new\t\t= " << gamma_new << std::endl;
+      std::cout << std::endl;
+      // -----------------------------------------------------------------------
+    }
+    gamma = gamma_new;
+  } while (1);
+  if (doAssemblyRes) {
+    gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_temp_res());
+    gpuDivideByElementwise(gpu_data.get_temp_res(), gpu_data.get_n_adjelem(), gpu_data.get_temp_res(), n_gl_dofs);
+  }
+
+}
+
+void gpuPCG_EbE_vec_DYN_DAMP(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN_DAMP &gpu_data, bool doAssemblyRes,  float eps, bool PRINT_DEBUG_INFO) {
+  CheckRunTime(__func__)
+  int n_elems  = FEMdata.elementsCount;
+  int n_gl_dofs = FEMdata.nodesCount * DIM;
+  int grid_size = 3 * DIM * n_elems;
+
+  // (0b)
+  gpuReductionWithMaskAndTransform2(gpu_data.get_diag(), gpu_data.get_mask(), grid_size, gpu_data.get_m(), n_gl_dofs);
+  // (0c)
+  gpuDivideByElementwise(gpu_data.get_r(), gpu_data.get_m(), gpu_data.get_z(), grid_size);
+  // (0d)
+  gpuReductionWithMaskAndTransform2(gpu_data.get_z(), gpu_data.get_mask(), grid_size, gpu_data.get_s(), n_gl_dofs);
+  float gamma0 = gpuDotProduct2(gpu_data.get_r(), gpu_data.get_s(), grid_size);
+  float gamma = gamma0;
+  float gamma_new = 0.0f;
+
+  // (0e)
+  gpuCopyDeviceToDevice(gpu_data.get_s(), gpu_data.get_p(), grid_size);
+
+  if (PRINT_DEBUG_INFO) {
+    //std::cout.precision(16);
+    std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
+  }
+
+  int n_iter = 0;
+  do {
+    ++n_iter;
+    if (PRINT_DEBUG_INFO) {
       std::cout << "Iteration #" << n_iter << std::endl;
+    }
+
+    // (1a)
+    //gpuMultiplyKlocalByVec(gpu_data, FEMdata.elementsCount);
+    gpuMultiplyAlocalByVec_DAMP(gpu_data, FEMdata.elementsCount);
+    // (1b)
+    float sumElem = gpuDotProduct2(gpu_data.get_p(), gpu_data.get_u(), grid_size);
+    // (1c,d)
+    float alpha = gamma / sumElem;
+    // (2a)
+    gpuAddWeighted2(gpu_data.get_x(), gpu_data.get_p(), 1.0f, alpha, grid_size);
+    // (2b)
+    gpuAddWeighted2(gpu_data.get_r(), gpu_data.get_u(), 1.0f, -1.0f * alpha, grid_size);
+    // (3)
+    gpuDivideByElementwise(gpu_data.get_r(), gpu_data.get_m(), gpu_data.get_z(), grid_size);
+    // (4)
+    gpuReductionWithMaskAndTransform2(gpu_data.get_z(), gpu_data.get_mask(), grid_size, gpu_data.get_s(), n_gl_dofs);
+    gamma_new = gpuDotProduct2(gpu_data.get_r(), gpu_data.get_s(), grid_size);
+
+    if (PRINT_DEBUG_INFO) {
+      // Verbose
+      // -----------------------------------------------------------------------
       std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
       std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
       std::cout << "alpha denominator\t= " << sumElem << std::endl;
