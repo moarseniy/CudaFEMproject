@@ -17,6 +17,17 @@ if __name__ == '__main__':
         dim = str(config_data['DIM'])
         youngModulus = str(config_data['youngModulus'])
         poissonRatio = str(config_data['poissonRatio'])
+        # ToDO: handle config_data['task_type'] empty
+        task_type = str(config_data['task_type']).upper() if 'task_type' in config_data else ''
+        verbose = bool(config_data['verbose']) if 'verbose' in config_data else True
+        if task_type == "DYNAMICS":
+            rho = str(config_data['rho'])
+            damping_alpha = str(config_data['damping_alpha'])
+            damping_beta = str(config_data['damping_beta'])
+            dt = str(config_data['dt'])
+            endtime = str(config_data['endtime'])
+            beta1 = str(config_data['beta1'])
+            beta2 = str(config_data['beta2'])
 
     except Exception as e:
         print('Something wrong with config file: ', e)
@@ -66,8 +77,12 @@ if __name__ == '__main__':
 
         print('\nRUN calculation for ' + task_name)
         main_exe = 'build-FEMproject-Desktop_x86_windows_msvc2019_pe_64bit-Release/fem/main.exe'
-        os.system(proj_dir + main_exe + ' ' + task_name + ' ' + proj_dir + ' ' + prep_mesh_task_dir + ' ' +
-                  results_dir + ' ' + poissonRatio + ' ' + youngModulus)
+        exec_text = proj_dir + main_exe + ' ' + task_name + ' ' + proj_dir + ' ' + prep_mesh_task_dir + ' ' + \
+                  results_dir + ' ' + poissonRatio + ' ' + youngModulus + ' ' + str(int(verbose))
+        if task_type == "DYNAMICS":
+            exec_text +=  ' 1 ' + rho + ' ' + damping_alpha + ' ' + damping_beta + ' ' + dt + ' ' +  \
+                            endtime + ' ' + beta1 + ' ' + beta2
+        os.system(exec_text)
         print('FINISHED calculation for ' + task_name)
         
         print('\nRUN Postprocessing for ' + task_name)
