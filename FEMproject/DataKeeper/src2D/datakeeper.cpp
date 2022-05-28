@@ -123,6 +123,15 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     float normal_x, normal_y;
     //        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
     stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y;
+
+    for (std::vector<Constraint>::const_iterator it = constraints.begin(); it != constraints.end(); ++it) {
+      if (it->node == edge.node0) {
+        edge.type0 = it->type;
+      } else if (it->node == edge.node1) {
+        edge.type1 = it->type;
+      }
+    }
+
     string str;
     std::getline(stress_file, str);
     // https://stackoverflow.com/a/39080627

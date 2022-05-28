@@ -1220,6 +1220,9 @@ void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, fl
   int n_iter = 0;
   do {
     ++n_iter;
+    if (PRINT_DEBUG_INFO) {
+      std::cout << "Iteration #" << n_iter << std::endl;
+    }
 
     // (1a)
     gpuMultiplyKlocalByVec(gpu_data, FEMdata.elementsCount);
@@ -1240,7 +1243,6 @@ void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, fl
     if (PRINT_DEBUG_INFO) {
       // Verbose
       // -----------------------------------------------------------------------
-      std::cout << "Iteration #" << n_iter << std::endl;
       std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
       std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
       std::cout << "alpha denominator\t= " << sumElem << std::endl;
@@ -1622,6 +1624,7 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
 //    }
 
   gpuDataKeeper_DYN_DAMP gpu_data(FEMdata.elementsCount, FEMdata.nodesCount, doAssemblyRes, isLumped, damping_alpha, damping_beta);
+  gpu_data.set_SLAU_matrix_coefs(1.0f, 0.0f, beta1 * dt);
   copyElementsAndFlocals(FEMdata, gpu_data);
   gpuGenerateMask(gpu_data, FEMdata.elementsCount);
   gpuCountNAdjElem(gpu_data, grid_size);
@@ -1630,6 +1633,7 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
                       FEMdata.CudaIndicesToConstraintsCount);
   gpuCalculateMlocal(gpu_data, FEMdata.elementsCount,
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
+  gpuCalculateDiag_DAMP(gpu_data, n_elems);
 
   int endnt = static_cast<int>(endtime / dt);
   int nt = 1;
@@ -1670,7 +1674,7 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
 
       gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), FEMdata.elementsCount);
 
-      gpuSolveDiag(gpu_data.get_diagM(), gpu_data.get_r(),
+      gpuSolveDiag(gpu_data.get_diag(), gpu_data.get_r(),
                    gpu_data.get_x(), gpu_data.get_mask(),
                    gpu_data.get_n_adjelem(), grid_size, n_gl_dofs, doAssemblyRes);
 

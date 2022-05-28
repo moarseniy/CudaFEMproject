@@ -38,6 +38,17 @@ struct TimeDependentEntity {
   void Constant(float t);
 };
 
+struct Constraint {
+  enum Type {
+    NO = 0,
+    UX = 1,
+    UY = 2 //,
+    //UZ = 3
+  };
+  int node;
+  Type type;
+};
+
 struct Edge {
   int node0, node1;
   int adj_elem1, adj_elem2;   // if there is no second adjacement element, set adj_elem2 equaled to -1
@@ -54,8 +65,11 @@ struct Edge {
 struct BoundaryEdge : Edge, TimeDependentEntity {
   BoundaryEdge() {
     adj_elem2 = -1;
+    type0 = Constraint::Type::NO;
+    type1 = Constraint::Type::NO;
   }
   float normal_x, normal_y;   // make sure it is normalized
+  Constraint::Type type0, type1;
 };
 
 struct Element {
@@ -121,16 +135,6 @@ struct Element {
 
 struct ElementLight {
   int nodesIds[3];
-};
-
-struct Constraint {
-  enum Type {
-    UX = 1,
-    UY = 2,
-    UZ = 3
-  };
-  int node;
-  Type type;
 };
 
 struct Load : TimeDependentEntity {

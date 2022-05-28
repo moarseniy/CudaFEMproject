@@ -1,16 +1,16 @@
 {
 	"CudaFEMproject_path": "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/",
 	"working_path": "C:/Users/mexika/Desktop/fem_stuff/",
-	"task": ["prak_mesh1"],
+	"task": ["quasi1Dwave_taller"],
 	"task_type": "dynamics",
 	"DIM": 2,
-	"youngModulus": 2e+11,
-	"poissonRatio": 0.25,
+	"youngModulus": 38400000000,
+	"poissonRatio": 0.0,
 	"rho": 2400,
-	"damping_alpha": 1e-7,
+	"damping_alpha": 0.0,
 	"damping_beta": 0.0,
-	"dt": 4e-6,
-	"endtime": 0.3,
+	"dt": 2e-3,
+	"endtime": 0.7,
 	"beta1": 0.5,
-	"beta2": 0.0
+	"beta2": 0.55
 }

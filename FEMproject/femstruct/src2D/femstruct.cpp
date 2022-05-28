@@ -163,6 +163,7 @@ void Element::CalculateClocal(float alpha, float beta) {
 }
 
 void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, float t) {
+  CheckRunTime(__func__)
   edge.update(t);
   float pressure_value = edge.value;
   float X0 = nodesX[edge.node0], X1 = nodesX[edge.node1];
@@ -216,10 +217,27 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
   //    Flocal[edge2elem_num[1] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a1/area);
   //    Flocal[edge2elem_num[1] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a1/area);
 
-  Flocal[2 * edge2elem_num[0] + 0] = - 0.5 * pressure_value * edge_length * edge.normal_x;
-  Flocal[2 * edge2elem_num[0] + 1] = - 0.5 * pressure_value * edge_length * edge.normal_y;
-  Flocal[2 * edge2elem_num[1] + 0] = - 0.5 * pressure_value * edge_length * edge.normal_x;
-  Flocal[2 * edge2elem_num[1] + 1] = - 0.5 * pressure_value * edge_length * edge.normal_y;
+  if (edge.type0 & Constraint::UX) {
+    Flocal[2 * edge2elem_num[0] + 0] = 0.0f;
+  } else {
+    Flocal[2 * edge2elem_num[0] + 0] = - 0.5 * pressure_value * edge_length * edge.normal_x;
+  }
+  if (edge.type0 & Constraint::UY) {
+    Flocal[2 * edge2elem_num[0] + 1] = 0.0f;
+  } else {
+    Flocal[2 * edge2elem_num[0] + 1] = - 0.5 * pressure_value * edge_length * edge.normal_y;
+  }
+
+  if (edge.type1 & Constraint::UX) {
+    Flocal[2 * edge2elem_num[1] + 0] = 0.0f;
+  } else {
+    Flocal[2 * edge2elem_num[1] + 0] = - 0.5 * pressure_value * edge_length * edge.normal_x;
+  }
+  if (edge.type1 & Constraint::UY) {
+    Flocal[2 * edge2elem_num[1] + 1] = 0.0f;
+  } else {
+    Flocal[2 * edge2elem_num[1] + 1] = - 0.5 * pressure_value * edge_length * edge.normal_y;
+  }
 
 }
 

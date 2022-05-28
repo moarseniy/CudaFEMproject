@@ -896,23 +896,36 @@ void gpuGenerateMask(gpuDataKeeper &gpuD, int elementsCount) {
 
 // needed for implicit scheme (isLumped = false)
 __global__ void kernelCalculateDiag_DAMP(int elementsCount, float *diag, float *Mlocals, float *Klocals,
-                                    float cM, float cK, float cC, float damping_alpha, float damping_beta) {
+                                         float cM, float cK, float cC, float damping_alpha, float damping_beta,
+                                         bool isLumped) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < elementsCount) {
     for (int j = 0; j < 6; ++j) {
-      diag[j + index * 6] =
-          cM*Mlocals[j + j * 6 + index * 36] + cK*Klocals[j + j * 6 + index * 36] +
-          cC*(damping_alpha*Mlocals[j + j * 6 + index * 36] + damping_beta*Klocals[j + j * 6 + index * 36]);
+      if (isLumped) {
+        diag[j + index * 6] =
+            cM*Mlocals[j + index * 6] + cK*Klocals[j + j * 6 + index * 36] +
+            cC*(damping_alpha*Mlocals[j + index * 6] + damping_beta*Klocals[j + j * 6 + index * 36]);
+      } else {
+        diag[j + index * 6] =
+            cM*Mlocals[j + j * 6 + index * 36] + cK*Klocals[j + j * 6 + index * 36] +
+            cC*(damping_alpha*Mlocals[j + j * 6 + index * 36] + damping_beta*Klocals[j + j * 6 + index * 36]);
+      }
     }
   }
 }
 
-
 void gpuCalculateDiag_DAMP(gpuDataKeeper_DYN_DAMP &gpu_data, int elementsCount) {
-  kernelCalculateDiag_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount,
-                                                            gpu_data.get_diag(), gpu_data.get_Mlocals(), gpu_data.get_Klocals(),
-                                                            gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
-                                                            gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2);
+  if (gpu_data.isLumped) {
+    kernelCalculateDiag_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount,
+                                                              gpu_data.get_diag(), gpu_data.get_diagM(), gpu_data.get_Klocals(),
+                                                              gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
+                                                              gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2, true);
+  } else {
+    kernelCalculateDiag_DAMP<<<(elementsCount + 255) / 256, 256>>>(elementsCount,
+                                                              gpu_data.get_diag(), gpu_data.get_Mlocals(), gpu_data.get_Klocals(),
+                                                              gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2, gpu_data.SLAU_matrix_coefs.val3,
+                                                              gpu_data.damping_coefs.val1, gpu_data.damping_coefs.val2, false);
+  }
 }
 
 // needed for implicit scheme (isLumped = false)
