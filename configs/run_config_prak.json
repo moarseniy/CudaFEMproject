@@ -7,10 +7,10 @@
 	"youngModulus": 2e+11,
 	"poissonRatio": 0.25,
 	"rho": 2400,
-	"damping_alpha": 1e-7,
-	"damping_beta": 0.0,
+	"damping_alpha": 1e-5,
+	"damping_beta": 1e-5,
 	"dt": 4e-6,
-	"endtime": 0.3,
+	"endtime": 0.5,
 	"beta1": 0.5,
 	"beta2": 0.0
 }

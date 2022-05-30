@@ -53,6 +53,7 @@ public:
   void copyElementsFromHost(thrust::host_vector<float> v);
   void copyFlocalFromHost(thrust::host_vector<float> v);
   void copyLoadsFromHost(thrust::host_vector<float> v);
+  void gpuDataKeeper::setZeroVec();
 protected:
   thrust::device_vector<float> gpuB, gpuKlocals, gpuFlocals, gpuElements,
   diag, r, m, z, s, p, u, x, mask, n_adjelem, temp_res, loads;
@@ -152,6 +153,7 @@ void gpuSolveDiag(float *diag, float *r, float *res,
                   float *mask, float *n_adjelem,
                   int grid_size, int n_gl_dofs,
                   bool doAssemblyRes);
+float gpuCNorm(float *v, int size);
 void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD);
 void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD);
 void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVectors, int elementsCount);

@@ -73,7 +73,7 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     loads_file >> node;
     std::getline(loads_file, str);
     // https://stackoverflow.com/a/39080627
-    std::cout << str << std::endl;
+    //std::cout << str << std::endl;
     std::regex wavelet_expression("(\\w+(\\((.*?)\\))|[+-]?(\\d+([.]\\d*)?([eE][+-]?\\d+)?|[.]\\d+([eE][+-]?\\d+)?))");
     smatch res;
 
@@ -84,14 +84,14 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
       else if (loop_it == 2) ystr = res[0];
       str = res.suffix();
     }
-    std::cout << "X:\n";
+    //std::cout << "X:\n";
     Load loadX;
     loadX.parseString(xstr);
     if (!(loadX.ampl == 0.0f)) {
       loadX.dof = node * 2 + 0;
       loads.push_back(loadX);
     }
-    std::cout << "Y:\n";
+    //std::cout << "Y:\n";
     Load loadY;
     loadY.parseString(ystr);
     if (!(loadY.ampl == 0.0f)) {

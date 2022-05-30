@@ -163,7 +163,7 @@ void Element::CalculateClocal(float alpha, float beta) {
 }
 
 void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, float t) {
-  CheckRunTime(__func__)
+  //CheckRunTime(__func__)
   edge.update(t);
   float pressure_value = edge.value;
   float X0 = nodesX[edge.node0], X1 = nodesX[edge.node1];
@@ -305,23 +305,23 @@ void TimeDependentEntity::parseString(std::string& str) {
 
     std::string wavelet_str = str.substr(0, str.find("("));
     str.erase(0, str.find("(") + 1);
-    std::cout << "DEBUG : xstr = " << str << std::endl;
-    std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
+    //std::cout << "DEBUG : xstr = " << str << std::endl;
+    //std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
 
     std::string freq_str = str.substr(0, str.find(","));
     str.erase(0, str.find(",") + 1);
-    std::cout << "DEBUG : xstr = " << str << std::endl;
-    std::cout << "DEBUG : freq_str = " << freq_str << std::endl;
+    //std::cout << "DEBUG : xstr = " << str << std::endl;
+    //std::cout << "DEBUG : freq_str = " << freq_str << std::endl;
 
     std::string timeshift_str = str.substr(0, str.find(","));
     str.erase(0, str.find(",") + 1);
-    std::cout << "DEBUG : xstr = " << str << std::endl;
-    std::cout << "DEBUG : timeshift_str = " << timeshift_str << std::endl;
+    //std::cout << "DEBUG : xstr = " << str << std::endl;
+    //std::cout << "DEBUG : timeshift_str = " << timeshift_str << std::endl;
 
     std::string ampl_str = str.substr(0, str.find(")"));
     //xstr.erase(0, xstr.find(")") + 1);
-    std::cout << "DEBUG : xstr = " << str << std::endl;
-    std::cout << "DEBUG : ampl_str = " << ampl_str << std::endl;
+    //std::cout << "DEBUG : xstr = " << str << std::endl;
+    //std::cout << "DEBUG : ampl_str = " << ampl_str << std::endl;
 
     this->value = std::stof(ampl_str);
     this->ampl  = std::stof(ampl_str);
@@ -338,11 +338,11 @@ void TimeDependentEntity::parseString(std::string& str) {
       this->wavelet = &TimeDependentEntity::Berlage;
     }
 
-    std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
+    //std::cout << "DEBUG : wavelet_str = " << wavelet_str << std::endl;
 
     this->timeshift = std::stof(timeshift_str);
     this->freq      = std::stof(freq_str);
-    std::cout << "value = " << this->value << "; timeshift = " << this->timeshift << "; load.freq = " << this->freq << std::endl;
+    //std::cout << "value = " << this->value << "; timeshift = " << this->timeshift << "; load.freq = " << this->freq << std::endl;
 
   }
 }

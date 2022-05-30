@@ -46,9 +46,9 @@ gpuDataKeeper::gpuDataKeeper(int elementsCount, int nodesCount, bool doAssemblyR
                                                       m(3 * DIM * elementsCount), z(3 * DIM * elementsCount), s(3 * DIM * elementsCount),
                                                       p(3 * DIM * elementsCount), u(3 * DIM * elementsCount),
                                                       x(3 * DIM * elementsCount, 0.0f), mask(3 * DIM * elementsCount),
-                                                      n_adjelem(DIM * nodesCount), gpuB(3 * 6 * elementsCount), gpuElements(3 * elementsCount),
-                                                      gpuKlocals(6 * 6 * elementsCount), gpuFlocals(3 * DIM * elementsCount), tmp(3 * DIM * elementsCount),
-                                                      loads(3 * DIM * elementsCount)
+                                                      n_adjelem(DIM * nodesCount), gpuB(3 * 6 * elementsCount, 0.0f), gpuElements(3 * elementsCount),
+                                                      gpuKlocals(6 * 6 * elementsCount, 0.0f), gpuFlocals(3 * DIM * elementsCount, 0.0f), tmp(3 * DIM * elementsCount),
+                                                      loads(3 * DIM * elementsCount, 0.0f)
 {
   CheckRunTime(__func__)
   if (doAssemblyRes)
@@ -70,8 +70,11 @@ gpuDataKeeper_DYN::gpuDataKeeper_DYN(int elementsCount, int nodesCount, bool doA
   this->isLumped = isLumped;
   if (isLumped) {
     diagM.resize(3 * DIM * elementsCount);
+//    gpuMlocals.resize(6 * 6 * elementsCount);
+//    thrust::fill(gpuMlocals.begin(), gpuMlocals.end(), 0.0f); // Initialize
   } else {
     gpuMlocals.resize(6 * 6 * elementsCount);
+    thrust::fill(gpuMlocals.begin(), gpuMlocals.end(), 0.0f); // Initialize
   }
 
   // ToDO: initialize displ, vel, x to 0
@@ -676,6 +679,12 @@ __global__ void kernelCalculateMlocal(int elementsCount, float *elements,
       M[3 + 6 * index] = mass / 3;
       M[4 + 6 * index] = mass / 3;
       M[5 + 6 * index] = mass / 3;
+//      M[0 + 0 * 6 + 36 * index] = mass / 3;
+//      M[1 + 1 * 6 + 36 * index] = mass / 3;
+//      M[2 + 2 * 6 + 36 * index] = mass / 3;
+//      M[3 + 3 * 6 + 36 * index] = mass / 3;
+//      M[4 + 4 * 6 + 36 * index] = mass / 3;
+//      M[5 + 5 * 6 + 36 * index] = mass / 3;
     } else {
       M[0 + 0 * 6 + 36 * index] = mass / 6;
       M[1 + 1 * 6 + 36 * index] = mass / 6;
@@ -716,6 +725,8 @@ void gpuCalculateMlocal(gpuDataKeeper_DYN &gpu_data, int elementsCount,
   if (gpu_data.isLumped) {
     kernelCalculateMlocal<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements,
                                                                 d_nodesX, d_nodesY, gpu_data.get_diagM(), rho, true);
+//    kernelCalculateMlocal<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements,
+//                                                                d_nodesX, d_nodesY, gpu_data.get_Mlocals(), rho, true);
   } else {
     kernelCalculateMlocal<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements,
                                                                 d_nodesX, d_nodesY, gpu_data.get_Mlocals(), rho, false);
@@ -956,6 +967,19 @@ void gpuDataKeeper::copyFlocalFromHost(thrust::host_vector<float> v) {
   this->r = v;
 }
 
+void gpuDataKeeper::setZeroVec() {
+  //thrust::fill(z.begin(), z.end(), 0.0f);
+  //thrust::fill(m.begin(), m.end(), 0.0f);
+  //thrust::fill(p.begin(), p.end(), 0.0f);
+  //thrust::fill(s.begin(), s.end(), 0.0f);
+  //thrust::fill(temp_res.begin(), temp_res.end(), 0.0f);
+
+  thrust::fill(x.begin(), x.end(), 0.0f);
+
+  //thrust::fill(u.begin(), u.end(), 0.0f);
+  //thrust::fill(r.begin(), r.end(), 0.0f);
+}
+
 void gpuDataKeeper::copyLoadsFromHost(thrust::host_vector<float> v) {
   CheckRunTime(__func__)
   this->loads = v;
@@ -1064,6 +1088,13 @@ struct absolute_value : public unary_function<T,T>
     return x < T(0) ? -x : x;
   }
 };
+
+float gpuCNorm(float *v, int size) {
+  return thrust::transform_reduce(thrust::device_pointer_cast(v), thrust::device_pointer_cast(v + size),
+                                        absolute_value<float>(),
+                                        0.f,
+                                        thrust::maximum<float>());
+}
 
 float thrustCNorm(thrust::device_vector<float> &v) {
     return thrust::transform_reduce(v.begin(), v.end(),
