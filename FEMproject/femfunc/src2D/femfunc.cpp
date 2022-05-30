@@ -1105,9 +1105,8 @@ void CalculateFEM_EbE_vec_GPU(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
   //        it->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
   //    }
 
-  int num = 0;
   for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-    FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, FEMdata.pressure[num++]);
+    FEMdata.elements[it->adj_elem1].CalculateFlocal(*it, FEMdata.nodesX, FEMdata.nodesY, 0.0f);
   }
 
   //    std::unordered_map <int, std::vector<int>> nodeAdjElem;
@@ -1199,6 +1198,8 @@ void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, fl
   gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
                       FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
                       FEMdata.CudaIndicesToConstraintsCount);
+  // (0a)
+  gpuCopyDeviceToDevice(gpu_data.get_Flocals(), gpu_data.get_r(), grid_size);
   // (0b)
   gpuReductionWithMaskAndTransform2(gpu_data.get_diag(), gpu_data.get_mask(), grid_size, gpu_data.get_m(), n_gl_dofs);
   // (0c)
@@ -1400,7 +1401,7 @@ void gpuCalculateFEM_implicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   bool doAssemblyRes = false;
   bool isLumped = false;
   float eps_PCG   = 1e-4f;
-  float eps_relax = 1e-2f;
+  float eps_relax = 1e-4f;
   bool is_relax;
 
   for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
@@ -2577,9 +2578,9 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
                                 RESdata.sigma_mises,
                                 FEMdata.D, FEMdata.elements, FEMdata.displacements);
 
-  float fixed_value = -3.8f;// x -3.0; y -3.0
-  float a = -3.0f;// x -3.0 y -4.0
-  float b = 5.0f;// x 5.0 y -3.0;
+  float fixed_value = 1.55f;// x -3.0; y -3.0
+  float a = 0.0f;// x -3.0 y -4.0
+  float b = 6.0f;// x 5.0 y -3.0;
 
   CalculateStressAlongAxis(RESdata.StressComponents,
                            "x", "xx", fixed_value, a, b,
@@ -2591,8 +2592,8 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
                                    "x", fixed_value, a, b, RESdata.SmoothStress, FEMdata.nodesX, FEMdata.nodesY, FEMdata.elements);
   }
 
-  a = -3.0f;
-  b = 3.0f;
+  a = 0.0f;
+  b = 6.0f;
   float k = -0.6655f;
   float m = -0.0035f;
 
