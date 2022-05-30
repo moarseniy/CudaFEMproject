@@ -198,21 +198,28 @@ void CalculateStressAndDeformation(std::vector<MyArray> &Deformation,
                                    std::vector<float> &sigma_mises,
                                    Matrix D,
                                    std::vector<Element> elements,
-                                   MyArray displacements) {
+                                   MyArray displacements, MyArray all_B) {
   CheckRunTime(__func__)
   MyArray StressVector(3);
   MyArray DeformationVector(3);
   MyArray delta(6);
 
-  for (std::vector<Element>::iterator it = elements.begin(); it != elements.end(); ++it) {
-    delta[0] = displacements[2 * it->nodesIds[0] + 0];
-    delta[1] = displacements[2 * it->nodesIds[0] + 1];
-    delta[2] = displacements[2 * it->nodesIds[1] + 0];
-    delta[3] = displacements[2 * it->nodesIds[1] + 1];
-    delta[4] = displacements[2 * it->nodesIds[2] + 0];
-    delta[5] = displacements[2 * it->nodesIds[2] + 1];
+  Matrix B(3, 6);
 
-    DeformationVector = it->B.Product(delta);
+  for (int i = 0; i < elements.size(); ++i) {
+    delta[0] = displacements[2 * elements[i].nodesIds[0] + 0];
+    delta[1] = displacements[2 * elements[i].nodesIds[0] + 1];
+    delta[2] = displacements[2 * elements[i].nodesIds[1] + 0];
+    delta[3] = displacements[2 * elements[i].nodesIds[1] + 1];
+    delta[4] = displacements[2 * elements[i].nodesIds[2] + 0];
+    delta[5] = displacements[2 * elements[i].nodesIds[2] + 1];
+
+    for (int k = 0; k < 3; ++k)
+      for (int j = 0; j < 6; ++j)
+        B(k, j) = all_B[j + 6 * k + 3 * 6 * i];
+
+    //DeformationVector = it->B.Product(delta);
+    DeformationVector = B.Product(delta);
     StressVector = D.Product(DeformationVector);
 
     double sigma = sqrt(StressVector[0] * StressVector[0] - StressVector[0]
@@ -1198,6 +1205,7 @@ void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, fl
   gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
                       FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
                       FEMdata.CudaIndicesToConstraintsCount);
+  gpu_data.copyBmatrixToHost(FEMdata.all_B.get_data());
   // (0a)
   gpuCopyDeviceToDevice(gpu_data.get_Flocals(), gpu_data.get_r(), grid_size);
   // (0b)
@@ -1332,6 +1340,7 @@ void gpuCalculateFEM_implicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
   gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
                       FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
                       FEMdata.CudaIndicesToConstraintsCount);
+  gpu_data.copyBmatrixToHost(FEMdata.all_B.get_data());
   gpuCalculateMlocal(gpu_data, n_elems,
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
   gpuCalculateDiag(gpu_data, n_elems);
@@ -1433,6 +1442,7 @@ void gpuCalculateFEM_implicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
                       FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
                       FEMdata.CudaIndicesToConstraintsCount);
+  gpu_data.copyBmatrixToHost(FEMdata.all_B.get_data());
   gpuCalculateMlocal(gpu_data, n_elems,
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
   gpuCalculateDiag_DAMP(gpu_data, n_elems);
@@ -1558,6 +1568,7 @@ void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
   gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
                       FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
                       FEMdata.CudaIndicesToConstraintsCount);
+  gpu_data.copyBmatrixToHost(FEMdata.all_B.get_data());
   gpuCalculateMlocal(gpu_data, FEMdata.elementsCount,
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
 
@@ -1655,6 +1666,7 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   gpuCalculateKlocal2(gpu_data, FEMdata.elementsCount, FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(),
                       FEMdata.nodesCount, FEMdata.D.get_data(), FEMdata.CudaIndicesToConstraints.get_data(),
                       FEMdata.CudaIndicesToConstraintsCount);
+  gpu_data.copyBmatrixToHost(FEMdata.all_B.get_data());
   gpuCalculateMlocal(gpu_data, FEMdata.elementsCount,
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
   gpuCalculateDiag_DAMP(gpu_data, n_elems);
@@ -2576,7 +2588,7 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
                                 RESdata.Stress,
                                 RESdata.epsilon_mises,
                                 RESdata.sigma_mises,
-                                FEMdata.D, FEMdata.elements, FEMdata.displacements);
+                                FEMdata.D, FEMdata.elements, FEMdata.displacements, FEMdata.all_B);
 
   float fixed_value = 1.55f;// x -3.0; y -3.0
   float a = 0.0f;// x -3.0 y -4.0

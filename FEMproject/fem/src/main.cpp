@@ -18,43 +18,6 @@
 int main(int argc, char *argv[]) {
   CheckRunTime(__func__)
 
-//  //  ------------------------------- DEBUG -----------------------------------------------------
-//  std::string name;
-//  std::string project_directory;
-//  std::string prepared_meshes_directory;
-//  std::string results_directory;
-//  float poissonRatio, youngModulus;
-//  float rho, damping_alpha, damping_beta, dt, endtime, beta1, beta2;
-//  bool PRINT_DEBUG_INFO;
-//  bool isDYN;
-//  bool withSmooth = SMOOTH;
-//  bool withMises = MISES;
-
-//   if (argc == 1) {
-//     std::cout << "RUN SUCCESS\n";
-//     name = "point_source2";
-//     project_directory = "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/";
-//     prepared_meshes_directory = "C:/Users/mexika/Desktop/fem_stuff/prepared_meshes/2D/" + name;
-//     results_directory = "C:/Users/mexika/Desktop/fem_stuff/fem_results/2D/" + name;
-
-//     //poissonRatio = 0.0f, youngModulus = 38400000000.0f;
-//     poissonRatio = 0.2737627651217596f, youngModulus = 35216992930.08641f;
-//     rho = 2400;
-//     damping_alpha = 0.0;
-//     damping_beta = 0.0;
-//     dt = 2e-3;
-//     endtime = 0.2;
-//     beta1 = 0.5; beta2 = 0.55;   // implicit
-////     beta1 = 0.5; beta2 = 0.0;    // explicit
-
-//     isDYN = true;
-//     PRINT_DEBUG_INFO = true;
-//   }
-//   std::string output_vtk = results_directory + "/results.vtk";
-//   //  -------------------------------------------------------------------------------------------
-
-
-//  ------------------------------- RELEASE ---------------------------------------------------
   if (argc == 1) {
     std::cout << "RUN SUCCESS\n";
     return 0;
@@ -80,7 +43,6 @@ int main(int argc, char *argv[]) {
     beta1 = std::stof(argv[14]);
     beta2 = std::stof(argv[15]);
   }
-//  -------------------------------------------------------------------------------------------
 
   FEMdataKeeper FEMdata(name, project_directory, prepared_meshes_directory, results_directory);
   FEMdata.ParseFiles(poissonRatio, youngModulus);

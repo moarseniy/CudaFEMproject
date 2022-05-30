@@ -67,7 +67,7 @@ public:
     displacements.Resize(DIM * nodesCount);
     D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
     pressure.Resize(boundaryEdgesCount);
-    CudaElements.Resize(3 * elementsCount);
+    all_B.Resize(3 * 6 * elementsCount);
   }
 
   std::string name;
@@ -86,7 +86,6 @@ public:
   MyArray nodesX;
   MyArray nodesY;
 
-  MyArray CudaElements;
   MyArray CudaIndicesToConstraints;
   int CudaIndicesToConstraintsCount;
 
@@ -98,6 +97,8 @@ public:
   //MyArray loads;
   MyArray displacements;
   MyArray pressure;
+
+  MyArray all_B;
 
 };
 

@@ -53,7 +53,8 @@ public:
   void copyElementsFromHost(thrust::host_vector<float> v);
   void copyFlocalFromHost(thrust::host_vector<float> v);
   void copyLoadsFromHost(thrust::host_vector<float> v);
-  void gpuDataKeeper::setZeroVec();
+  void copyBmatrixToHost(float *all_B);
+  void setZeroVec();
 protected:
   thrust::device_vector<float> gpuB, gpuKlocals, gpuFlocals, gpuElements,
   diag, r, m, z, s, p, u, x, mask, n_adjelem, temp_res, loads;

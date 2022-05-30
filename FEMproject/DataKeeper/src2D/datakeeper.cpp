@@ -45,14 +45,6 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     elements.push_back(element);
   }
 
-  int k = 0;
-  for (int i = 0; i < 3 * elementsCount - 2; i += 3) {
-    CudaElements[i] = elements[k].nodesIds[0];
-    CudaElements[i + 1] = elements[k].nodesIds[1];
-    CudaElements[i + 2] = elements[k].nodesIds[2];
-    k++;
-  }
-
   //    std::cout << "CONSTRAINTS" << std::endl;
   for (int i = 0; i < constraintsCount; ++i) {
     Constraint constraint;

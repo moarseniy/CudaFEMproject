@@ -60,6 +60,10 @@ gpuDataKeeper::~gpuDataKeeper() {}
 //WeightedAddCoef::WeightedAddCoef(float v1, float v2): val1(v1), val2(v2) {}
 //WeightedAddCoef::WeightedAddCoef(float v1, float v2, float v3): val1(v1), val2(v2), val3(v3) {}
 
+void gpuDataKeeper::setZeroVec() {
+  thrust::fill(x.begin(), x.end(), 0.0f);
+}
+
 gpuDataKeeper_DYN::gpuDataKeeper_DYN(int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped) :
   gpuDataKeeper( elementsCount, nodesCount, doAssemblyRes ),
   vel(3 * DIM * elementsCount, 0.0f), displ(3 * DIM * elementsCount, 0.0f), displ_global(DIM * nodesCount) {
@@ -78,6 +82,10 @@ gpuDataKeeper_DYN::gpuDataKeeper_DYN(int elementsCount, int nodesCount, bool doA
   }
 
   // ToDO: initialize displ, vel, x to 0
+}
+
+void gpuDataKeeper::copyBmatrixToHost(float *all_B) {
+  gpuCopyDeviceToHost(this->get_B(), all_B, this->gpuB.size());
 }
 
 gpuDataKeeper_DYN::~gpuDataKeeper_DYN() {}
