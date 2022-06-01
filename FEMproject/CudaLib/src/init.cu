@@ -975,19 +975,6 @@ void gpuDataKeeper::copyFlocalFromHost(thrust::host_vector<float> v) {
   this->r = v;
 }
 
-void gpuDataKeeper::setZeroVec() {
-  //thrust::fill(z.begin(), z.end(), 0.0f);
-  //thrust::fill(m.begin(), m.end(), 0.0f);
-  //thrust::fill(p.begin(), p.end(), 0.0f);
-  //thrust::fill(s.begin(), s.end(), 0.0f);
-  //thrust::fill(temp_res.begin(), temp_res.end(), 0.0f);
-
-  thrust::fill(x.begin(), x.end(), 0.0f);
-
-  //thrust::fill(u.begin(), u.end(), 0.0f);
-  //thrust::fill(r.begin(), r.end(), 0.0f);
-}
-
 void gpuDataKeeper::copyLoadsFromHost(thrust::host_vector<float> v) {
   CheckRunTime(__func__)
   this->loads = v;

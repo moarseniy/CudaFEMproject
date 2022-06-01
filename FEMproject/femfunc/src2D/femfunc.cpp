@@ -1457,6 +1457,7 @@ void gpuCalculateFEM_implicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
       if (PRINT_DEBUG_INFO) {
         std::cout << "======= Time iteration #" << nt;
         if (!is_relax) cout << "/" << endnt << " =======";
+        std::cout << " =======";
         std::cout << "\n=========== Time " << t << " ===========\n\n";
       }
 
@@ -1539,6 +1540,8 @@ void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
   int grid_size = 3 * DIM * n_elems;
   bool doAssemblyRes = false;
   bool isLumped = true;
+  float eps_relax = 1e-4f;
+  bool is_relax;
 
   for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
     // ERROR:
@@ -1572,14 +1575,19 @@ void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
   gpuCalculateMlocal(gpu_data, FEMdata.elementsCount,
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
 
-  int endnt = static_cast<int>(endtime / dt);
+  int endnt;
+  is_relax = (endtime < 0.0f);
+  if (!is_relax) endnt = static_cast<int>(endtime / dt);
   int nt = 1;
-  while (nt <= endnt) {
-      float t = nt*dt;
-      if (PRINT_DEBUG_INFO) {
-        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
-        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
-      }
+  float cnorm_acc, cnorm_vel;
+  do {
+    float t = nt*dt;
+    if (PRINT_DEBUG_INFO) {
+      std::cout << "======= Time iteration #" << nt;
+      if (!is_relax) cout << "/" << endnt;
+      std::cout << " =======";
+      std::cout << "\n=========== Time " << t << " ===========\n\n";
+    }
 
       gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_vel(), 1.0f, dt, grid_size);
       gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * dt*dt, grid_size);
@@ -1615,10 +1623,23 @@ void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
 
 
       ++nt;
-      if (PRINT_DEBUG_INFO) {
-        std::cout << std::endl;
+
+      if (is_relax) {
+        cnorm_acc = gpuCNorm(gpu_data.get_x(), grid_size);
+        cnorm_vel = gpuCNorm(gpu_data.get_vel(), grid_size);
+        if (PRINT_DEBUG_INFO) {
+          std::cout << "C-norm acc = " << cnorm_acc << "\nC-norm vel = " << cnorm_vel << std::endl;
+          std::cout << std::endl;
+        }
+        if ((cnorm_vel < eps_relax)) break; // && (cnorm_acc < eps_relax)
+      } else {
+        if (PRINT_DEBUG_INFO) {
+          std::cout << std::endl;
+        }
+
+        if (nt > endnt) break;
       }
-  }
+  } while (true);
 
   gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
   gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
@@ -1636,6 +1657,8 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   int grid_size = 3 * DIM * n_elems;
   bool doAssemblyRes = false;
   bool isLumped = true;
+  float eps_relax = 1e-3f;
+  bool is_relax;
 
   for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
     // ERROR:
@@ -1671,18 +1694,24 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
                            FEMdata.nodesX.get_data(), FEMdata.nodesY.get_data(), FEMdata.nodesCount, rho);
   gpuCalculateDiag_DAMP(gpu_data, n_elems);
 
-  int endnt = static_cast<int>(endtime / dt);
+  int endnt;
+  is_relax = (endtime < 0.0f);
+  if (!is_relax) endnt = static_cast<int>(endtime / dt);
   int nt = 1;
-  while (nt <= endnt) {
+  float cnorm_acc, cnorm_vel;
+  do {
       float t = nt*dt;
       if (PRINT_DEBUG_INFO) {
-        std::cout << "======= Time iteration #" << nt << "/" << endnt << " =======" << std::endl;
-        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
+        std::cout << "======= Time iteration #" << nt;
+        if (!is_relax) cout << "/" << endnt;
+        std::cout << " =======";
+        std::cout << "\n=========== Time " << t << " ===========\n\n";
       }
 
       gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_vel(), 1.0f, dt, grid_size);
       gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * dt*dt, grid_size);
       gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, (1.0f - beta1) * dt, grid_size);
+      //gpu_data.setZeroVec();
 
       gpuMultiplyMatrixByVec(gpu_data.get_Klocals(), gpu_data.get_displ(), gpu_data.get_r(), FEMdata.elementsCount);
       //if (is_damping) {
@@ -1718,10 +1747,23 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
 
 
       ++nt;
-      if (PRINT_DEBUG_INFO) {
-        std::cout << std::endl;
+
+      if (is_relax) {
+        cnorm_acc = gpuCNorm(gpu_data.get_x(), grid_size);
+        cnorm_vel = gpuCNorm(gpu_data.get_vel(), grid_size);
+        if (PRINT_DEBUG_INFO) {
+          std::cout << "C-norm acc = " << cnorm_acc << "\nC-norm vel = " << cnorm_vel << std::endl;
+          std::cout << std::endl;
+        }
+        if ((cnorm_vel < eps_relax)) break; // && (cnorm_acc < eps_relax)
+      } else {
+        if (PRINT_DEBUG_INFO) {
+          std::cout << std::endl;
+        }
+
+        if (nt > endnt) break;
       }
-  }
+  } while (true);
 
   gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
   gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
