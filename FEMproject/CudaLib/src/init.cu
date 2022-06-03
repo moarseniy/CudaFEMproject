@@ -200,13 +200,13 @@ void gpuCopy(float *v, float *dest, int size) {
 }
 
 __device__
-float det3x3(float *c) {
-  return c[0]*c[4]*c[8] +
-      c[1]*c[6]*c[5] +
-      c[2]*c[3]*c[7] -
-      c[6]*c[4]*c[2] -
-      c[0]*c[5]*c[7] -
-      c[1]*c[3]*c[8];
+float det3x3(float *c, int id) {
+  return c[0 + 9 * id] * c[4 + 9 * id] * c[8 + 9 * id] +
+        c[1 + 9 * id] * c[6 + 9 * id] * c[5 + 9 * id] +
+        c[2 + 9 * id] * c[3 + 9 * id] * c[7 + 9 * id] -
+        c[6 + 9 * id] * c[4 + 9 * id] * c[2 + 9 * id] -
+        c[0 + 9 * id] * c[5 + 9 * id] * c[7 + 9 * id] -
+        c[1 + 9 * id] * c[3 + 9 * id] * c[8 + 9 * id];
 }
 
 bool Difference_MyArray_Thrust(MyArray a, thrust::device_vector<float> b) {
@@ -216,7 +216,7 @@ bool Difference_MyArray_Thrust(MyArray a, thrust::device_vector<float> b) {
         _b[i] = tmp;
     }
 
-    return a.equalsToArray(_b, 1e-15);
+    return a.equalsToArray(_b, 1e-15f);
 }
 
 void TEST_THRUST() {
@@ -234,22 +234,20 @@ for (int i = 0; i < 4; ++i) {
 }
 }
 
-#define id(m, i, j) m[j + 3 * i]
-
 __device__
-void inverse3x3(float *ic, float *c, float det) {
+void inverse3x3(float *ic, float *c, float det, int id) {
   float invdet = 1.0f / det;
-  ic[0 + 3 * 0] = (c[1 + 3 * 1] * c[2 + 3 * 2] - c[1 + 3 * 2] * c[2 + 3 * 1]) * invdet;
-  ic[1 + 3 * 0] = (c[2 + 3 * 0] * c[1 + 3 * 2] - c[1 + 3 * 0] * c[2 + 3 * 2]) * invdet;
-  ic[2 + 3 * 0] = (c[1 + 3 * 0] * c[2 + 3 * 1] - c[2 + 3 * 0] * c[1 + 3 * 1]) * invdet;
+  ic[0 + 3 * 0 + 9 * id] = (c[1 + 3 * 1 + 9 * id] * c[2 + 3 * 2 + 9 * id] - c[1 + 3 * 2 + 9 * id] * c[2 + 3 * 1 + 9 * id]) * invdet;
+  ic[1 + 3 * 0 + 9 * id] = (c[2 + 3 * 0 + 9 * id] * c[1 + 3 * 2 + 9 * id] - c[1 + 3 * 0 + 9 * id] * c[2 + 3 * 2 + 9 * id]) * invdet;
+  ic[2 + 3 * 0 + 9 * id] = (c[1 + 3 * 0 + 9 * id] * c[2 + 3 * 1 + 9 * id] - c[2 + 3 * 0 + 9 * id] * c[1 + 3 * 1 + 9 * id]) * invdet;
 
-  ic[0 + 3 * 1] = (c[2 + 3 * 1] * c[0 + 3 * 2] - c[0 + 3 * 1] * c[2 + 3 * 2]) * invdet;
-  ic[1 + 3 * 1] = (c[0 + 3 * 0] * c[2 + 3 * 2] - c[2 + 3 * 0] * c[0 + 3 * 2]) * invdet;
-  ic[2 + 3 * 1] = (c[0 + 3 * 1] * c[2 + 3 * 0] - c[0 + 3 * 0] * c[2 + 3 * 1]) * invdet;
+  ic[0 + 3 * 1 + 9 * id] = (c[2 + 3 * 1 + 9 * id] * c[0 + 3 * 2 + 9 * id] - c[0 + 3 * 1 + 9 * id] * c[2 + 3 * 2 + 9 * id]) * invdet;
+  ic[1 + 3 * 1 + 9 * id] = (c[0 + 3 * 0 + 9 * id] * c[2 + 3 * 2 + 9 * id] - c[2 + 3 * 0 + 9 * id] * c[0 + 3 * 2 + 9 * id]) * invdet;
+  ic[2 + 3 * 1 + 9 * id] = (c[0 + 3 * 1 + 9 * id] * c[2 + 3 * 0 + 9 * id] - c[0 + 3 * 0 + 9 * id] * c[2 + 3 * 1 + 9 * id]) * invdet;
 
-  ic[0 + 3 * 2] = (c[0 + 3 * 1] * c[1 + 3 * 2] - c[0 + 3 * 2] * c[1 + 3 * 1]) * invdet;
-  ic[1 + 3 * 2] = (c[0 + 3 * 2] * c[1 + 3 * 0] - c[0 + 3 * 0] * c[1 + 3 * 2]) * invdet;
-  ic[2 + 3 * 2] = (c[0 + 3 * 0] * c[1 + 3 * 1] - c[0 + 3 * 1] * c[1 + 3 * 0]) * invdet;
+  ic[0 + 3 * 2 + 9 * id] = (c[0 + 3 * 1 + 9 * id] * c[1 + 3 * 2 + 9 * id] - c[0 + 3 * 2 + 9 * id] * c[1 + 3 * 1 + 9 * id]) * invdet;
+  ic[1 + 3 * 2 + 9 * id] = (c[0 + 3 * 2 + 9 * id] * c[1 + 3 * 0 + 9 * id] - c[0 + 3 * 0 + 9 * id] * c[1 + 3 * 2 + 9 * id]) * invdet;
+  ic[2 + 3 * 2 + 9 * id] = (c[0 + 3 * 0 + 9 * id] * c[1 + 3 * 1 + 9 * id] - c[0 + 3 * 1 + 9 * id] * c[1 + 3 * 0 + 9 * id]) * invdet;
 }
 
 __device__
@@ -283,57 +281,6 @@ float det(float *c, int size) {
     float v4 = det3(c[1], c[2], c[3], c[5], c[6], c[7], c[9], c[10], c[11]);
     return v1 - v2 + v3 - v4;
   }
-}
-
-__device__
-void Get_matrix(float *a, int n, float *c, int indRow, int indCol) {
-  //float *a = (float*)malloc(3 * 3 * sizeof (float));
-  int ki = 0;
-  for (int i = 0; i < n; i++) {
-    if (i != indRow) {
-      for (int j = 0, kj = 0; j < n; j++) {
-        if (j != indCol) {
-          a[kj + ki * 3] = c[j + i * n];
-          kj++;
-        }
-      }
-      ki++;
-    }
-  }
-
-  //return a;
-}
-
-__device__
-void inverse(float *ic, float *b, int size) {
-  //float *ic = (float*)malloc(4 * 4 * sizeof (float));
-  //printf("%f", b[0]);
-  float determinant = det3x3(b);
-
-  if (determinant) {
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        float *temp =(float*)malloc(3 * 3 * sizeof (float));
-        //__shared__ float temp[3 * 3];
-        Get_matrix(temp, size, b, i, j);
-        ic[j + i * size] = ((i + j + 2) % 2 == 0 ? 1.0 : -1.0) * det(temp, 2) / determinant;
-        free(temp);
-      }
-    }
-  }
-
-  float swap;
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
-      if (i > j) {
-        swap = ic[j + i * size];
-        ic[j + i * size] = ic[i + j * size];
-        ic[i + j * size] = swap;
-      }
-    }
-  }
-
-  //return ic;
 }
 
 //void TEST_THRUST() {
@@ -512,82 +459,88 @@ float gpuDotProduct2(float *a, float *b, int size) {
 void gpuDivideByElementwise(float *a, float *b,
                             float *c, int size) {
   CheckRunTime(__func__)
-  //    thrust::transform(a.begin(), a.end(), b.begin(), c.begin(),
-  //                      thrust::placeholders::_1 / thrust::placeholders::_2);
-  thrust::transform(thrust::cuda::par,
-                    thrust::device_pointer_cast(a),
+//      thrust::transform(a.begin(), a.end(), b.begin(), c.begin(),
+//                        thrust::placeholders::_1 / thrust::placeholders::_2);
+  thrust::transform(thrust::cuda::par, thrust::device_pointer_cast(a),
                     thrust::device_pointer_cast(a + size),
                     thrust::device_pointer_cast(b),
                     thrust::device_pointer_cast(c),
                     thrust::divides<float>());
 }
 
+__device__ void matrixMultiply(float *a, int row, int n, int col, float *b, float *res, int id) {
+  for (int i = 0; i < row; i++) {
+    for (int j = 0; j < col; j++) {
+      res[j + i * n + row * col * id] = 0.0f;
+      for (int k = 0; k < n; k++) {
+        res[j + i * n + row * col * id] += a[k + i * n + row * n * id] * b[j + k * col];
+      }
+    }
+  }
+}
+
 __global__ void kernelCalculateKlocal2(int elementsCount, float *elements, float *diag,
-                                       float *nodesX, float *nodesY, int nodesCount,
+                                       float *nodesX, float *nodesY,
                                        float *D, float *K, float *B,
-                                       float *constraints, int constraintsCount) {
+                                       float *constraints, int constraintsCount,
+                                       float *C, float *IC, float *temp, float *B_T) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < elementsCount) {
-    float *C = (float*)malloc(3 * 3 * sizeof(float));
-    float *IC = (float*)malloc(3 * 3 * sizeof(float));
 
-    C[0 + 0 * 3] = C[0 + 1 * 3] = C[0 + 2 * 3] = 1.0f;
-    C[1 + 0 * 3] = nodesX[int(elements[3 * index + 0])];
-    C[1 + 1 * 3] = nodesX[int(elements[3 * index + 1])];
-    C[1 + 2 * 3] = nodesX[int(elements[3 * index + 2])];
-    C[2 + 0 * 3] = nodesY[int(elements[3 * index + 0])];
-    C[2 + 1 * 3] = nodesY[int(elements[3 * index + 1])];
-    C[2 + 2 * 3] = nodesY[int(elements[3 * index + 2])];
+    C[0 + 0 * 3 + 9 * index] = C[0 + 1 * 3 + 9 * index] = C[0 + 2 * 3 + 9 * index] = 1.0f;
+    C[1 + 0 * 3 + 9 * index] = nodesX[int(elements[3 * index + 0])];
+    C[1 + 1 * 3 + 9 * index] = nodesX[int(elements[3 * index + 1])];
+    C[1 + 2 * 3 + 9 * index] = nodesX[int(elements[3 * index + 2])];
+    C[2 + 0 * 3 + 9 * index] = nodesY[int(elements[3 * index + 0])];
+    C[2 + 1 * 3 + 9 * index] = nodesY[int(elements[3 * index + 1])];
+    C[2 + 2 * 3 + 9 * index] = nodesY[int(elements[3 * index + 2])];
 
-    float determinant = det3x3(C);
+    float determinant = det3x3(C, index);
+    inverse3x3(IC, C, determinant, index);
 
-    inverse3x3(IC, C, determinant);
-    //inverse(IC, C, 3);
-
-    //float *B = (float*)malloc(3 * 6 * sizeof(float));
     for (int i = 0; i < 3; i++) {
-      B[(2 * i + 0) + 0 * 6 + index * 3 * 6] = IC[i + 3 * 1];
-      B[(2 * i + 1) + 0 * 6 + index * 3 * 6] = 0.0f;
-      B[(2 * i + 0) + 1 * 6 + index * 3 * 6] = 0.0f;
-      B[(2 * i + 1) + 1 * 6 + index * 3 * 6] = IC[i + 3 * 2];
-      B[(2 * i + 0) + 2 * 6 + index * 3 * 6] = IC[i + 3 * 2];
-      B[(2 * i + 1) + 2 * 6 + index * 3 * 6] = IC[i + 3 * 1];
+      B[(2 * i + 0) + 0 * 6 + index * 18] = IC[i + 3 * 1 + 9 * index];
+      B[(2 * i + 1) + 0 * 6 + index * 18] = 0.0f;
+      B[(2 * i + 0) + 1 * 6 + index * 18] = 0.0f;
+      B[(2 * i + 1) + 1 * 6 + index * 18] = IC[i + 3 * 2 + 9 * index];
+      B[(2 * i + 0) + 2 * 6 + index * 18] = IC[i + 3 * 2 + 9 * index];
+      B[(2 * i + 1) + 2 * 6 + index * 18] = IC[i + 3 * 1 + 9 * index];
     }
 
-
-
-    float *B_T = (float*)malloc(6 * 3 * sizeof(float));
     for (int i = 0; i < 6; i++) {
       for (int j = 0; j < 3; j++) {
-        B_T[j + i * 3] = B[i + j * 6 + index * 3 * 6];
+        B_T[j + i * 3 + 18 * index] = B[i + j * 6 + index * 18];
       }
     }
 
-    float *temp = (float*)malloc(6 * 3 * sizeof(float));
+    //temp(6,3) = B_T(6,3) * D(3,3)
     for (int i = 0; i < 6; i++) {
       for (int j = 0; j < 3; j++) {
-        temp[j + i * 3] = 0.0f;
+        temp[j + i * 3 + 18 * index] = 0.0f;
         for (int k = 0; k < 3; k++) {
-          temp[j + i * 3] += B_T[k + i * 3] * D[j + k * 3];
+          temp[j + i * 3 + 18 * index] += B_T[k + i * 3 + 18 * index] * D[j + k * 3];
         }
       }
     }
+//    matrixMultiply(B_T, 6, 3, 3, D, temp, index);
 
-    //float *K = (float*)malloc(6 * 6 * sizeof(float));
+    //K(6,6) = temp(6,3) * B(3,6)
     for (int i = 0; i < 6; i++) {
       for (int j = 0; j < 6; j++) {
         K[j + i * 6 + 36 * index] = 0.0f;
         for (int k = 0; k < 3; k++) {
-          K[j + i * 6 + 36 * index] += temp[k + i * 3] * B[j + k * 6 + index * 3 * 6];
+          K[j + i * 6 + 36 * index] += temp[k + i * 3 + 6 * 3 * index] * B[j + k * 6 + index * 3 * 6];
         }
       }
     }
+    //matrixMultiply(temp, 6, 3, 6, B, K, index);
 
     for (int i = 0; i < 6; i++) {
       for (int j = 0; j < 6; j++) {
         K[j + i * 6 + 36 * index] *= fabs(determinant) * 0.5f;
       }
     }
+
     for (int c_id = 0; c_id < constraintsCount; ++c_id) {
       for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -612,18 +565,9 @@ __global__ void kernelCalculateKlocal2(int elementsCount, float *elements, float
     diag[6 * index + 3] = K[3 + 6 * 3 + 36 * index];
     diag[6 * index + 4] = K[4 + 6 * 4 + 36 * index];
     diag[6 * index + 5] = K[5 + 6 * 5 + 36 * index];
-
-    //      printf("GPU(p)%f \n", p[5]);
-    //      //printf("CUDA\n");
-    //      for (int j = 0; j < 6; j++) {
-    //        u[j + index * 6] = 0.0f;
-    //        for (int k = 0; k < 6; k++) {
-    //            u[j + index * 6] += K[k + j * 6] * p[k + index * 6];
-    //            if (j + index * 6 == 0)
-    //                printf("%f += %f * %f\n", u[0], K[k + j * 6], p[k + index * 6]);
-    //        }
-    //      }
   }
+
+  __syncthreads();
 
 }
 
@@ -635,16 +579,11 @@ void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, int elementsCount,
   float* elements = gpu_data.get_Elements();//thrust::raw_pointer_cast( CudaElements.data() );
   float* diag = gpu_data.get_diag();//thrust::raw_pointer_cast( diag_vec.data() );
 
-  float *d_elements, *d_constraints;
-  float *d_nodesX, *d_nodesY, *d_p, *d_u, *d_D;
+  float *d_constraints;
+  float *d_nodesX, *d_nodesY, *d_D;
 
-  int grid_size = 6 * elementsCount;
-
-  cudaMalloc((void**)&d_D, 3 * 3 * sizeof(float));
-  cudaMemcpy(d_D, h_D, 3 * 3 * sizeof(float), cudaMemcpyHostToDevice);
-
-  //cudaMalloc((void**)&d_elements, 3 * elementsCount * sizeof(float));
-  //cudaMemcpy(d_elements, h_elements, 3 * elementsCount * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMalloc((void**)&d_D, 9 * sizeof(float));
+  cudaMemcpy(d_D, h_D, 9 * sizeof(float), cudaMemcpyHostToDevice);
 
   cudaMalloc((void**)&d_constraints, constraintsCount * sizeof(float));
   cudaMemcpy(d_constraints, h_constraints, constraintsCount * sizeof(float), cudaMemcpyHostToDevice);
@@ -654,21 +593,24 @@ void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, int elementsCount,
   cudaMemcpy(d_nodesX, h_nodesX, nodesCount * sizeof(float), cudaMemcpyHostToDevice);
   cudaMemcpy(d_nodesY, h_nodesY, nodesCount * sizeof(float), cudaMemcpyHostToDevice);
 
-  //    cudaMalloc((void**)&d_p, grid_size * sizeof(float));
-  //    cudaMalloc((void**)&d_u, grid_size * sizeof(float));
-  //    cudaMemcpy(d_p, h_p, grid_size * sizeof(float), cudaMemcpyHostToDevice);
-  //    cudaMemcpy(d_u, h_u, grid_size * sizeof(float), cudaMemcpyHostToDevice);
+  float *d_C, *d_IC, *d_temp, *d_B_T;
+  cudaMalloc((void**)&d_C, 9 * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_IC, 9 * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_temp, 18 * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_B_T, 18 * elementsCount * sizeof(float));
 
   kernelCalculateKlocal2<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements, diag,
-                                                               d_nodesX, d_nodesY, nodesCount,
+                                                               d_nodesX, d_nodesY,
                                                                d_D, gpu_data.get_Klocals(), gpu_data.get_B(),
-                                                               d_constraints, constraintsCount);
-  //    cudaFree(d_p);
-  //    cudaFree(d_u);
+                                                               d_constraints, constraintsCount, d_C, d_IC, d_temp, d_B_T);
   cudaFree(d_nodesX);
   cudaFree(d_nodesY);
-  //    cudaFree(d_elements);
   cudaFree(d_constraints);
+
+  cudaFree(d_C);
+  cudaFree(d_IC);
+  cudaFree(d_temp);
+  cudaFree(d_B_T);
 }
 
 __global__ void kernelCalculateMlocal(int elementsCount, float *elements,
@@ -808,7 +750,8 @@ __global__ void kernelMultiply_Clocal(int elementsCount, float *u, float *Mlocal
           // if lumped (explicit scheme), then damping_beta = 0 !!!
           //float factor = 0.0f;
           float factor = damping_beta*Klocals[k + j * 6 + index * 36];
-          if (k == j) factor += damping_alpha*Mlocals[k + index * 6];
+          if (k == j)
+            factor += damping_alpha*Mlocals[k + index * 6];
           u[j + index * 6] += factor * p[k + index * 6];
         }
       }
@@ -881,10 +824,10 @@ void gpuMultiplyAlocalByVec_DAMP(gpuDataKeeper &gpu_data, int elementsCount) {
 
 void gpuCountNAdjElem(gpuDataKeeper &gpuD, int grid_size) {
   CheckRunTime(__func__)
-      thrust::device_vector<float> mask_sorted(grid_size);
+  thrust::device_vector<float> mask_sorted(grid_size);
 
   //mask_sorted = d_mask;
-  thrust::copy(thrust::device, thrust::device_pointer_cast(gpuD.get_mask()),
+  thrust::copy(thrust::device_pointer_cast(gpuD.get_mask()),
                thrust::device_pointer_cast(gpuD.get_mask() + grid_size),
                mask_sorted.begin());
 
@@ -969,6 +912,7 @@ void gpuCalculateDiag(gpuDataKeeper_DYN &gpu_data, int elementsCount) {
 void gpuDataKeeper::copyElementsFromHost(thrust::host_vector<float> v) {
   CheckRunTime(__func__)
   this->gpuElements = v;
+//  cudaMemcpy(this->get_Elements(), thrust::raw_pointer_cast(v.data()), v.size() * sizeof(float), cudaMemcpyHostToDevice);
 }
 void gpuDataKeeper::copyFlocalFromHost(thrust::host_vector<float> v) {
   CheckRunTime(__func__)
@@ -978,10 +922,12 @@ void gpuDataKeeper::copyFlocalFromHost(thrust::host_vector<float> v) {
 void gpuDataKeeper::copyLoadsFromHost(thrust::host_vector<float> v) {
   CheckRunTime(__func__)
   this->loads = v;
+//  cudaMemcpy(this->get_loads(), thrust::raw_pointer_cast(v.data()), v.size() * sizeof(float), cudaMemcpyHostToDevice);
+
 }
 
 void gpuCopyDeviceToDevice(float *data, float *dest, int size) {
-  thrust::copy(thrust::device, thrust::device_pointer_cast(data),
+  thrust::copy(thrust::cuda::par, thrust::device_pointer_cast(data),
                thrust::device_pointer_cast(data + size), thrust::device_pointer_cast(dest));
 }
 
@@ -1010,13 +956,11 @@ void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
     HostFlocal[3 * DIM * k + 3] = FEMdata.elements[k].Flocal[3];
     HostFlocal[3 * DIM * k + 4] = FEMdata.elements[k].Flocal[4];
     HostFlocal[3 * DIM * k + 5] = FEMdata.elements[k].Flocal[5];
-
     k++;
   }
-  //gpuD.copyElementsFromHost(HostElements);
-  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostElements.data()), gpuD.get_Elements(), 3 * FEMdata.elementsCount);
-  //gpuD.copyFlocalFromHost(HostFlocal);
+
   gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * FEMdata.elementsCount);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostElements.data()), gpuD.get_Elements(), 3 * FEMdata.elementsCount);
 }
 
 void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
@@ -1051,8 +995,8 @@ void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVecto
       hLoad[3 * DIM * it.first + 5] = loadVectors[it.first][5];
   }
 
-//  gpuD.copyLoadsFromHost(hLoad);
-  gpuCopyHostToDevice(thrust::raw_pointer_cast(hLoad.data()), gpuD.get_loads(), 6 * elementsCount);
+  gpuD.copyLoadsFromHost(hLoad);
+  //gpuCopyHostToDevice(thrust::raw_pointer_cast(hLoad.data()), gpuD.get_loads(), 6 * elementsCount);
 }
 
 struct AddWeighted_functor
@@ -1137,7 +1081,8 @@ void gpuSolveDiag(float *diag, float *r, float *res,
                   thrust::raw_pointer_cast(diag_assemblied.data()),
                   n_gl_dofs,
                   thrust::raw_pointer_cast(temp.data()));       // temp = r_assemblied./diag_assemblied
-    gpuTransform_2N_to_6E(thrust::raw_pointer_cast(temp.data()), n_gl_dofs, mask, res, grid_size);
+    //gpuTransform_2N_to_6E(thrust::raw_pointer_cast(temp.data()), n_gl_dofs, mask, res, grid_size);
+    gpuTransformFrom_2N_to_6E(mask, thrust::raw_pointer_cast(temp.data()), res, grid_size);
   }
 }
 

@@ -2658,7 +2658,7 @@ void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata) {
 }
 
 void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string output_vtk, bool PRINT_DEBUG_INFO) {
-  std::string path_stress = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + ".txt";
+  std::string path_stress = FEMdata.res_dir + "/output/out_stress_" + FEMdata.get_name() + ".txt";
   if (PRINT_DEBUG_INFO) {
     std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
   }
@@ -2672,7 +2672,7 @@ void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string 
 
   if (RESdata.withSmooth) {
     fstream out2;
-    std::string path_stress_smooth = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_smooth.txt";
+    std::string path_stress_smooth = FEMdata.res_dir + "/output/out_stress_" + FEMdata.get_name() + "_smooth.txt";
     if (PRINT_DEBUG_INFO) {
       std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
     }
@@ -2685,7 +2685,7 @@ void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string 
 
   if (RESdata.withMises) {
     fstream out3;
-    std::string path_stress_mises = FEMdata.res_dir + "output/out_stress_" + FEMdata.get_name() + "_mises.txt";
+    std::string path_stress_mises = FEMdata.res_dir + "/output/out_stress_" + FEMdata.get_name() + "_mises.txt";
     if (PRINT_DEBUG_INFO) {
       std::cout << "MisesComponents Size = " << RESdata.MisesComponents.size() << "\n";
     }
