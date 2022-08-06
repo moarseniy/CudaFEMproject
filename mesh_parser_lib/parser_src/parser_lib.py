@@ -1,5 +1,6 @@
-import re, os
+import re, os, time
 import math
+import numpy as np
 import collections
 
 # Write a line to the beginning of file. Used in prepare_constraints() method
@@ -32,7 +33,7 @@ class FileParser:
 
     def parse_nodes(self):
         filename = self.raw_mesh_dir
-        nodes = {}#collections.OrderedDict()
+        nodes = {}
 
         print('Parsing file for nodes start...')
 
@@ -82,7 +83,7 @@ class FileParser:
                     while line.strip()[0] != '*':
                         elements.append(' '.join(re.split('\s+', line.strip())).split(' '))
                         line = mesh.readline()
-    
+
         print('Parsing file for elements end.')
         self.raw_elements = elements
         print('OK')
@@ -98,7 +99,9 @@ class FileParser:
             return
 
         print('Prepare and writing elements in new file start...')
+        start_time = time.time()
 
+        nodes_keys = list(nodes.keys())
         with open(self.prepared_mesh_dir + '/elements.txt', 'w') as write_file:
             write_file.write(str(len(elements)) + '\n')
             for element in elements:
@@ -117,12 +120,13 @@ class FileParser:
                             idx = 6 - line.index(load_segments[i][3]) - line.index(load_segments[i][4]) - line.index(load_segments[i][5])
                             # int((len(line)-1)*len(line)/2) = 6
                             load_segments[i].append(line[idx])
+                            load_segments[i].append(elements.index(element))
                 for i in range(len(line)):
-                    line[i] = str(list(nodes.keys()).index(line[i]))
+                    line[i] = str(nodes_keys.index(line[i]))
                 line = ' '.join(line[:])
                 write_file.write(line + '\n')
 
-        print('Prepare and writing elements in new file end.')
+        print('Prepare and writing elements in new file end. ' + str(time.time() - start_time))
         self.raw_load_segments = load_segments
         print('OK')
 
@@ -178,7 +182,6 @@ class FileParser:
             for constraint in constraints:
                 for set_num in set_nodes.keys():
                     if (constraint[0] == set_num):
-                        #write_file.write(str(len(set_nodes[set_num])) + '\n')
                         num_constraints += len(set_nodes[set_num])
                         for j in range(0, len(set_nodes[set_num])):
                             line = str(set_nodes[set_num][j])
@@ -310,21 +313,6 @@ class FileParser:
                         xn = -xn
                         yn = -yn
                     
-                    """
-                    xn1 = y1 / (math.sqrt(y1*y1+x1*x1))
-                    yn1 = -x1 / (math.sqrt(y1*y1+x1*x1))
-                    dot_prod1 = (xn1 - x1) * (xb - x1) + (yn1 - y1) * (yb - y1)
-                    if dot_prod1 < 0:
-                        xn1 *= -1
-                        yn1 *= -1
-                    
-                    xn2 = y2 / (math.sqrt(y2*y2+x2*x2))
-                    yn2 = -x2 / (math.sqrt(y2*y2+x2*x2))
-                    dot_prod2 = (xn2 - x2) * (xb - x2) + (yn2 - y2) * (yb - y2)
-                    if dot_prod2 < 0:
-                        xn2 *= -1
-                        yn2 *= -1
-                    """
                     for force_num in forces.keys():
                         if load[0] == force_num:
                             pressure = float(forces[force_num])
@@ -353,8 +341,27 @@ class FileParser:
                     xb = float(nodes[load[8]][0])
                     yb = float(nodes[load[8]][1])
                     zb = float(nodes[load[8]][2])
-                    
-                    # TODO: ADD DIM=3 NORMAL VECTOR SEARCH
+
+                    a = [x2 - x1, y2 - y1, z2 - z1]
+                    b = [x3 - x1, y3 - y1, z3 - z1]
+
+                    n = np.cross(a, b)
+
+                    dot_prod = n[0] * (xb - x1) + n[1] * (yb - y1) + n[2] * (zb - z1)
+                    if dot_prod > 0:
+                        n[0] = -n[0]
+                        n[1] = -n[1]
+                        n[2] = -n[2]
+
+                    for force_num in forces.keys():
+                        if load[0] == force_num:
+                            pressure = float(forces[force_num])
+                            line = str(list(nodes.keys()).index(load[3])) + ' ' + \
+                                   str(list(nodes.keys()).index(load[4])) + ' ' + \
+                                   str(list(nodes.keys()).index(load[5])) + ' ' + \
+                                   str(load[9]) + ' ' + str(n[0]) + ' ' + str(n[1]) + \
+                                   ' ' + str(n[2]) + ' ' + str(pressure) + '\n'
+                            write_file.write(line)
             
         print('Prepare and writing loads in new files end.')
         print('OK')

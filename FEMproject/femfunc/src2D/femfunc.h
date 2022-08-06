@@ -33,6 +33,8 @@
 
 using namespace std;
 
+void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper &gpu_data);
+
 void CalculateFEM(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
 void CalculateFEM_EbE(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
 void CalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);

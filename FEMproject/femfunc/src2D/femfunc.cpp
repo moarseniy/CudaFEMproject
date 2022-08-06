@@ -1021,6 +1021,20 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
   } while (1);
 }
 
+void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper &gpu_data) {
+  MyArray h_temp(n_gl_dofs);
+  gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_temp_res());
+  gpuCopyDeviceToHost(gpu_data.get_temp_res(), h_temp.get_data(), n_gl_dofs);
+
+  fstream out;
+  out.open(FEMdata.res_dir + "/snapshots.csv", fstream::out | fstream::app);
+  out << t << " ";
+  for (int i = 1; i < 2 * num_receivers + 1; i += 2)
+    out << h_temp[i] << " " h_temp[i + 1] << " ";
+  out << "\n";
+  out.close();
+}
+
 void CalculateFEM(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
   CheckRunTime(__func__)
   for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
@@ -1387,6 +1401,10 @@ void gpuCalculateFEM_implicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
       gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * beta2 * dt*dt, grid_size);
 
 
+      if (nt % 10) {
+        writeSnapshot(t, 20, grid_size, n_gl_dofs, FEMdata, gpu_data);
+      }
+
       ++nt;
       if (PRINT_DEBUG_INFO) {
         std::cout << std::endl;
@@ -1621,6 +1639,9 @@ void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
 
       gpuAddWeighted2(gpu_data.get_vel(), gpu_data.get_x(), 1.0f, beta1 * dt, grid_size);
 
+      if (nt % 10) {
+        writeSnapshot(t, 20, grid_size, n_gl_dofs, FEMdata, gpu_data);
+      }
 
       ++nt;
 
