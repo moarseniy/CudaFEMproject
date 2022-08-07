@@ -1,4 +1,4 @@
-from parser_src.parser_lib import FileParser
+from mesh_parser_lib.parser_src.parser_lib import FileParser
 import os
 
 def run_parser(proj_dir, prepared_mesh_dir, raw_mesh_dir, filename, dim):

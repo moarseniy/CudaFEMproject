@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
         #raw_meshes
         if not os.path.exists(raw_mesh_dir):
-            print('raw mesh ' + task_name + '.k' + 'doesn\'t exist')
+            print('raw mesh ' + task_name + '.k doesn\'t exist')
             sys.exit(0)
 
         #prep_meshes
@@ -57,8 +57,8 @@ if __name__ == '__main__':
 
         #final_results
         if os.path.exists(results_dir + '/output/'):
-            shutil.rmtree(results_dir + '/output/')
-            os.mkdir(results_dir + '/output/')
+            shutil.rmtree(results_dir)
+            os.makedirs(results_dir + '/output/')
         else:
             if not os.path.exists(work_dir + 'fem_results/'):
                 os.mkdir(work_dir + 'fem_results/')
