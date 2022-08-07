@@ -1021,16 +1021,16 @@ void PCG_EbE(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> 
   } while (1);
 }
 
-void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper &gpu_data) {
+void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data) {
   MyArray h_temp(n_gl_dofs);
-  gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_temp_res());
-  gpuCopyDeviceToHost(gpu_data.get_temp_res(), h_temp.get_data(), n_gl_dofs);
+  gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), h_temp.get_data(), n_gl_dofs);
 
   fstream out;
   out.open(FEMdata.res_dir + "/snapshots.csv", fstream::out | fstream::app);
-  out << t << " ";
+  out << t;
   for (int i = 1; i < 2 * num_receivers + 1; i += 2)
-    out << h_temp[i] << " " h_temp[i + 1] << " ";
+    out << " " << h_temp[i] << " " << h_temp[i + 1];
   out << "\n";
   out.close();
 }
@@ -1401,8 +1401,9 @@ void gpuCalculateFEM_implicit_DYN(FEMdataKeeper &FEMdata, float rho, float endti
       gpuAddWeighted2(gpu_data.get_displ(), gpu_data.get_x(), 1.0f, 0.5f * beta2 * dt*dt, grid_size);
 
 
-      if (nt % 10) {
-        writeSnapshot(t, 20, grid_size, n_gl_dofs, FEMdata, gpu_data);
+      if (nt % 1 == 0) {
+        std::cout << "DEBUG: calling writeSnapshot\n";
+        writeSnapshot(t, 21, grid_size, n_gl_dofs, FEMdata, gpu_data);
       }
 
       ++nt;
@@ -1678,7 +1679,7 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   int grid_size = 3 * DIM * n_elems;
   bool doAssemblyRes = false;
   bool isLumped = true;
-  float eps_relax = 1e-3f;
+  float eps_relax;
   bool is_relax;
 
   for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
@@ -1718,6 +1719,12 @@ void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float 
   int endnt;
   is_relax = (endtime < 0.0f);
   if (!is_relax) endnt = static_cast<int>(endtime / dt);
+  else {
+    eps_relax = std::fabs(endtime);
+    if (PRINT_DEBUG_INFO)
+      std::cout << "eps_relax = " << eps_relax << "\n";
+
+  }
   int nt = 1;
   float cnorm_acc, cnorm_vel;
   do {
