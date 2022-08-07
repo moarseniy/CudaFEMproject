@@ -48,7 +48,7 @@ class FileParser:
                         line = [x for x in line if x != '']
                         nodes.append(line[:(self.dim+1)])
                         line = mesh.readline()
-        nodes.sort(key=lambda x: x[0])
+        nodes.sort(key=lambda x: int(x[0]))
         for i in range(len(nodes)):
             nodes_num[nodes[i][0]] = i
             #nodes[i] = nodes[i][1:]
@@ -274,7 +274,8 @@ class FileParser:
         print('Prepare and writing loads in new files start...')
         
         with open(self.prepared_mesh_dir + '/loads.txt', 'w') as write_file:
-            write_file.write(str(len(load_node_sets)) + '\n')
+            if len(load_node_sets) == 0:
+                write_file.write(str(0))
             for load in load_node_sets:
                 for set_num in set_nodes.keys():
                     if load[0] == set_num:
