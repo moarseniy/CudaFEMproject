@@ -24,14 +24,17 @@ def run_parser(proj_dir, prepared_mesh_dir, raw_mesh_dir, filename, dim):
 
 
 if __name__ == '__main__':
+    print('Write task dimension:')
+    dim = 3#int(input())
+    print('Write filename to parse mesh from:')
+    filename = 'small_test'#str(input())
+
     # UPDATE IT!!!
-    raw_mesh_dir = 'C:/Users/mokin/Desktop/git/CudaFEMproject/raw_meshes/3D/small_test.k'
-    prep_mesh_dir = 'C:/Users/mokin/Desktop/fem_stuff_test/prepared_meshes/3D/small_test'
+    raw_mesh_dir = 'C:/Users/mokin/Desktop/git/CudaFEMproject/raw_meshes/' + str(dim) + \
+    'D/' + filename + '.k'
+    prep_mesh_dir = 'C:/Users/mokin/Desktop/fem_stuff_test/prepared_meshes/' + str(dim) + \
+    'D/' + filename
     proj_dir = 'C:/Users/mokin/Desktop/git/CudaFEMproject/'
     #
-
-    print('Write task dimension:')
-    dim = int(input())
-    print('Write filename to parse mesh from:')
-    filename = str(input())                   
+    
     run_parser(proj_dir, prep_mesh_dir, raw_mesh_dir, filename, dim)

@@ -33,7 +33,8 @@ class FileParser:
 
     def parse_nodes(self):
         filename = self.raw_mesh_dir
-        nodes = {}
+        nodes = []
+        nodes_num = {}
 
         print('Parsing file for nodes start...')
 
@@ -45,9 +46,15 @@ class FileParser:
                     while line.strip() != '$':
                         line = line.strip().split(' ')
                         line = [x for x in line if x != '']
-                        nodes[line[0]] = line[1:(self.dim+1)]
+                        nodes.append(line[:(self.dim+1)])
                         line = mesh.readline()
+        nodes.sort(key=lambda x: x[0])
+        for i in range(len(nodes)):
+            nodes_num[nodes[i][0]] = i
+            #nodes[i] = nodes[i][1:]
+            
         print('Parsing file for nodes end.')
+        self.nodes_num = nodes_num
         self.raw_nodes = nodes
         print('OK')
 
@@ -62,9 +69,8 @@ class FileParser:
         print('Prepare and writing nodes in new file start...')
         with open(self.prepared_mesh_dir + '/nodes.txt', 'w') as write_file:
             write_file.write(str(len(nodes)) + '\n')
-            for node in range(len(nodes.keys())):
-                k = list(nodes[list(nodes.keys())[node]])
-                line = ' '.join(k[:dim+1])
+            for el in nodes:
+                line = ' '.join(el[1:dim+1])
                 write_file.write(line + '\n')
 
         print('Prepare and writing nodes in new file end.')
@@ -92,6 +98,7 @@ class FileParser:
         try:
             elements = self.raw_elements
             nodes = self.raw_nodes
+            nodes_num = self.nodes_num
             dim = self.dim
             load_segments = self.raw_load_segments
         except Exception as e:
@@ -101,7 +108,6 @@ class FileParser:
         print('Prepare and writing elements in new file start...')
         start_time = time.time()
 
-        nodes_keys = list(nodes.keys())
         with open(self.prepared_mesh_dir + '/elements.txt', 'w') as write_file:
             write_file.write(str(len(elements)) + '\n')
             for element in elements:
@@ -122,10 +128,10 @@ class FileParser:
                             load_segments[i].append(line[idx])
                             load_segments[i].append(elements.index(element))
                 for i in range(len(line)):
-                    line[i] = str(nodes_keys.index(line[i]))
+                    line[i] = str(nodes_num[line[i]])
                 line = ' '.join(line[:])
                 write_file.write(line + '\n')
-
+        
         print('Prepare and writing elements in new file end. ' + str(time.time() - start_time))
         self.raw_load_segments = load_segments
         print('OK')
@@ -135,7 +141,7 @@ class FileParser:
         filename = self.raw_mesh_dir
         constraints = []
         set_nodes = {}
-        nodes = self.raw_nodes
+        nodes_num = self.nodes_num
 
         print('Parsing file for constraints and sets start...')
 
@@ -150,7 +156,7 @@ class FileParser:
                         line = line.strip().split(' ')
                         line = [x for x in line if x != '']
                         for i in range(0, len(line)):
-                            line[i] = str(list(nodes.keys()).index(line[i]))
+                            line[i] = str(nodes_num[line[i]])
                             temp.append(line[i])
                         set_nodes[key] = temp
                         line = mesh.readline()
@@ -261,15 +267,14 @@ class FileParser:
             set_nodes = self.raw_set_nodes
             dim = self.dim
             nodes = self.raw_nodes
-            #elements = self.raw_elements
+            nodes_num = self.nodes_num
         except Exception as e:
             print('Problem in loads!!')
             return
         print('Prepare and writing loads in new files start...')
         
         with open(self.prepared_mesh_dir + '/loads.txt', 'w') as write_file:
-            if len(load_node_sets) == 0:
-                write_file.write(str(len(load_node_sets)))
+            write_file.write(str(len(load_node_sets)) + '\n')
             for load in load_node_sets:
                 for set_num in set_nodes.keys():
                     if load[0] == set_num:
@@ -296,14 +301,14 @@ class FileParser:
             write_file.write(str(len(load_segments)) + '\n')
             for load in load_segments:
                 if dim == 2:
-                    x1 = float(nodes[load[3]][0])
-                    y1 = float(nodes[load[3]][1])
+                    x1 = float(nodes[nodes_num[load[3]]][0])
+                    y1 = float(nodes[nodes_num[load[3]]][1])
                     
-                    x2 = float(nodes[load[4]][0])
-                    y2 = float(nodes[load[4]][1])
+                    x2 = float(nodes[nodes_num[load[4]]][0])
+                    y2 = float(nodes[nodes_num[load[4]]][1])
                     
-                    xb = float(nodes[load[8]][0])
-                    yb = float(nodes[load[8]][1])
+                    xb = float(nodes[nodes_num[load[8]]][0])
+                    yb = float(nodes[nodes_num[load[8]]][1])
 
                     xn = y2 - y1  #/ (math.sqrt(y1*y1+x1*x1))
                     yn = -(x2 - x1) #/ (math.sqrt(y1*y1+x1*x1))
@@ -316,8 +321,8 @@ class FileParser:
                     for force_num in forces.keys():
                         if load[0] == force_num:
                             pressure = float(forces[force_num])
-                            line = str(list(nodes.keys()).index(load[3])) + ' ' + \
-                                   str(list(nodes.keys()).index(load[4])) + ' ' + \
+                            line = str(nodes_num[load[3]]) + ' ' + \
+                                   str(nodes_num[load[4]]) + ' ' + \
                                    str(load[9]) + ' ' + str(xn) + ' ' + str(yn) + ' ' + str(pressure) + '\n'
                             #line += str(pressure * xn1) + ' ' + str(pressure * yn1) + '\n'
                             #line += str(list(nodes.keys()).index(load[4])) + ' '
@@ -326,21 +331,21 @@ class FileParser:
                     # TODO: DISCUSS HOw TO IMPROVE DIFFERENT CASES
                 elif dim == 3:
                     
-                    x1 = float(nodes[load[3]][0])
-                    y1 = float(nodes[load[3]][1])
-                    z1 = float(nodes[load[3]][2])
+                    x1 = float(nodes[nodes_num[load[3]]][0])
+                    y1 = float(nodes[nodes_num[load[3]]][1])
+                    z1 = float(nodes[nodes_num[load[3]]][2])
                     
-                    x2 = float(nodes[load[4]][0])
-                    y2 = float(nodes[load[4]][1])
-                    z2 = float(nodes[load[4]][2])
+                    x2 = float(nodes[nodes_num[load[4]]][0])
+                    y2 = float(nodes[nodes_num[load[4]]][1])
+                    z2 = float(nodes[nodes_num[load[4]]][2])
 
-                    x3 = float(nodes[load[5]][0])
-                    y3 = float(nodes[load[5]][1])
-                    z3 = float(nodes[load[5]][2])
+                    x3 = float(nodes[nodes_num[load[5]]][0])
+                    y3 = float(nodes[nodes_num[load[5]]][1])
+                    z3 = float(nodes[nodes_num[load[5]]][2])
 
-                    xb = float(nodes[load[8]][0])
-                    yb = float(nodes[load[8]][1])
-                    zb = float(nodes[load[8]][2])
+                    xb = float(nodes[nodes_num[load[8]]][0])
+                    yb = float(nodes[nodes_num[load[8]]][1])
+                    zb = float(nodes[nodes_num[load[8]]][2])
 
                     a = [x2 - x1, y2 - y1, z2 - z1]
                     b = [x3 - x1, y3 - y1, z3 - z1]
@@ -356,47 +361,12 @@ class FileParser:
                     for force_num in forces.keys():
                         if load[0] == force_num:
                             pressure = float(forces[force_num])
-                            line = str(list(nodes.keys()).index(load[3])) + ' ' + \
-                                   str(list(nodes.keys()).index(load[4])) + ' ' + \
-                                   str(list(nodes.keys()).index(load[5])) + ' ' + \
+                            line = str(nodes_num[load[3]]) + ' ' + \
+                                   str(nodes_num[load[4]]) + ' ' + \
+                                   str(nodes_num[load[5]]) + ' ' + \
                                    str(load[9]) + ' ' + str(n[0]) + ' ' + str(n[1]) + \
                                    ' ' + str(n[2]) + ' ' + str(pressure) + '\n'
                             write_file.write(line)
             
         print('Prepare and writing loads in new files end.')
         print('OK')
-
-    def make_colors(self):
-        raw_noads = self.raw_nodes
-        raw_elements = self.raw_elements
-        elements = []
-        elementsColor = []
-       
-        for i in range(len(raw_elements)):
-            temp = raw_elements[i].split(' ')
-            temp = [x for x in temp if x != '']
-            del temp[1]
-            elements.append(temp[1:5])
-        print(elements)
-
-        k_prev, k, i = 0, 0, 0 
-        size = len(elements)
-        while len(elementsColor) != size:
-            while i < len(elements):
-                add = True
-                for j in range(k_prev, k + k_prev):
-                    for t in range(4):
-                        for p in range(4):
-                            if elements[i][t] == elementsColor[j][p] or elements[i][t] == elementsColor[j][p] or \
-                            elements[i][t] == elementsColor[j][p] or elements[i][t] == elementsColor[j][p]:
-                                add = False
-                if add == True:
-                    elementsColor.append(elements[i])
-                    del elements[i]
-                    k += 1
-                else:
-                    i += 1
-            print(k)
-            k_prev += k
-            k = 0
-            i = 0
