@@ -46,7 +46,7 @@ if __name__ == '__main__':
             sys.exit(0)
 
         #prep_meshes
-        if os.path.exists(prep_mesh_task_dir):
+        if os.path.exists(prep_mesh_task_dir) and len(os.listdir(prep_mesh_task_dir)):
             with_parser = False
         else:
             if not os.path.exists(work_dir + 'prepared_meshes/'):
