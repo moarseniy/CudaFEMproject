@@ -7,12 +7,10 @@
 #include <unordered_map>
 
 #include "Tools.h"
-#include "Linal2.h"
 #include "femfunc.h"
 #include "VTKfile.h"
-#include "init.h"
 #include "datakeeper.h"
-#include "tests.h"
+//#include "tests.h"
 #include "init.h"
 
 int main(int argc, char *argv[]) {
@@ -49,7 +47,7 @@ int main(int argc, char *argv[]) {
   FEMdata.ShowInfo();
 
   if (isDYN) {
-    gpuCalculateFEM_DYN(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+//    gpuCalculateFEM_DYN(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
   } else {
     CalculateFEM_EbE_vec_GPU(FEMdata, PRINT_DEBUG_INFO);
   }

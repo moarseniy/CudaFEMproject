@@ -172,8 +172,6 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
 
   // Grisha: Consider adding the third node when parsing to avoid this abundance of if-else statements
   int edge2elem_num[3];
-  //    std::cout << nodesIds[0] << ' ' << nodesIds[1] << ' ' << nodesIds[2] << ' ' << std::endl;
-  //    std::cout << edge.node0 << ' ' << edge.node1 << std::endl;
   if (edge.node0 == nodesIds[0]) {
     edge2elem_num[0] = 0;
   } else if (edge.node0 == nodesIds[1]) {
@@ -198,24 +196,12 @@ void Element::CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& node
       edge2elem_num[2] = 2;
     else
       edge2elem_num[2] = 0;
-  } else {  //if (edge2elem_num[0] == 2) {
+  } else if (edge2elem_num[0] == 2) {
     if (edge2elem_num[1] == 1)
       edge2elem_num[2] = 0;
     else
       edge2elem_num[2] = 1;
   }
-
-  float X2 = nodesX[nodesIds[edge2elem_num[2]]];
-  float Y2 = nodesY[nodesIds[edge2elem_num[2]]];
-
-  //    // Calculate area of element
-  //    float area = 0.5 * std::abs( (X0 - X2) * (Y1 - Y2) - (X1 - X2) * (Y0 - Y2) );
-  //    float a0 = X1 * Y2 - X2 * Y1, a1 = X2 * Y0 - Y2 * X0;
-
-  //    Flocal[edge2elem_num[0] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a0/area);
-  //    Flocal[edge2elem_num[0] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a0/area);
-  //    Flocal[edge2elem_num[1] * 2 + 0] = 0.5 * pressure_value * edge_length * edge.normal_x * (1 +  0.5*a1/area);
-  //    Flocal[edge2elem_num[1] * 2 + 1] = 0.5 * pressure_value * edge_length * edge.normal_y * (1 +  0.5*a1/area);
 
   if (edge.type0 & Constraint::UX) {
     Flocal[2 * edge2elem_num[0] + 0] = 0.0f;
@@ -282,7 +268,7 @@ void TimeDependentEntity::Berlage(float t) {
   float w1 = w0 / sqrtf(3.0f);
   this->value = w1*w1/4.0f*std::exp(-1.0f*w1*t)*(
         std::sin(w0*t) * (1.0f/(w1*w1*w1) + t/(w1*w1) - t*t/w1) -
-        std::cos(w0*t) * std::sqrtf(3.0f) * (t*t/w1 + t/(w1*w1)) );
+        std::cos(w0*t) * sqrtf(3.0f) * (t*t/w1 + t/(w1*w1)) );
 
   this->value *= this->ampl;
 }

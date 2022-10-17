@@ -82,15 +82,15 @@ void MakeVTKfile2D(std::string output_vtk,
 }
 
 void MakeVTKfile3D(std::string output_vtk,
-                   MyArray nodesX,
-                   MyArray nodesY,
-                   MyArray nodesZ,
-                   std::vector<Element> elements,
-                   MyArray displacements,
-                   std::vector<MyArray> Stress,
-                   std::vector<float> sigma_mises,
-                   std::vector<MyArray> Deformation,
-                   std::vector<float> epsilon_mises) {
+                   MyArray &nodesX,
+                   MyArray &nodesY,
+                   MyArray &nodesZ,
+                   std::vector<Element> &elements,
+                   MyArray &displacements,
+                   std::vector<MyArray> &Stress,
+                   std::vector<float> &sigma_mises,
+                   std::vector<MyArray> &Deformation,
+                   std::vector<float> &epsilon_mises) {
   CheckRunTime(__func__)
   fstream outvtk;
   outvtk.open(output_vtk, fstream::out);
@@ -128,10 +128,10 @@ void MakeVTKfile3D(std::string output_vtk,
   //        outvtk << Stress[i][0] << " " << Stress[i][1] << " " << Stress[i][2] << " " << Stress[i][3] << " " << Stress[i][4] << " " << Stress[i][5] << "\n";
   //    }
 
-  //    outvtk << "\nSCALARS mises_stress float\nLOOKUP_TABLE default\n";
-  //    for (int i = 0; i < sigma_mises.size(); i++) {
-  //        outvtk << sigma_mises[i] << "\n";
-  //    }
+//      outvtk << "\nSCALARS mises_stress float\nLOOKUP_TABLE default\n";
+//      for (int i = 0; i < sigma_mises.size(); i++) {
+//          outvtk << sigma_mises[i] << "\n";
+//      }
 
   //    outvtk << "\nVECTORS deformation float\n";
   //    for (int i = 0; i < Deformation.size(); i++) {

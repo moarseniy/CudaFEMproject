@@ -6,6 +6,7 @@
 #include <vector>
 #include <cassert>
 #include <stdio.h>
+#include <cmath>
 
 #include "Tools.h"
 

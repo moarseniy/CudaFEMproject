@@ -42,13 +42,13 @@ using namespace std;
 } \
 
 
-gpuDataKeeper::gpuDataKeeper(int elementsCount, int nodesCount, bool doAssemblyRes) : diag(3 * DIM * elementsCount), r(3 * DIM * elementsCount),
-                                                      m(3 * DIM * elementsCount), z(3 * DIM * elementsCount), s(3 * DIM * elementsCount),
-                                                      p(3 * DIM * elementsCount), u(3 * DIM * elementsCount),
-                                                      x(3 * DIM * elementsCount, 0.0f), mask(3 * DIM * elementsCount),
-                                                      n_adjelem(DIM * nodesCount), gpuB(3 * 6 * elementsCount, 0.0f), gpuElements(3 * elementsCount),
-                                                      gpuKlocals(6 * 6 * elementsCount, 0.0f), gpuFlocals(3 * DIM * elementsCount, 0.0f), tmp(3 * DIM * elementsCount),
-                                                      loads(3 * DIM * elementsCount, 0.0f)
+gpuDataKeeper::gpuDataKeeper(int elementsCount, int nodesCount, bool doAssemblyRes) : diag(6 * (DIM - 1) * elementsCount), r(6 * (DIM - 1) * elementsCount),
+                                                      m(6 * (DIM - 1) * elementsCount), z(6 * (DIM - 1) * elementsCount), s(6 * (DIM - 1) * elementsCount),
+                                                      p(6 * (DIM - 1) * elementsCount), u(6 * (DIM - 1) * elementsCount),
+                                                      x(6 * (DIM - 1) * elementsCount, 0.0f), mask(6 * (DIM - 1) * elementsCount),
+                                                      n_adjelem(DIM * nodesCount), gpuB(3 * (DIM - 1) * 6 * (DIM - 1) * elementsCount, 0.0f), gpuElements((DIM + 1) * elementsCount),
+                                                      gpuKlocals(6 * (DIM - 1) * 6 * (DIM - 1) * elementsCount, 0.0f), gpuFlocals(6 * (DIM - 1) * elementsCount, 0.0f), tmp(6 * (DIM - 1) * elementsCount),
+                                                      loads(6 * (DIM - 1) * elementsCount, 0.0f)
 {
   CheckRunTime(__func__)
   if (doAssemblyRes)
@@ -209,6 +209,30 @@ float det3x3(float *c, int id) {
         c[1 + 9 * id] * c[3 + 9 * id] * c[8 + 9 * id];
 }
 
+__device__
+float det3(float a0, float a1, float a2, float a3,
+           float a4, float a5, float a6, float a7, float a8) {
+  return a0 * a4 * a8 +
+      a1 * a6 * a5 +
+      a2 * a3 * a7 -
+      a6 * a4 * a2 -
+      a0 * a5 * a7 -
+      a1 * a3 * a8;
+}
+
+__device__
+float det4x4(float *c, int id) {
+  float v1 = det3(c[5 + 16 * id], c[6 + 16 * id], c[7 + 16 * id], c[9 + 16 * id],
+      c[10 + 16 * id], c[11 + 16 * id], c[13 + 16 * id], c[14 + 16 * id], c[15 + 16 * id]);
+  float v2 = det3(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[9 + 16 * id],
+      c[10 + 16 * id], c[11 + 16 * id], c[13 + 16 * id], c[14 + 16 * id], c[15 + 16 * id]);
+  float v3 = det3(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[5 + 16 * id],
+      c[6 + 16 * id], c[7 + 16 * id], c[13 + 16 * id], c[14 + 16 * id], c[15 + 16 * id]);
+  float v4 = det3(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[5 + 16 * id],
+      c[6 + 16 * id], c[7 + 16 * id], c[9 + 16 * id], c[10 + 16 * id], c[11 + 16 * id]);
+  return v1 - v2 + v3 - v4;
+}
+
 bool Difference_MyArray_Thrust(MyArray a, thrust::device_vector<float> b) {
     MyArray _b(a.get_size());
     for (int i = 0; i < _b.get_size(); ++i) {
@@ -236,29 +260,142 @@ for (int i = 0; i < 4; ++i) {
 
 __device__
 void inverse3x3(float *ic, float *c, float det, int id) {
-  float invdet = 1.0f / det;
-  ic[0 + 3 * 0 + 9 * id] = (c[1 + 3 * 1 + 9 * id] * c[2 + 3 * 2 + 9 * id] - c[1 + 3 * 2 + 9 * id] * c[2 + 3 * 1 + 9 * id]) * invdet;
-  ic[1 + 3 * 0 + 9 * id] = (c[2 + 3 * 0 + 9 * id] * c[1 + 3 * 2 + 9 * id] - c[1 + 3 * 0 + 9 * id] * c[2 + 3 * 2 + 9 * id]) * invdet;
-  ic[2 + 3 * 0 + 9 * id] = (c[1 + 3 * 0 + 9 * id] * c[2 + 3 * 1 + 9 * id] - c[2 + 3 * 0 + 9 * id] * c[1 + 3 * 1 + 9 * id]) * invdet;
+  ic[0 + 3 * 0 + 9 * id] = (c[1 + 3 * 1 + 9 * id] * c[2 + 3 * 2 + 9 * id] - c[1 + 3 * 2 + 9 * id] * c[2 + 3 * 1 + 9 * id]) / det;
+  ic[1 + 3 * 0 + 9 * id] = (c[2 + 3 * 0 + 9 * id] * c[1 + 3 * 2 + 9 * id] - c[1 + 3 * 0 + 9 * id] * c[2 + 3 * 2 + 9 * id]) / det;
+  ic[2 + 3 * 0 + 9 * id] = (c[1 + 3 * 0 + 9 * id] * c[2 + 3 * 1 + 9 * id] - c[2 + 3 * 0 + 9 * id] * c[1 + 3 * 1 + 9 * id]) / det;
 
-  ic[0 + 3 * 1 + 9 * id] = (c[2 + 3 * 1 + 9 * id] * c[0 + 3 * 2 + 9 * id] - c[0 + 3 * 1 + 9 * id] * c[2 + 3 * 2 + 9 * id]) * invdet;
-  ic[1 + 3 * 1 + 9 * id] = (c[0 + 3 * 0 + 9 * id] * c[2 + 3 * 2 + 9 * id] - c[2 + 3 * 0 + 9 * id] * c[0 + 3 * 2 + 9 * id]) * invdet;
-  ic[2 + 3 * 1 + 9 * id] = (c[0 + 3 * 1 + 9 * id] * c[2 + 3 * 0 + 9 * id] - c[0 + 3 * 0 + 9 * id] * c[2 + 3 * 1 + 9 * id]) * invdet;
+  ic[0 + 3 * 1 + 9 * id] = (c[2 + 3 * 1 + 9 * id] * c[0 + 3 * 2 + 9 * id] - c[0 + 3 * 1 + 9 * id] * c[2 + 3 * 2 + 9 * id]) / det;
+  ic[1 + 3 * 1 + 9 * id] = (c[0 + 3 * 0 + 9 * id] * c[2 + 3 * 2 + 9 * id] - c[2 + 3 * 0 + 9 * id] * c[0 + 3 * 2 + 9 * id]) / det;
+  ic[2 + 3 * 1 + 9 * id] = (c[0 + 3 * 1 + 9 * id] * c[2 + 3 * 0 + 9 * id] - c[0 + 3 * 0 + 9 * id] * c[2 + 3 * 1 + 9 * id]) / det;
 
-  ic[0 + 3 * 2 + 9 * id] = (c[0 + 3 * 1 + 9 * id] * c[1 + 3 * 2 + 9 * id] - c[0 + 3 * 2 + 9 * id] * c[1 + 3 * 1 + 9 * id]) * invdet;
-  ic[1 + 3 * 2 + 9 * id] = (c[0 + 3 * 2 + 9 * id] * c[1 + 3 * 0 + 9 * id] - c[0 + 3 * 0 + 9 * id] * c[1 + 3 * 2 + 9 * id]) * invdet;
-  ic[2 + 3 * 2 + 9 * id] = (c[0 + 3 * 0 + 9 * id] * c[1 + 3 * 1 + 9 * id] - c[0 + 3 * 1 + 9 * id] * c[1 + 3 * 0 + 9 * id]) * invdet;
+  ic[0 + 3 * 2 + 9 * id] = (c[0 + 3 * 1 + 9 * id] * c[1 + 3 * 2 + 9 * id] - c[0 + 3 * 2 + 9 * id] * c[1 + 3 * 1 + 9 * id]) / det;
+  ic[1 + 3 * 2 + 9 * id] = (c[0 + 3 * 2 + 9 * id] * c[1 + 3 * 0 + 9 * id] - c[0 + 3 * 0 + 9 * id] * c[1 + 3 * 2 + 9 * id]) / det;
+  ic[2 + 3 * 2 + 9 * id] = (c[0 + 3 * 0 + 9 * id] * c[1 + 3 * 1 + 9 * id] - c[0 + 3 * 1 + 9 * id] * c[1 + 3 * 0 + 9 * id]) / det;
 }
 
 __device__
-float det3(float a0, float a1, float a2, float a3,
-           float a4, float a5, float a6, float a7, float a8) {
-  return a0*a4*a8 +
-      a1*a6*a5 +
-      a2*a3*a7 -
-      a6*a4*a2 -
-      a0*a5*a7 -
-      a1*a3*a8;
+void inverse4x4(float *im, float *m, int id) {
+  float inv[16], det;
+
+  inv[0] = m[5 + 16 * id]  * m[10 + 16 * id] * m[15 + 16 * id] -
+           m[5 + 16 * id]  * m[11 + 16 * id] * m[14 + 16 * id] -
+           m[9 + 16 * id]  * m[6 + 16 * id]  * m[15 + 16 * id] +
+           m[9 + 16 * id]  * m[7 + 16 * id]  * m[14 + 16 * id] +
+           m[13 + 16 * id] * m[6 + 16 * id]  * m[11 + 16 * id] -
+           m[13 + 16 * id] * m[7 + 16 * id]  * m[10 + 16 * id];
+
+  inv[4] = -m[4 + 16 * id]  * m[10 + 16 * id] * m[15 + 16 * id] +
+            m[4 + 16 * id]  * m[11 + 16 * id] * m[14 + 16 * id] +
+            m[8 + 16 * id]  * m[6 + 16 * id]  * m[15 + 16 * id] -
+            m[8 + 16 * id]  * m[7 + 16 * id]  * m[14 + 16 * id] -
+            m[12 + 16 * id] * m[6 + 16 * id]  * m[11 + 16 * id] +
+            m[12 + 16 * id] * m[7 + 16 * id]  * m[10 + 16 * id];
+
+  inv[8] = m[4 + 16 * id]  * m[9 + 16 * id] * m[15 + 16 * id] -
+           m[4 + 16 * id]  * m[11 + 16 * id] * m[13 + 16 * id] -
+           m[8 + 16 * id]  * m[5 + 16 * id] * m[15 + 16 * id] +
+           m[8 + 16 * id]  * m[7 + 16 * id] * m[13 + 16 * id] +
+           m[12 + 16 * id] * m[5 + 16 * id] * m[11 + 16 * id] -
+           m[12 + 16 * id] * m[7 + 16 * id] * m[9 + 16 * id];
+
+  inv[12] = -m[4 + 16 * id]  * m[9 + 16 * id] * m[14 + 16 * id] +
+             m[4 + 16 * id]  * m[10 + 16 * id] * m[13 + 16 * id] +
+             m[8 + 16 * id]  * m[5 + 16 * id] * m[14 + 16 * id] -
+             m[8 + 16 * id]  * m[6 + 16 * id] * m[13 + 16 * id] -
+             m[12 + 16 * id] * m[5 + 16 * id] * m[10 + 16 * id] +
+             m[12 + 16 * id] * m[6 + 16 * id] * m[9 + 16 * id];
+
+  inv[1] = -m[1 + 16 * id]  * m[10 + 16 * id] * m[15 + 16 * id] +
+            m[1 + 16 * id]  * m[11 + 16 * id] * m[14 + 16 * id] +
+            m[9 + 16 * id]  * m[2 + 16 * id] * m[15 + 16 * id] -
+            m[9 + 16 * id]  * m[3 + 16 * id] * m[14 + 16 * id] -
+            m[13 + 16 * id] * m[2 + 16 * id] * m[11 + 16 * id] +
+            m[13 + 16 * id] * m[3 + 16 * id] * m[10 + 16 * id];
+
+  inv[5] = m[0 + 16 * id]  * m[10 + 16 * id] * m[15 + 16 * id] -
+              m[0 + 16 * id]  * m[11 + 16 * id] * m[14 + 16 * id] -
+              m[8 + 16 * id]  * m[2 + 16 * id] * m[15 + 16 * id] +
+              m[8 + 16 * id]  * m[3 + 16 * id] * m[14 + 16 * id] +
+              m[12 + 16 * id] * m[2 + 16 * id] * m[11 + 16 * id] -
+              m[12 + 16 * id] * m[3 + 16 * id] * m[10 + 16 * id];
+
+  inv[9] = -m[0 + 16 * id]  * m[9 + 16 * id] * m[15 + 16 * id] +
+               m[0 + 16 * id]  * m[11 + 16 * id] * m[13 + 16 * id] +
+               m[8 + 16 * id]  * m[1 + 16 * id] * m[15 + 16 * id] -
+               m[8 + 16 * id]  * m[3 + 16 * id] * m[13 + 16 * id] -
+               m[12 + 16 * id] * m[1 + 16 * id] * m[11 + 16 * id] +
+               m[12 + 16 * id] * m[3 + 16 * id] * m[9 + 16 * id];
+
+  inv[13] = m[0 + 16 * id]  * m[9 + 16 * id] * m[14 + 16 * id] -
+               m[0 + 16 * id]  * m[10 + 16 * id] * m[13 + 16 * id] -
+               m[8 + 16 * id]  * m[1 + 16 * id] * m[14 + 16 * id] +
+               m[8 + 16 * id]  * m[2 + 16 * id] * m[13 + 16 * id] +
+               m[12 + 16 * id] * m[1 + 16 * id] * m[10 + 16 * id] -
+               m[12 + 16 * id] * m[2 + 16 * id] * m[9 + 16 * id];
+
+  inv[2] = m[1 + 16 * id]  * m[6 + 16 * id] * m[15 + 16 * id] -
+              m[1 + 16 * id]  * m[7 + 16 * id] * m[14 + 16 * id] -
+              m[5 + 16 * id]  * m[2 + 16 * id] * m[15 + 16 * id] +
+              m[5 + 16 * id]  * m[3 + 16 * id] * m[14 + 16 * id] +
+              m[13 + 16 * id] * m[2 + 16 * id] * m[7 + 16 * id] -
+              m[13 + 16 * id] * m[3 + 16 * id] * m[6 + 16 * id];
+
+  inv[6] = -m[0 + 16 * id]  * m[6 + 16 * id] * m[15 + 16 * id] +
+               m[0 + 16 * id]  * m[7 + 16 * id] * m[14 + 16 * id] +
+               m[4 + 16 * id]  * m[2 + 16 * id] * m[15 + 16 * id] -
+               m[4 + 16 * id]  * m[3 + 16 * id] * m[14 + 16 * id] -
+               m[12 + 16 * id] * m[2 + 16 * id] * m[7 + 16 * id] +
+               m[12 + 16 * id] * m[3 + 16 * id] * m[6 + 16 * id];
+
+  inv[10] = m[0 + 16 * id]  * m[5 + 16 * id] * m[15 + 16 * id] -
+               m[0 + 16 * id]  * m[7 + 16 * id] * m[13 + 16 * id] -
+               m[4 + 16 * id]  * m[1 + 16 * id] * m[15 + 16 * id] +
+               m[4 + 16 * id]  * m[3 + 16 * id] * m[13 + 16 * id] +
+               m[12 + 16 * id] * m[1 + 16 * id] * m[7 + 16 * id] -
+               m[12 + 16 * id] * m[3 + 16 * id] * m[5 + 16 * id];
+
+  inv[14] = -m[0 + 16 * id]  * m[5 + 16 * id] * m[14 + 16 * id] +
+                m[0 + 16 * id]  * m[6 + 16 * id] * m[13 + 16 * id] +
+                m[4 + 16 * id]  * m[1 + 16 * id] * m[14 + 16 * id] -
+                m[4 + 16 * id]  * m[2 + 16 * id] * m[13 + 16 * id] -
+                m[12 + 16 * id] * m[1 + 16 * id] * m[6 + 16 * id] +
+                m[12 + 16 * id] * m[2 + 16 * id] * m[5 + 16 * id];
+
+  inv[3] = -m[1 + 16 * id] * m[6 + 16 * id] * m[11 + 16 * id] +
+               m[1 + 16 * id] * m[7 + 16 * id] * m[10 + 16 * id] +
+               m[5 + 16 * id] * m[2 + 16 * id] * m[11 + 16 * id] -
+               m[5 + 16 * id] * m[3 + 16 * id] * m[10 + 16 * id] -
+               m[9 + 16 * id] * m[2 + 16 * id] * m[7 + 16 * id] +
+               m[9 + 16 * id] * m[3 + 16 * id] * m[6 + 16 * id];
+
+  inv[7] = m[0 + 16 * id] * m[6 + 16 * id] * m[11 + 16 * id] -
+              m[0 + 16 * id] * m[7 + 16 * id] * m[10 + 16 * id] -
+              m[4 + 16 * id] * m[2 + 16 * id] * m[11 + 16 * id] +
+              m[4 + 16 * id] * m[3 + 16 * id] * m[10 + 16 * id] +
+              m[8 + 16 * id] * m[2 + 16 * id] * m[7 + 16 * id] -
+              m[8 + 16 * id] * m[3 + 16 * id] * m[6 + 16 * id];
+
+  inv[11] = -m[0 + 16 * id] * m[5 + 16 * id] * m[11 + 16 * id] +
+                m[0 + 16 * id] * m[7 + 16 * id] * m[9 + 16 * id] +
+                m[4 + 16 * id] * m[1 + 16 * id] * m[11 + 16 * id] -
+                m[4 + 16 * id] * m[3 + 16 * id] * m[9 + 16 * id] -
+                m[8 + 16 * id] * m[1 + 16 * id] * m[7 + 16 * id] +
+                m[8 + 16 * id] * m[3 + 16 * id] * m[5 + 16 * id];
+
+  inv[15] = m[0 + 16 * id] * m[5 + 16 * id] * m[10 + 16 * id] -
+               m[0 + 16 * id] * m[6 + 16 * id] * m[9 + 16 * id] -
+               m[4 + 16 * id] * m[1 + 16 * id] * m[10 + 16 * id] +
+               m[4 + 16 * id] * m[2 + 16 * id] * m[9 + 16 * id] +
+               m[8 + 16 * id] * m[1 + 16 * id] * m[6 + 16 * id] -
+               m[8 + 16 * id] * m[2 + 16 * id] * m[5 + 16 * id];
+
+     det = m[0 + 16 * id] * inv[0] + m[1 + 16 * id] * inv[4] + m[2 + 16 * id] * inv[8] + m[3 + 16 * id] * inv[12];
+     if (det == 0.0f)
+       printf("DET == 0!!! -> %d\n", id);
+     det = 1.0 / det;
+
+     for (int i = 0; i < 16; i++)
+         im[i + 16 * id] = inv[i] * det;
 }
 
 __device__
@@ -282,25 +419,6 @@ float det(float *c, int size) {
     return v1 - v2 + v3 - v4;
   }
 }
-
-//void TEST_THRUST() {
-//  const int N = 7;
-//  int A[N] = {1, 3, 3, 3, 2, 2, 1}; // input keys
-//  int B[N] = {9, 8, 7, 6, 5, 4, 3}; // input values
-//  int C[N];                         // output keys
-//  int D[N];                         // output values
-//  thrust::pair<int*,int*> new_end;
-//  thrust::equal_to<int> binary_pred;
-//  thrust::plus<int> binary_op;
-//  new_end = thrust::reduce_by_key(A, A + N, B, C, D, binary_pred, binary_op);
-//  for (int i = 0; i < 4; ++i) {
-//    std::cout << C[i] << " ";
-//  }
-//  std::cout << std::endl;
-//  for (int i = 0; i < 4; ++i) {
-//    std::cout << D[i] << " ";
-//  }
-//}
 
 void gpuReductionWithMaskAndTransform(float *v, float *mask, int size, float *res, int size_new) {
   CheckRunTime(__func__)
@@ -345,11 +463,10 @@ void gpuReductionWithMaskAndTransform2(float *v, float *mask, int size,
 
   thrust::copy(thrust::device, mask, mask + size, temp_mask.begin());
   thrust::copy(thrust::device, v, v + size, temp_v.begin());
-  //    temp_mask = mask;
-  //    temp_v = v;
 
   thrust::sort_by_key(temp_mask.begin(), temp_mask.end(), temp_v.begin());
   thrust::reduce_by_key(temp_mask.begin(), temp_mask.end(), temp_v.begin(), thrust::make_discard_iterator(), temp_res.begin());
+
   gpuTransformFrom_2N_to_6E(mask, thrust::raw_pointer_cast(temp_res.data()), res, size);
 }
 
@@ -379,7 +496,7 @@ void gpuReductionWithMask2(float *v, float *mask,
 
   thrust::copy(thrust::device, thrust::device_pointer_cast(mask),
                thrust::device_pointer_cast(mask + size), temp_mask.begin());
-thrust::sort_by_key(temp_mask.begin(), temp_mask.end(), temp_v.begin());
+  thrust::sort_by_key(temp_mask.begin(), temp_mask.end(), temp_v.begin());
   thrust::reduce_by_key(temp_mask.begin(), temp_mask.end(), temp_v.begin(),
                         thrust::make_discard_iterator(), thrust::device_pointer_cast(res));
 }
@@ -419,11 +536,13 @@ void gpuTransform_2N_to_6E(float *d_v, int n_gl_dofs, float *d_mask, float *d_re
     gpuCopyDeviceToHost(d_mask, thrust::raw_pointer_cast(host_mask.data()), grid_size);
     //gpuCopy(d_mask, thrust::raw_pointer_cast(host_mask.data()), grid_size);
     for (int i = 0; i < grid_size; ++i) {
+      //TODO: CUDA
         host_res[i] = host_v[static_cast<int>(host_mask[i])];
     }
 
     gpuCopyHostToDevice(thrust::raw_pointer_cast(host_res.data()), d_res, grid_size);
-//    gpuCopy(thrust::raw_pointer_cast(host_res.data()), d_res, grid_size);
+    //gpuCopy(thrust::raw_pointer_cast(host_res.data()), d_res, grid_size);
+//    cudaMemcpy(d_res, thrust::raw_pointer_cast(host_res.data()), grid_size * sizeof(float), cudaMemcpyHostToDevice);
 
 }
 
@@ -479,7 +598,7 @@ __device__ void matrixMultiply(float *a, int row, int n, int col, float *b, floa
   }
 }
 
-__global__ void kernelCalculateKlocal2(int elementsCount, float *elements, float *diag,
+__global__ void kernelCalculateKlocal2D(int elementsCount, float *elements, float *diag,
                                        float *nodesX, float *nodesY,
                                        float *D, float *K, float *B,
                                        float *constraints, int constraintsCount,
@@ -571,10 +690,175 @@ __global__ void kernelCalculateKlocal2(int elementsCount, float *elements, float
 
 }
 
-void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, int elementsCount,
-                         float *h_nodesX, float *h_nodesY, int nodesCount,
-                         float *h_D, float *h_constraints, int constraintsCount) {
+__global__ void kernelCalculateKlocal3D(int elementsCount, float *elements, float *diag,
+                                       float *nodesX, float *nodesY, float *nodesZ,
+                                       float *D, float *K, float *B,
+                                       float *constraints, int constraintsCount,
+                                       float *C, float *IC, float *temp, float *B_T) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < elementsCount) {
+
+    C[0 + 0 * 4 + 16 * index] = C[0 + 1 * 4 + 16 * index] = C[0 + 2 * 4 + 16 * index] = C[0 + 3 * 4 + 16 * index] = 1.0f;
+
+    C[1 + 0 * 4 + 16 * index] = nodesX[int(elements[4 * index + 0])];
+    C[1 + 1 * 4 + 16 * index] = nodesX[int(elements[4 * index + 1])];
+    C[1 + 2 * 4 + 16 * index] = nodesX[int(elements[4 * index + 2])];
+    C[1 + 3 * 4 + 16 * index] = nodesX[int(elements[4 * index + 3])];
+
+    C[2 + 0 * 4 + 16 * index] = nodesY[int(elements[4 * index + 0])];
+    C[2 + 1 * 4 + 16 * index] = nodesY[int(elements[4 * index + 1])];
+    C[2 + 2 * 4 + 16 * index] = nodesY[int(elements[4 * index + 2])];
+    C[2 + 3 * 4 + 16 * index] = nodesY[int(elements[4 * index + 3])];
+
+    C[3 + 0 * 4 + 16 * index] = nodesZ[int(elements[4 * index + 0])];
+    C[3 + 1 * 4 + 16 * index] = nodesZ[int(elements[4 * index + 1])];
+    C[3 + 2 * 4 + 16 * index] = nodesZ[int(elements[4 * index + 2])];
+    C[3 + 3 * 4 + 16 * index] = nodesZ[int(elements[4 * index + 3])];
+
+    float determinant = det4x4(C, index);
+    inverse4x4(IC, C, index);
+
+    if (0) {
+      printf("DET = %f\n", determinant);
+
+      for (int i = 0; i < 4; ++i) {
+          for (int j = 0; j < 4; ++j) {
+            printf("%f ", C[j + i * 4]);
+          }
+          printf("\n");
+        }
+        printf("\n");
+
+        for (int i = 0; i < 4; ++i) {
+          for (int j = 0; j < 4; ++j) {
+            printf("%f ", IC[j + i * 4]);
+          }
+          printf("\n");
+        }
+
+//      printf("\n");
+//      for (int i = 0; i < 4; i++) {
+//        for (int j = 0; j < 4; j++) {
+//          float temp = 0.0f;
+//          for (int k = 0; k < 4; k++) {
+//            temp += C[k + i * 4] * IC[j + k * 4];
+//          }
+//          printf("%f ", temp);
+//        }
+//        printf("\n");
+//      }
+    }
+
+    for (int i = 0; i < 4; i++) {
+      B[(3 * i + 0) + 0 * 12 + index * 6 * 12] = IC[i + 1 * 4 + 16 * index];
+      B[(3 * i + 1) + 0 * 12 + index * 6 * 12] = 0.0f;
+      B[(3 * i + 2) + 0 * 12 + index * 6 * 12] = 0.0f;
+
+      B[(3 * i + 0) + 1 * 12 + index * 6 * 12] = 0.0f;
+      B[(3 * i + 1) + 1 * 12 + index * 6 * 12] = IC[i + 2 * 4 + 16 * index];
+      B[(3 * i + 2) + 1 * 12 + index * 6 * 12] = 0.0f;
+
+      B[(3 * i + 0) + 2 * 12 + index * 6 * 12] = 0.0f;
+      B[(3 * i + 1) + 2 * 12 + index * 6 * 12] = 0.0f;
+      B[(3 * i + 2) + 2 * 12 + index * 6 * 12] = IC[i + 3 * 4 + 16 * index];
+
+      B[(3 * i + 0) + 3 * 12 + index * 6 * 12] = IC[i + 2 * 4 + 16 * index];
+      B[(3 * i + 1) + 3 * 12 + index * 6 * 12] = IC[i + 1 * 4 + 16 * index];
+      B[(3 * i + 2) + 3 * 12 + index * 6 * 12] = 0.0f;
+
+      B[(3 * i + 0) + 4 * 12 + index * 6 * 12] = 0.0f;
+      B[(3 * i + 1) + 4 * 12 + index * 6 * 12] = IC[i + 3 * 4 + 16 * index];
+      B[(3 * i + 2) + 4 * 12 + index * 6 * 12] = IC[i + 2 * 4 + 16 * index];
+
+      B[(3 * i + 0) + 5 * 12 + index * 6 * 12] = IC[i + 3 * 4 + 16 * index];
+      B[(3 * i + 1) + 5 * 12 + index * 6 * 12] = 0.0f;
+      B[(3 * i + 2) + 5 * 12 + index * 6 * 12] = IC[i + 1 * 4 + 16 * index];
+    }
+
+    for (int i = 0; i < 12; i++) {
+      for (int j = 0; j < 6; j++) {
+        B_T[j + i * 6 + 6 * 12 * index] = B[i + j * 12 + index * 6 * 12];
+      }
+    }
+
+    //temp(12,6) = B_T(12,6) * D(6,6)
+    for (int i = 0; i < 12; i++) {
+      for (int j = 0; j < 6; j++) {
+        temp[j + i * 6 + 6 * 12 * index] = 0.0f;
+        for (int k = 0; k < 6; k++) {
+          temp[j + i * 6 + 6 * 12 * index] += B_T[k + i * 6 + 6 * 12 * index] * D[j + k * 6];
+        }
+      }
+    }
+//    matrixMultiply(B_T, 6, 3, 3, D, temp, index);
+
+    //K(12,12) = temp(12,6) * B(6,12)
+    for (int i = 0; i < 12; i++) {
+      for (int j = 0; j < 12; j++) {
+        K[j + i * 12 + 12 * 12 * index] = 0.0f;
+        for (int k = 0; k < 6; k++) {
+          K[j + i * 12 + 12 * 12 * index] += temp[k + i * 6 + 12 * 6 * index] * B[j + k * 12 + index * 6 * 12];
+        }
+      }
+    }
+    //matrixMultiply(temp, 6, 3, 6, B, K, index);
+
+    for (int i = 0; i < 12; i++) {
+      for (int j = 0; j < 12; j++) {
+        K[j + i * 12 + 12 * 12 * index] *= fabs(determinant) / 6.f;
+      }
+    }
+
+    for (int c_id = 0; c_id < constraintsCount; ++c_id) {
+      for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+          for (int ilocal = 0; ilocal < 3; ++ilocal) {
+            for (int jlocal = 0; jlocal < 3; ++jlocal) {
+              if (3 * int(elements[4 * index + i]) + ilocal == int(constraints[c_id]) ||
+                  3 * int(elements[4 * index + j]) + jlocal == int(constraints[c_id])) {
+                if (3 * int(elements[4 * index + i]) + ilocal != 3 * int(elements[4 * index + j]) + jlocal) {
+                  K[(3 * j + jlocal) + 12 * (3 * i + ilocal) + 12 * 12 * index] = 0.0f;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Grisha: Calculate separately!
+    diag[12 * index + 0] = K[0 + 12 * 0 + 12 * 12 * index];
+    diag[12 * index + 1] = K[1 + 12 * 1 + 12 * 12 * index];
+    diag[12 * index + 2] = K[2 + 12 * 2 + 12 * 12 * index];
+    diag[12 * index + 3] = K[3 + 12 * 3 + 12 * 12 * index];
+    diag[12 * index + 4] = K[4 + 12 * 4 + 12 * 12 * index];
+    diag[12 * index + 5] = K[5 + 12 * 5 + 12 * 12 * index];
+    diag[12 * index + 6] = K[6 + 12 * 6 + 12 * 12 * index];
+    diag[12 * index + 7] = K[7 + 12 * 7 + 12 * 12 * index];
+    diag[12 * index + 8] = K[8 + 12 * 8 + 12 * 12 * index];
+    diag[12 * index + 9] = K[9 + 12 * 9 + 12 * 12 * index];
+    diag[12 * index + 10] = K[10 + 12 * 10 + 12 * 12 * index];
+    diag[12 * index + 11] = K[11 + 12 * 11 + 12 * 12 * index];
+  }
+
+  __syncthreads();
+
+}
+
+void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, FEMdataKeeper &FEMdata) {
   CheckRunTime(__func__)
+
+  int elementsCount = FEMdata.elementsCount;
+  int nodesCount = FEMdata.nodesCount;
+  int constraintsCount = FEMdata.CudaIndicesToConstraintsCount;
+
+  float *h_D = FEMdata.D.get_data();
+  float *h_constraints = FEMdata.CudaIndicesToConstraints.get_data();
+  float *h_nodesX = FEMdata.nodesX.get_data();
+  float *h_nodesY = FEMdata.nodesY.get_data();
+  #if DIM == 3
+    float *h_nodesZ = FEMdata.nodesZ.get_data();
+  #endif
 
   float* elements = gpu_data.get_Elements();//thrust::raw_pointer_cast( CudaElements.data() );
   float* diag = gpu_data.get_diag();//thrust::raw_pointer_cast( diag_vec.data() );
@@ -582,8 +866,8 @@ void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, int elementsCount,
   float *d_constraints;
   float *d_nodesX, *d_nodesY, *d_D;
 
-  cudaMalloc((void**)&d_D, 9 * sizeof(float));
-  cudaMemcpy(d_D, h_D, 9 * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMalloc((void**)&d_D, 3 * (DIM - 1) * 3 * (DIM - 1) * sizeof(float));
+  cudaMemcpy(d_D, h_D, 3 * (DIM - 1) * 3 * (DIM - 1) * sizeof(float), cudaMemcpyHostToDevice);
 
   cudaMalloc((void**)&d_constraints, constraintsCount * sizeof(float));
   cudaMemcpy(d_constraints, h_constraints, constraintsCount * sizeof(float), cudaMemcpyHostToDevice);
@@ -592,19 +876,34 @@ void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, int elementsCount,
   cudaMalloc((void**)&d_nodesY, nodesCount * sizeof(float));
   cudaMemcpy(d_nodesX, h_nodesX, nodesCount * sizeof(float), cudaMemcpyHostToDevice);
   cudaMemcpy(d_nodesY, h_nodesY, nodesCount * sizeof(float), cudaMemcpyHostToDevice);
+  #if DIM == 3
+    float *d_nodesZ;
+    cudaMalloc((void**)&d_nodesZ, nodesCount * sizeof(float));
+    cudaMemcpy(d_nodesZ, h_nodesZ, nodesCount * sizeof(float), cudaMemcpyHostToDevice);
+  #endif
 
   float *d_C, *d_IC, *d_temp, *d_B_T;
-  cudaMalloc((void**)&d_C, 9 * elementsCount * sizeof(float));
-  cudaMalloc((void**)&d_IC, 9 * elementsCount * sizeof(float));
-  cudaMalloc((void**)&d_temp, 18 * elementsCount * sizeof(float));
-  cudaMalloc((void**)&d_B_T, 18 * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_C, (DIM + 1) * (DIM + 1) * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_IC, (DIM + 1) * (DIM + 1) * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_temp, 3 * (DIM - 1) * 6 * (DIM - 1) * elementsCount * sizeof(float));
+  cudaMalloc((void**)&d_B_T, 3 * (DIM - 1) * 6 * (DIM - 1) * elementsCount * sizeof(float));
 
-  kernelCalculateKlocal2<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements, diag,
+#if DIM == 2
+  kernelCalculateKlocal2D<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements, diag,
                                                                d_nodesX, d_nodesY,
                                                                d_D, gpu_data.get_Klocals(), gpu_data.get_B(),
                                                                d_constraints, constraintsCount, d_C, d_IC, d_temp, d_B_T);
+#elif DIM == 3
+  kernelCalculateKlocal3D<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements, diag,
+                                                               d_nodesX, d_nodesY, d_nodesZ,
+                                                               d_D, gpu_data.get_Klocals(), gpu_data.get_B(),
+                                                               d_constraints, constraintsCount, d_C, d_IC, d_temp, d_B_T);
+#endif
   cudaFree(d_nodesX);
   cudaFree(d_nodesY);
+#if DIM == 3
+  cudaFree(d_nodesZ);
+#endif
   cudaFree(d_constraints);
 
   cudaFree(d_C);
@@ -697,6 +996,18 @@ __global__ void kernelMultiply(int elementsCount, float *u, float *Klocals, floa
   }
 }
 
+__global__ void kernelMultiply3D(int elementsCount, float *u, float *Klocals, float *p) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < elementsCount) {
+    for (int j = 0; j < 12; j++) {
+      u[j + index * 12] = 0.0f;
+      for (int k = 0; k < 12; k++) {
+        u[j + index * 12] += Klocals[k + j * 12 + index * 12 * 12] * p[k + index * 12];
+      }
+    }
+  }
+}
+
 __global__ void kernelMultiply_2WeightedMatrix(int elementsCount, float *u, float *Mlocals, float *Klocals, float *p,
                                                float cM, float cK) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -773,7 +1084,11 @@ void gpuMultiplyKlocalByVec(gpuDataKeeper &gpu_data, int elementsCount) {
   CheckRunTime(__func__)
   float* u_ptr = gpu_data.get_u();//thrust::raw_pointer_cast( u.data() );
   float* p_ptr = gpu_data.get_p();//thrust::raw_pointer_cast( p.data() );
-  kernelMultiply<<<(elementsCount + 255) / 256, 256>>>(elementsCount, u_ptr, gpu_data.get_Klocals(), p_ptr);
+  if (DIM == 2) {
+    kernelMultiply<<<(elementsCount + 255) / 256, 256>>>(elementsCount, u_ptr, gpu_data.get_Klocals(), p_ptr);
+  } else if (DIM == 3) {
+    kernelMultiply3D<<<(elementsCount + 255) / 256, 256>>>(elementsCount, u_ptr, gpu_data.get_Klocals(), p_ptr);
+  }
 }
 
 void gpuMultiplyMatrixByVec(float* Matr, float* Vec, float* Res, int elementsCount) {
@@ -840,12 +1155,27 @@ void gpuCountNAdjElem(gpuDataKeeper &gpuD, int grid_size) {
 __global__ void kernelGenerateMask(float *elements, float *mask, int elementsCount) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < elementsCount) {
-    mask[3 * DIM * i + 0] = elements[3 * i + 0] * DIM + 0;
-    mask[3 * DIM * i + 1] = elements[3 * i + 0] * DIM + 1;
-    mask[3 * DIM * i + 2] = elements[3 * i + 1] * DIM + 0;
-    mask[3 * DIM * i + 3] = elements[3 * i + 1] * DIM + 1;
-    mask[3 * DIM * i + 4] = elements[3 * i + 2] * DIM + 0;
-    mask[3 * DIM * i + 5] = elements[3 * i + 2] * DIM + 1;
+    if (DIM == 2) {
+      mask[6 * (DIM - 1) * i + 0] = elements[3 * i + 0] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 1] = elements[3 * i + 0] * DIM + 1;
+      mask[6 * (DIM - 1) * i + 2] = elements[3 * i + 1] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 3] = elements[3 * i + 1] * DIM + 1;
+      mask[6 * (DIM - 1) * i + 4] = elements[3 * i + 2] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 5] = elements[3 * i + 2] * DIM + 1;
+    } else if (DIM == 3) {
+      mask[6 * (DIM - 1) * i + 0] = elements[4 * i + 0] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 1] = elements[4 * i + 0] * DIM + 1;
+      mask[6 * (DIM - 1) * i + 2] = elements[4 * i + 0] * DIM + 2;
+      mask[6 * (DIM - 1) * i + 3] = elements[4 * i + 1] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 4] = elements[4 * i + 1] * DIM + 1;
+      mask[6 * (DIM - 1) * i + 5] = elements[4 * i + 1] * DIM + 2;
+      mask[6 * (DIM - 1) * i + 6] = elements[4 * i + 2] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 7] = elements[4 * i + 2] * DIM + 1;
+      mask[6 * (DIM - 1) * i + 8] = elements[4 * i + 2] * DIM + 2;
+      mask[6 * (DIM - 1) * i + 9] = elements[4 * i + 3] * DIM + 0;
+      mask[6 * (DIM - 1) * i + 10] = elements[4 * i + 3] * DIM + 1;
+      mask[6 * (DIM - 1) * i + 11] = elements[4 * i + 3] * DIM + 2;
+    }
   }
 }
 
@@ -941,26 +1271,40 @@ void gpuCopyHostToDevice(float *data, float *dest, int size) {
 
 void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
   CheckRunTime(__func__)
-  thrust::host_vector<float> HostElements(3 * FEMdata.elementsCount);
-  thrust::host_vector<float> HostFlocal(6 * FEMdata.elementsCount);
+  thrust::host_vector<float> HostElements((DIM + 1) * FEMdata.elementsCount);
+  thrust::host_vector<float> HostFlocal(6 * (DIM - 1) * FEMdata.elementsCount);
 
   int k = 0;
-  for (int i = 0; i < 3 * FEMdata.elementsCount - 2; i += 3) {
+  for (int i = 0; i < (DIM + 1) * FEMdata.elementsCount - DIM; i += (DIM + 1)) {
     HostElements[i + 0] = FEMdata.elements[k].nodesIds[0];
     HostElements[i + 1] = FEMdata.elements[k].nodesIds[1];
     HostElements[i + 2] = FEMdata.elements[k].nodesIds[2];
+    if (DIM == 3)
+      HostElements[i + 3] = FEMdata.elements[k].nodesIds[3];
 
-    HostFlocal[3 * DIM * k + 0] = FEMdata.elements[k].Flocal[0];
-    HostFlocal[3 * DIM * k + 1] = FEMdata.elements[k].Flocal[1];
-    HostFlocal[3 * DIM * k + 2] = FEMdata.elements[k].Flocal[2];
-    HostFlocal[3 * DIM * k + 3] = FEMdata.elements[k].Flocal[3];
-    HostFlocal[3 * DIM * k + 4] = FEMdata.elements[k].Flocal[4];
-    HostFlocal[3 * DIM * k + 5] = FEMdata.elements[k].Flocal[5];
+//    FEMdata.elements[k].Flocal.Show();
+
+    HostFlocal[6 * (DIM - 1) * k + 0] = FEMdata.elements[k].Flocal[0];
+    HostFlocal[6 * (DIM - 1) * k + 1] = FEMdata.elements[k].Flocal[1];
+    HostFlocal[6 * (DIM - 1) * k + 2] = FEMdata.elements[k].Flocal[2];
+    HostFlocal[6 * (DIM - 1) * k + 3] = FEMdata.elements[k].Flocal[3];
+    HostFlocal[6 * (DIM - 1) * k + 4] = FEMdata.elements[k].Flocal[4];
+    HostFlocal[6 * (DIM - 1) * k + 5] = FEMdata.elements[k].Flocal[5];
+
+    if (DIM == 3) {
+      HostFlocal[6 * (DIM - 1) * k + 6] = FEMdata.elements[k].Flocal[6];
+      HostFlocal[6 * (DIM - 1) * k + 7] = FEMdata.elements[k].Flocal[7];
+      HostFlocal[6 * (DIM - 1) * k + 8] = FEMdata.elements[k].Flocal[8];
+      HostFlocal[6 * (DIM - 1) * k + 9] = FEMdata.elements[k].Flocal[9];
+      HostFlocal[6 * (DIM - 1) * k + 10] = FEMdata.elements[k].Flocal[10];
+      HostFlocal[6 * (DIM - 1) * k + 11] = FEMdata.elements[k].Flocal[11];
+    }
+
     k++;
   }
 
-  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * FEMdata.elementsCount);
-  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostElements.data()), gpuD.get_Elements(), 3 * FEMdata.elementsCount);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostElements.data()), gpuD.get_Elements(), (DIM + 1) * FEMdata.elementsCount);
+  gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * (DIM - 1) * FEMdata.elementsCount);
 }
 
 void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
@@ -978,7 +1322,7 @@ void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
   }
   //std::cout << "\n";
 
-  //gpuD.copyFlocalFromHost(HostFlocal);
+//  gpuD.copyFlocalFromHost(HostFlocal);
   gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * FEMdata.elementsCount);
 }
 
@@ -1139,7 +1483,7 @@ void thrustMultiplyByVector(SparseMatrixCOO &M,
 
     res = host_res;
 }
-
+/*
 void gpuCalculateFEM_dyn_relaxation(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float dt, float beta1, float eps) {
     // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
     CheckRunTime(__func__)
@@ -1299,7 +1643,7 @@ void gpuCalculateFEM_dyn_relaxation(FEMdataKeeper &FEMdata, float rho, float dam
 
     thrust::copy(displ.begin(), displ.end(), FEMdata.displacements.get_data()); // is the last argument OK?
 }
-
+*/
 void TEST_THRUST_addWeighted() {
     const int N = 7;
     float A[N] = {1.f, 3.f, 3.f, 3.f, 2.f, 2.f, 1.f};
@@ -1322,24 +1666,24 @@ void TEST_THRUST_addWeighted() {
 
 
 
-void TEST_THRUST_GenerateMask(FEMdataKeeper &FEMdata) {
-    int n_elems = FEMdata.elementsCount;
-    int grid_size = 3 * DIM * n_elems;
-    thrust::device_vector<float>    thrust_mask(grid_size, 0.0f);
-    MyArray mask(grid_size);
+//void TEST_THRUST_GenerateMask(FEMdataKeeper &FEMdata) {
+//    int n_elems = FEMdata.elementsCount;
+//    int grid_size = 3 * DIM * n_elems;
+//    thrust::device_vector<float>    thrust_mask(grid_size, 0.0f);
+//    MyArray mask(grid_size);
 
-    GenerateMask(FEMdata, mask);
-    thrustGenerateMask(FEMdata, thrust_mask);
+//    GenerateMask(FEMdata, mask);
+//    thrustGenerateMask(FEMdata, thrust_mask);
 
-    for (int i = 0; i < n_elems; ++i) {
-        int tmp = int(thrust_mask[i]);
-        if (mask[i] != tmp) {
-            printf("Error! %d != %d\n", mask[i], tmp);
-            return;
-        }
-    }
-    printf("All correct!\n");
-}
+//    for (int i = 0; i < n_elems; ++i) {
+//        int tmp = int(thrust_mask[i]);
+//        if (mask[i] != tmp) {
+//            printf("Error! %d != %d\n", mask[i], tmp);
+//            return;
+//        }
+//    }
+//    printf("All correct!\n");
+//}
 
 void TEST_THRUST_MultiplyByVector() {
     const int N = 7;

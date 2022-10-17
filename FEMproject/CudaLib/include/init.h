@@ -25,7 +25,6 @@
 #include <vector>
 #include "Linal2.h"
 #include "Tools.h"
-#include "femstruct.h"
 #include "datakeeper.h"
 
 class gpuDataKeeper{
@@ -128,9 +127,7 @@ float gpuDotProduct2(float *a, float *b, int size);
 void gpuDivideByElementwise(float *a, float *b,
                             float *c, int size);
 
-void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, int elementsCount,
-                         float *h_nodesX, float *h_nodesY, int nodesCount,
-                         float *h_D, float *h_constraints, int constraintsCount);
+void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, FEMdataKeeper &FEMdata);
 void gpuCalculateMlocal(gpuDataKeeper &gpu_data, int elementsCount,
                          float *h_nodesX, float *h_nodesY, int nodesCount);
 

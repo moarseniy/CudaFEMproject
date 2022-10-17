@@ -20,30 +20,30 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  std::string name = argv[1];
-  std::string project_directory = argv[2];
-  std::string prepared_meshes_directory = argv[3];
-  std::string results_directory = argv[4];
+//  std::string name = argv[1];
+//  std::string project_directory = argv[2];
+//  std::string prepared_meshes_directory = argv[3];
+//  std::string results_directory = argv[4];
 
-  std::string output_vtk = results_directory + "/results.vtk";
+//  std::string output_vtk = results_directory + "/results.vtk";
 
-  float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
+//  float poissonRatio = std::stof(argv[5]), youngModulus = std::stof(argv[6]);
 
-  bool withSmooth = false;
-  bool withMises = false;
+//  bool withSmooth = false;
+//  bool withMises = false;
 
-  FEMdataKeeper FEMdata(name, project_directory, prepared_meshes_directory, results_directory);
-  FEMdata.ParseFiles(poissonRatio, youngModulus);
+//  FEMdataKeeper FEMdata(name, project_directory, prepared_meshes_directory, results_directory);
+//  FEMdata.ParseFiles(poissonRatio, youngModulus);
 
-  bool PRINT_DEBUG_INFO = false;
+//  bool PRINT_DEBUG_INFO = false;
 
-  //    CalculateFEM(FEMdata);
-  CalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
+//  //    CalculateFEM(FEMdata);
+//  CalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
 
-  ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
+//  ResultsDataKeeper RESdata(withSmooth, withMises, FEMdata.nodesCount);
 
-  MakeResults(FEMdata, RESdata);
-  WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
+//  MakeResults(FEMdata, RESdata);
+//  WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
 
   return 0;
 }
