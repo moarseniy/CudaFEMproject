@@ -25,8 +25,11 @@ int main(int argc, char *argv[]) {
   float poissonRatio = std::stof(argv[6]), youngModulus = std::stof(argv[7]);
   float rho, damping_alpha, damping_beta, dt, endtime, beta1, beta2;
   bool PRINT_DEBUG_INFO = std::atoi(argv[8]);
+
+  bool withStressAlongAxis = STRESS_ALONG_AXIS;
   bool withSmooth = SMOOTH;
   bool withMises = MISES;
+
   bool isDYN = ( argc > 9 && std::atoi(argv[9]) );
   if (isDYN) {
     rho = std::stof(argv[10]);
@@ -48,7 +51,7 @@ int main(int argc, char *argv[]) {
     CalculateFEM_EbE_vec_GPU(FEMdata, PRINT_DEBUG_INFO);
   }
 
-  ResultsDataKeeper RESdata(false, withSmooth, withMises, FEMdata.nodesCount);
+  ResultsDataKeeper RESdata(withStressAlongAxis, withSmooth, withMises, FEMdata.nodesCount);
 
   MakeResults(FEMdata, RESdata);
   WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);

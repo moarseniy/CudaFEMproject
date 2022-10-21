@@ -5,6 +5,13 @@ project(FemProject)
 option(TOOLS_TIMER CACHED ON)
 option(SMOOTH CACHED OFF)
 option(MISES CACHED OFF)
+option(STRESS_ALONG_AXIS OFF)
+
+if (STRESS_ALONG_AXIS)
+    add_definitions(-DSTRESS_ALONG_AXIS=true)
+else()
+    add_definitions(-DSTRESS_ALONG_AXIS=false)
+endif()
 
 if (SMOOTH)
     add_definitions(-DSMOOTH=true)

@@ -78,7 +78,6 @@ struct BoundaryEdge : Edge, TimeDependentEntity {
 
 struct Element {
   // CalculateStiffnessMatrix will be deprecated!
-  void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, std::vector<MyArray> &nodes);
   void CalculateKlocal(Matrix& D, std::vector<MyArray> &nodes);
   void CalculateMlocal(float rho, std::vector<MyArray> &nodes, bool lumped);
   void CalculateClocal(float alpha, float beta);
@@ -154,13 +153,5 @@ struct Load : TimeDependentEntity {
 
   void assignElement(int DIM, std::unordered_map <int, std::vector<int>> nodeAdjElem);
 };
-
-struct Couple {
-  int index;
-  int degree;
-};
-
-typedef std::vector<Triplet> vecSparseMatrixCOO;
-
 
 #endif

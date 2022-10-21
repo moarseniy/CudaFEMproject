@@ -49,9 +49,9 @@ public:
   float* get_loads() { return thrust::raw_pointer_cast(loads.data());}
   float* get_temp_res() { return thrust::raw_pointer_cast(temp_res.data());}
 
-  void copyElementsFromHost(thrust::host_vector<float> v);
-  void copyFlocalFromHost(thrust::host_vector<float> v);
-  void copyLoadsFromHost(thrust::host_vector<float> v);
+  void copyElementsFromHost(thrust::host_vector<float> &v);
+  void copyFlocalFromHost(thrust::host_vector<float> &v);
+  void copyLoadsFromHost(thrust::host_vector<float> &v);
   void copyBmatrixToHost(float *all_B);
   void setZeroVec();
 protected:
@@ -96,10 +96,6 @@ public:
   WeightedAddCoef damping_coefs; // C = val1*M + val2*K
 };
 
-void TEST_THRUST();
-void TEST_THRUST_GRISHA();
-void TEST_THRUST_GenerateMask(FEMdataKeeper &FEMdata);
-void TEST_THRUST_MultiplyByVector();
 void TEST_THRUST_thrustReductionWithMask();
 void TEST_THRUST_thrustTransform_2N_to_6E();
 void TEST_THRUST_CNorm();
@@ -107,9 +103,6 @@ void gpuAddWeighted(float *a, float *b, float v1, float v2, int size);
 void gpuReductionWithMaskAndTransform(float *v, float *mask, int size, float *res, int size_new);
 void gpuReductionWithMask(float *v, float *mask, int size, float *res, int size_new);
 float gpuDotProduct(float *a, float *b, int size);
-void gpuCalculateFEM_dyn_explicit(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1);
-void gpuCalculateFEM_dyn_relaxation(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float dt, float beta1, float eps);
-
 
 void gpuAddWeighted2(float *a_ptr, float *b_ptr,
                      float v1, float v2, int size);

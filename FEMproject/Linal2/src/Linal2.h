@@ -53,24 +53,6 @@ private:
   float *p;
 };
 
-struct Triplet {
-  Triplet(int x_value, int y_value, float value) {
-    this->x_value = x_value;
-    this->y_value = y_value;
-    this->value = value;
-  }
-  int get_x() { return x_value; }
-  int get_y() { return y_value; }
-  float get_value() { return value; }
-
-  void Show() {
-    std::cout << x_value << " " << y_value << " " << value << "\n";
-  }
-  int x_value;
-  int y_value;
-  float value;
-};
-
 class Matrix{
 public:
   Matrix();
@@ -124,72 +106,5 @@ private:
   bool isSym;
   float *m;
 };
-
-struct couple{
-  couple(int x, int y){
-    this->x = x;
-    this->y = y;
-  }
-  int x;
-  int y;
-};
-
-class SparseMatrixCOO {
-public:
-  SparseMatrixCOO();
-  SparseMatrixCOO(int sparse_size);
-  SparseMatrixCOO(const SparseMatrixCOO &m);
-  SparseMatrixCOO operator =(const SparseMatrixCOO &m);
-  ~SparseMatrixCOO();
-  void resize();
-  void resize(int size);
-  void ConvertTripletToSparse(std::vector<Triplet> t);
-  void ConvertToMatrix(Matrix& M);
-  void SortIt();
-  void ConvertToCSR(int *ptr, int *ind, float *data_csr, int n);
-  void SparseLU();
-  void CGM_solve(MyArray B, MyArray &x_k, float eps);
-  void PCG_solve(MyArray B, MyArray &x_k, float eps);
-  //    void MultiplyByVector(MyArray v, MyArray &res);
-  //    void MultiplyTransposedByVector(MyArray v, MyArray &res);
-  MyArray MultiplyByVector(MyArray v, int res_size);
-  MyArray MultiplyTransposedByVector(MyArray v, int res_size);
-  void set_diag_elements();
-  std::vector<float> get_diag_elements();
-  int get_size();
-  int get_x(int index);
-  int get_y(int index);
-  float get_value(int index);
-  int* get_x();
-  int* get_y();
-  float* get_data();
-  void ShowData();
-  bool isSorted();
-
-  void set_value(int row, int col, float value);
-  void write_value(int row, int col, float value);
-  void pop(int row, int col);
-  int CountNonZero();
-  SparseMatrixCOO DeleteZeros();
-  void DeleteZerosOrder();
-  void Show();
-  void ShowAsMatrix(int start, int end, int n);
-  void ShowAsMatrixNumber(int start, int end, int n);
-  void ShowAsMatrixSymbol(int start, int end, int n);
-private:
-  std::vector<Triplet> v;
-  std::vector<float> diag_elems;
-  int nonzero;
-  int sparse_size;
-
-  bool sorted;
-  bool diag_elems_called;
-  int data_pointer;
-
-  int *x;
-  int *y;
-  float *data;
-};
-int CountNonZero(std::vector<Triplet> t);
 
 #endif

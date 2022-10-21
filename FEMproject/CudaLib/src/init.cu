@@ -27,11 +27,6 @@
 #include <thrust/reduce.h>
 
 #include "Linal2.h"
-// ------------------ for gpuCalculateFEM_dyn_explicit ------------------------
-#include "datakeeper.h"
-#include "femfunc.h"
-#include "femstruct.h"
-// ----------------------------------------------------------------------------
 
 using namespace std;
 
@@ -241,21 +236,6 @@ bool Difference_MyArray_Thrust(MyArray a, thrust::device_vector<float> b) {
     }
 
     return a.equalsToArray(_b, 1e-15f);
-}
-
-void TEST_THRUST() {
-const int N = 7;
-int A[N] = {1, 3, 3, 3, 2, 2, 1}; // input keys
-int B[N] = {9, 8, 7, 6, 5, 4, 3}; // input values
-int C[N];                         // output keys
-int D[N];                         // output values
-thrust::pair<int*,int*> new_end;
-thrust::equal_to<int> binary_pred;
-thrust::plus<int> binary_op;
-new_end = thrust::reduce_by_key(A, A + N, B, C, D, binary_pred, binary_op);
-for (int i = 0; i < 4; ++i) {
-    std::cout << C[i] << " ";
-}
 }
 
 __device__
@@ -1238,17 +1218,18 @@ void gpuCalculateDiag(gpuDataKeeper_DYN &gpu_data, int elementsCount) {
                                                             gpu_data.SLAU_matrix_coefs.val1, gpu_data.SLAU_matrix_coefs.val2);
 }
 
-void gpuDataKeeper::copyElementsFromHost(thrust::host_vector<float> v) {
+void gpuDataKeeper::copyElementsFromHost(thrust::host_vector<float> &v) {
   CheckRunTime(__func__)
   this->gpuElements = v;
 //  cudaMemcpy(this->get_Elements(), thrust::raw_pointer_cast(v.data()), v.size() * sizeof(float), cudaMemcpyHostToDevice);
 }
-void gpuDataKeeper::copyFlocalFromHost(thrust::host_vector<float> v) {
+
+void gpuDataKeeper::copyFlocalFromHost(thrust::host_vector<float> &v) {
   CheckRunTime(__func__)
   this->r = v;
 }
 
-void gpuDataKeeper::copyLoadsFromHost(thrust::host_vector<float> v) {
+void gpuDataKeeper::copyLoadsFromHost(thrust::host_vector<float> &v) {
   CheckRunTime(__func__)
   this->loads = v;
 //  cudaMemcpy(this->get_loads(), thrust::raw_pointer_cast(v.data()), v.size() * sizeof(float), cudaMemcpyHostToDevice);
@@ -1465,254 +1446,6 @@ void thrustSolveDiag(thrust::device_vector<float> &diag,
 
         thrustTransform_2N_to_6E(temp, mask, res);
     }
-}
-
-// Rewrite it in the form that SparseMatrixCOO is stored on device, not host!
-// Make parallel!
-void thrustMultiplyByVector(SparseMatrixCOO &M,
-                            thrust::device_vector<float> &vec,
-                            thrust::device_vector<float> &res) {
-    CheckRunTime(__func__)
-    int *x = M.get_x(), *y = M.get_y();
-    float *data = M.get_data();
-
-    thrust::host_vector<float> host_vec(vec.size()), host_res(res.size(), 0.0f);
-    host_vec = vec;
-
-    for (int i = 0; i < M.get_size(); ++i) {
-        host_res[x[i]] += data[i] * host_vec[y[i]];
-    }
-
-    res = host_res;
-}
-/*
-void gpuCalculateFEM_dyn_relaxation(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float dt, float beta1, float eps) {
-    // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
-    CheckRunTime(__func__)
-
-    int n_elems = FEMdata.elementsCount;
-    int n_gl_dofs = FEMdata.nodesCount * DIM;
-    int grid_size = 3 * DIM * n_elems;
-
-    bool is_damping = !((damping_alpha == 0.0f) && (damping_beta == 0.0f));
-
-    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
-        Element *elem = &FEMdata.elements[eIdx];
-        elem->CalculateKlocal(FEMdata.D, FEMdata.nodesX, FEMdata.nodesY);
-        elem->CalculateMlocal(rho, FEMdata.nodesX, FEMdata.nodesY, true); // Lumping on
-        if (is_damping) elem->CalculateClocal(damping_alpha, damping_beta);
-    }
-
-    std::unordered_map <int, std::vector<int>> nodeAdjElem;
-    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
-
-    ApplyConstraints_EbE(FEMdata);
-    AssignLoadElement(FEMdata, nodeAdjElem);
-
-    thrust::device_vector<float>    x(grid_size, 0.0f), vel(grid_size, 0.0f),
-                                    res(grid_size, 0.0f), b(grid_size),
-                                    F(grid_size), diag(grid_size),
-                                    mask(grid_size);
-    thrust::device_vector<float>    n_adjelem(n_gl_dofs);
-
-    thrust::host_vector<float>      hF(grid_size, 0.0f), hLoad(grid_size, 0.0f),
-                                    hdiag(grid_size);
-    thrust::device_vector<float>    dLoad(grid_size);
-
-    thrustGenerateMask(FEMdata, mask);
-    thrustCountNAdjElem(mask, n_adjelem);
-
-    int nonzeroK = 0, nonzeroC = 0;
-    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
-        nonzeroK += FEMdata.elements[eIdx].Klocal.CountNonzero();
-    }
-    if (is_damping) {
-        for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
-            nonzeroC += FEMdata.elements[eIdx].Clocal.CountNonzero();
-        }
-    }
-
-    SparseMatrixCOO K(nonzeroK), C(nonzeroC);
-    for (int eIdx = 0; eIdx < n_elems; ++eIdx) {
-        Element elem = FEMdata.elements[eIdx];
-
-        for (int xlocal = 0; xlocal < 3 * DIM; ++xlocal) {
-            for (int ylocal = 0; ylocal < 3 * DIM; ++ylocal) {
-                K.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Klocal(xlocal, ylocal));
-                if (is_damping)
-                    C.write_value(3 * DIM * eIdx + xlocal, 3 * DIM * eIdx + ylocal, elem.Clocal(xlocal, ylocal));
-            }
-        }
-
-        // Get diagonal elements of mass matrix
-        float tmp_M = elem.Mlocal(0, 0);
-        hdiag[3 * DIM * eIdx + 0] = tmp_M;
-        hdiag[3 * DIM * eIdx + 1] = tmp_M;
-        hdiag[3 * DIM * eIdx + 2] = tmp_M;
-        hdiag[3 * DIM * eIdx + 3] = tmp_M;
-        hdiag[3 * DIM * eIdx + 4] = tmp_M;
-        hdiag[3 * DIM * eIdx + 5] = tmp_M;
-    }
-
-    diag = hdiag;
-
-    int nt = 1;
-    float cnorm_res, cnorm_vel;
-    do {
-        float t = nt*dt;
-        std::cout << "======= Time iteration #" << nt << " =======" << std::endl;
-        std::cout << "=========== Time " << t << " ===========" << std::endl << std::endl;
-
-        thrustAddWeighted(x, vel, 1.0f, dt);
-        thrustAddWeighted(x, res, 1.0f, 0.5f * dt*dt);
-        thrustAddWeighted(vel, res, 1.0f, (1.0f - beta1) * dt);
-
-        thrustMultiplyByVector(K, x, b);
-        if (is_damping) {
-            thrust::device_vector<float> tmp(grid_size);
-            thrustMultiplyByVector(C, vel, tmp);
-            thrust::transform(thrust::cuda::par,
-                              tmp.begin(),
-                              tmp.end(),
-                              b.begin(),
-                              b.begin(),
-                              thrust::plus<float>());               // b = b + tmp
-        }
-
-        // update F
-        for (int beIdx = 0; beIdx < FEMdata.boundaryEdgesCount; ++beIdx) {
-            BoundaryEdge bedge = FEMdata.boundary[beIdx];
-            int eIdx = bedge.adj_elem1;
-            FEMdata.elements[eIdx].CalculateFlocal(bedge, FEMdata.nodesX, FEMdata.nodesY, t);
-            hF[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].Flocal[0];
-            hF[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].Flocal[1];
-            hF[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].Flocal[2];
-            hF[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].Flocal[3];
-            hF[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].Flocal[4];
-            hF[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].Flocal[5];
-            // ToDO: ADD APPLY CONSTRAINTS FOR Flocal!
-        }
-        F = hF;
-
-        thrust::transform(thrust::cuda::par,
-                          F.begin(),
-                          F.end(),
-                          b.begin(),
-                          b.begin(),
-                          thrust::minus<float>());               // b = F - b
-
-        // Think how not to use loadVectors! Too dificult!
-        std::unordered_map <int, MyArray> loadVectors;
-        loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
-                                // instead of assigned. See if-statement in for-loop in the function's body
-        GetMapElement2Loadvector(FEMdata, loadVectors, t);
-        for (auto& it: loadVectors) {
-            hLoad[3 * DIM * it.first + 0] = loadVectors[it.first][0];
-            hLoad[3 * DIM * it.first + 1] = loadVectors[it.first][1];
-            hLoad[3 * DIM * it.first + 2] = loadVectors[it.first][2];
-            hLoad[3 * DIM * it.first + 3] = loadVectors[it.first][3];
-            hLoad[3 * DIM * it.first + 4] = loadVectors[it.first][4];
-            hLoad[3 * DIM * it.first + 5] = loadVectors[it.first][5];
-        }
-        dLoad = hLoad;
-        thrust::transform(thrust::cuda::par,
-                          b.begin(),
-                          b.end(),
-                          dLoad.begin(),
-                          b.begin(),
-                          thrust::plus<float>());
-
-        thrustSolveDiag(diag, b, res, mask, n_adjelem, false);
-
-        thrustAddWeighted(vel, res, 1.0f, beta1 * dt);
-
-        ++nt;
-        cnorm_res = thrustCNorm(res);
-        cnorm_vel = thrustCNorm(vel);
-        std::cout << "C-norm res = " << cnorm_res << "\nC-norm vel = " << cnorm_vel << std::endl;
-        std::cout << std::endl;
-        if (nt >= 10000) break;
-    } while (!((cnorm_res < eps) && (cnorm_vel < eps)));
-
-    thrust::device_vector<float> displ(n_gl_dofs);
-    thrustReductionWithMask(x, mask, displ);
-    thrust::transform(thrust::cuda::par,
-                      displ.begin(),
-                      displ.end(),
-                      n_adjelem.begin(),
-                      displ.begin(),
-                      thrust::divides<float>());         // displ = displ./n_adjelem
-
-    thrust::copy(displ.begin(), displ.end(), FEMdata.displacements.get_data()); // is the last argument OK?
-}
-*/
-void TEST_THRUST_addWeighted() {
-    const int N = 7;
-    float A[N] = {1.f, 3.f, 3.f, 3.f, 2.f, 2.f, 1.f};
-    float B[N] = {9.f, 8.f, 7.f, 6.f, 5.f, 4.f, 3.f};
-    float f1 = 3.0;
-    float f2 = 5.0;
-
-    thrust::device_vector<float> d_A(A, A + N);
-    thrust::device_vector<float> d_B(B, B + N);
-
-    thrustAddWeighted(d_A, d_B, f1, f2);
-
-    for (int i = 0; i < N; ++i) {
-        float tmp = d_A[i];
-        printf("%f ", tmp);
-    }
-    printf("\n");
-}
-
-
-
-
-//void TEST_THRUST_GenerateMask(FEMdataKeeper &FEMdata) {
-//    int n_elems = FEMdata.elementsCount;
-//    int grid_size = 3 * DIM * n_elems;
-//    thrust::device_vector<float>    thrust_mask(grid_size, 0.0f);
-//    MyArray mask(grid_size);
-
-//    GenerateMask(FEMdata, mask);
-//    thrustGenerateMask(FEMdata, thrust_mask);
-
-//    for (int i = 0; i < n_elems; ++i) {
-//        int tmp = int(thrust_mask[i]);
-//        if (mask[i] != tmp) {
-//            printf("Error! %d != %d\n", mask[i], tmp);
-//            return;
-//        }
-//    }
-//    printf("All correct!\n");
-//}
-
-void TEST_THRUST_MultiplyByVector() {
-    const int N = 7;
-    float A[N] = {1.f, 3.f, 3.f, 3.f, 2.f, 2.f, 1.f};
-
-    thrust::device_vector<float> d_A(A, A + N);
-    thrust::device_vector<float> d_B(N);
-
-    SparseMatrixCOO M(10);
-    M.write_value(0,0, 3.f);
-    M.write_value(1,1, 3.f);
-    M.write_value(2,2, 3.f);
-    M.write_value(3,3, 3.f);
-    M.write_value(4,4, 3.f);
-    M.write_value(5,5, 3.f);
-    M.write_value(6,6, 3.f);
-    M.write_value(0,2, -1.f);
-    M.write_value(2,4, 6.f);
-    M.write_value(3,4, -3.f);
-
-    thrustMultiplyByVector(M,d_A, d_B);
-
-    for (int i = 0; i < N; ++i) {
-        float tmp = d_B[i];
-        printf("%f ", tmp);
-    }
-    printf("\n");
 }
 
 void TEST_THRUST_thrustReductionWithMask() {
