@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
         print('\nRUN calculation for ' + task_name)
         main_exe = 'build-FEMproject-Desktop_x86_windows_msvc2019_pe_64bit-Release/fem/main.exe'
-        exec_text = proj_dir + main_exe + ' ' + task_name + ' ' + proj_dir + ' ' + prep_mesh_task_dir + ' ' + \
+        exec_text = proj_dir + main_exe + ' ' + task_name + ' ' + dim + ' ' + proj_dir + ' ' + prep_mesh_task_dir + ' ' + \
                   results_dir + ' ' + poissonRatio + ' ' + youngModulus + ' ' + str(int(verbose))
         if task_type == "DYNAMICS":
             exec_text +=  ' 1 ' + rho + ' ' + damping_alpha + ' ' + damping_beta + ' ' + dt + ' ' +  \

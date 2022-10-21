@@ -22,18 +22,32 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
 
   AllocateDynamicMemory();
 
-  D(0, 0) = D(1, 1) = D(2, 2) = 1.0;
-  D(0, 1) = D(1, 0) = D(0, 2) = D(2, 0) = D(2, 1) = D(1, 2) = poissonRatio / (1.0 - poissonRatio);
-  D(3, 3) = D(4, 4) = D(5, 5) = (1.0 - 2.0 * poissonRatio) / (2.0 * (1.0 - poissonRatio));
-  D.scale((youngModulus * (1.0 - poissonRatio)) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio)));
+  if (DIM == 2) {
+    D(0,0) = 1.0;			D(0, 1) = poissonRatio;	D(0, 2) = 0.0;
+    D(1, 0) = poissonRatio;	D(1, 1) = 1.0; 			D(1, 2) = 0.0;
+    D(2, 0) = 0.0;        	D(2, 1) = 0.0;        	D(2, 2) = (1.0 - poissonRatio) / 2.0;
+    D.scale(youngModulus / (1.0 - pow(poissonRatio, 2.0)));
+  } else if (DIM == 3) {
+    D(0, 0) = D(1, 1) = D(2, 2) = 1.0;
+    D(0, 1) = D(1, 0) = D(0, 2) = D(2, 0) = D(2, 1) = D(1, 2) = poissonRatio / (1.0 - poissonRatio);
+    D(3, 3) = D(4, 4) = D(5, 5) = (1.0 - 2.0 * poissonRatio) / (2.0 * (1.0 - poissonRatio));
+    D.scale((youngModulus * (1.0 - poissonRatio)) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio)));
+  } else {
+    throw std::runtime_error("DIM error");
+  }
 
   for (int i = 0; i < nodesCount; ++i) {
-    nodes_file >> nodesX[i] >> nodesY[i] >> nodesZ[i];
+    for (int j = 0; j < DIM; ++j) {
+      nodes_file >> nodes[j][i];
+    }
   }
 
   for (int i = 0; i < elementsCount; ++i) {
-    Element element;
-    elements_file >> element.nodesIds[0] >> element.nodesIds[1] >> element.nodesIds[2] >> element.nodesIds[3];
+    Element element(DIM);
+    for (int j = 0; j < DIM + 1; ++j) {
+      elements_file >> element.nodesIds[j];
+    }
+
     // Jacobian calucation
     //        float X2 = nodesX[element.nodesIds[1]] - nodesX[element.nodesIds[0]];
     //        float X3 = nodesX[element.nodesIds[2]] - nodesX[element.nodesIds[0]];
@@ -43,14 +57,17 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     elements.push_back(element);
   }
 
+  //    std::cout << "CONSTRAINTS" << std::endl;
   for (int i = 0; i < constraintsCount; ++i) {
     Constraint constraint;
     int type;
     constraints_file >> constraint.node >> type;
     constraint.type = static_cast<Constraint::Type>(type);
     constraints.push_back(constraint);
+    //        std::cout << constraint.node << ' ' << type << std::endl;
   }
 
+  //    std::cout << "LOADS" << std::endl;
   // ToDO: Add parsing of time-dependant functions like Ricker
   for (int i = 0; i < loadsCount; ++i) {
     int node; //float xampl, yampl;
@@ -106,18 +123,23 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
   }
 
   for (int i = 0; i < boundaryEdgesCount; ++i) {
-    BoundaryEdge edge;
-    float normal_x, normal_y, normal_z;
+    BoundaryEdge edge(DIM);
+    MyArray normal_vec(DIM);
     //        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
-    stress_file >> edge.node0 >> edge.node1 >> edge.node2 >> edge.adj_elem1 >> normal_x >> normal_y >> normal_z;
+
+    for (int j = 0; j < DIM; ++j) {
+      stress_file >> edge.node[j];
+    }
+    stress_file >> edge.adj_elem1;
+    for (int j = 0; j < DIM; ++j) {
+      stress_file >> normal_vec[j];
+    }
 
     for (std::vector<Constraint>::const_iterator it = constraints.begin(); it != constraints.end(); ++it) {
-      if (it->node == edge.node0) {
-        edge.type0 = it->type;
-      } else if (it->node == edge.node1) {
-        edge.type1 = it->type;
-      } else if (it->node == edge.node2) {
-        edge.type2 = it->type;
+      for (int j = 0; j < DIM; ++j) {
+        if (it->node == edge.node[j]) {
+          edge.type[j] = it->type;
+        }
       }
     }
 
@@ -131,10 +153,15 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     str = res[0];
     std::cout << "DEBUG pressure 2: " << str << std::endl;
     edge.parseString(str);
-    float normal_length = std::sqrt(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
-    edge.normal_x = normal_x / normal_length;
-    edge.normal_y = normal_y / normal_length;
-    edge.normal_z = normal_z / normal_length;
+
+    float normal_length = 0.f;
+    for (int j = 0; j < DIM; ++j) {
+      normal_length += normal_vec[j] * normal_vec[j];
+    }
+    for (int j = 0; j < DIM; ++j) {
+      edge.normal[j] = normal_vec[j] / std::sqrt(normal_length);
+    }
+
     if (!(edge.ampl == 0.0f)) boundary.push_back(edge);
   }
 }

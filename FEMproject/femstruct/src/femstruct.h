@@ -39,46 +39,55 @@ struct TimeDependentEntity {
 };
 
 struct Constraint {
-    enum Type {
-        NO = 0,
-        UX = 1,
-        UY = 2,
-        UZ = 3,
-        UXY = 4,
-        UXZ = 5,
-        UYZ = 6,
-        UXYZ = 7
-    };
-    int node;
-    Type type;
+  enum Type {
+    NO = 0,
+    UX = 1,
+    UY = 2,
+    UZ = 3,
+    UXY = 4,
+    UXZ = 5,
+    UYZ = 6,
+    UXYZ = 7
+  };
+  int node;
+  Type type;
 };
 
 struct Edge {
-  int node0, node1, node2;
+  Edge(){}
+  Edge(int DIM) {
+    node.resize(DIM);
+  }
+  std::vector<int> node;
   int adj_elem1, adj_elem2;   // if there is no second adjacement element, set adj_elem2 equaled to -1
   // see BoundaryEdge structure
 };
 
 struct BoundaryEdge : Edge, TimeDependentEntity {
-  BoundaryEdge() {
+  BoundaryEdge(int DIM) {
     adj_elem2 = -1;
-    type0 = Constraint::Type::NO;
-    type1 = Constraint::Type::NO;
-    type2 = Constraint::Type::NO;
+    for (int i = 0; i < DIM; ++i) {
+      type.push_back(Constraint::Type::NO);
+    }
+    normal.resize(DIM);
+    node.resize(DIM);
   }
-  float normal_x, normal_y, normal_z;   // make sure it is normalized
-  Constraint::Type type0, type1, type2;
+  std::vector<float> normal;   // make sure it is normalized
+  std::vector<Constraint::Type> type;
 };
 
 struct Element {
   // CalculateStiffnessMatrix will be deprecated!
-  void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, MyArray& nodesX, MyArray& nodesY);
-  void CalculateKlocal(Matrix& D, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ);
-  void CalculateMlocal(float rho, MyArray& nodesX, MyArray& nodesY, bool lumped);
+  void CalculateStiffnessMatrix(Matrix& D, std::vector<Triplet>& triplets, std::vector<MyArray> &nodes);
+  void CalculateKlocal(Matrix& D, std::vector<MyArray> &nodes);
+  void CalculateMlocal(float rho, std::vector<MyArray> &nodes, bool lumped);
   void CalculateClocal(float alpha, float beta);
-  void CalculateFlocal(BoundaryEdge& edge, MyArray& nodesX, MyArray& nodesY, MyArray& nodesZ, float t);
+  void CalculateFlocal2D(BoundaryEdge& edge, std::vector<MyArray> &nodes, float t);
+  void CalculateFlocal3D(BoundaryEdge& edge, std::vector<MyArray> &nodes, float t);
   int Global2LocalNode(int glob_num);
-  Element() {
+  Element(int DIM) {
+    this->DIM = DIM;
+    nodesIds.resize(DIM + 1);
     B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
     Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
     Mlocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
@@ -90,15 +99,15 @@ struct Element {
     //Q.Resize();
 
     // for PCG EbE
-    m.Resize(6 * (DIM - 1)); x.Resize(6 * (DIM - 1)); r.Resize(6 * (DIM - 1));
-    z.Resize(6 * (DIM - 1)); s.Resize(6 * (DIM - 1)); p.Resize(6 * (DIM - 1));
-    u.Resize(6 * (DIM - 1));
+    m.Resize(3 * DIM); x.Resize(3 * DIM); r.Resize(3 * DIM);
+    z.Resize(3 * DIM); s.Resize(3 * DIM); p.Resize(3 * DIM);
+    u.Resize(3 * DIM);
 
     // for dynamics
-    x_pred.Resize(6 * (DIM - 1)); vel_pred.Resize(6 * (DIM - 1)); vel.Resize(6 * (DIM - 1));
+    x_pred.Resize(3 * DIM); vel_pred.Resize(3 * DIM); vel.Resize(3 * DIM);
 
     // for debug in PCG EbE. Delete after is done!
-    b.Resize(6 * (DIM - 1));
+    b.Resize(3 * DIM);
   }
   //void FindSparseSize(std::vector<couple> &Sparse);
   Matrix B;
@@ -127,10 +136,11 @@ struct Element {
   MyArray b;
   // --------------------------
 
-  int nodesIds[4];
+  int DIM;
+  std::vector<int> nodesIds;
+
   //float jacobian; // node 1 -> (0,0) ; node 2 -> (1,0) ; node 3 -> (0,1)
 };
-
 
 struct Load : TimeDependentEntity {
   int dof;
@@ -142,7 +152,7 @@ struct Load : TimeDependentEntity {
     elem = -1; // no element assigned
   }
 
-  void assignElement(std::unordered_map <int, std::vector<int>> nodeAdjElem);
+  void assignElement(int DIM, std::unordered_map <int, std::vector<int>> nodeAdjElem);
 };
 
 struct Couple {
@@ -150,7 +160,7 @@ struct Couple {
   int degree;
 };
 
-
+typedef std::vector<Triplet> vecSparseMatrixCOO;
 
 
 #endif

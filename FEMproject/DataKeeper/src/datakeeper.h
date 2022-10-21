@@ -18,10 +18,12 @@ using namespace std;
 class FEMdataKeeper {
 public:
   FEMdataKeeper(std::string name,
+                int DIM,
                 std::string project_directory,
                 std::string prepared_meshes_directory,
                 std::string results_directory) {
     this->name = name;
+    this->DIM = DIM;
     this->proj_dir = project_directory;
     this->prep_mesh_dir = prepared_meshes_directory;
     this->res_dir = results_directory;
@@ -61,9 +63,12 @@ public:
   }
 
   void AllocateDynamicMemory() {
-    nodesX.Resize(nodesCount);
-    nodesY.Resize(nodesCount);
-    nodesZ.Resize(nodesCount);
+    for (int i = 0; i < DIM; ++i) {
+      MyArray nodes_vec(nodesCount);
+      nodes.push_back(nodes_vec);
+    }
+//    nodesX.Resize(nodesCount);
+//    nodesY.Resize(nodesCount);
     //loads.Resize(DIM * nodesCount);
     displacements.Resize(DIM * nodesCount);
     D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
@@ -76,6 +81,7 @@ public:
   std::string prep_mesh_dir;
   std::string res_dir;
 
+  int DIM;
   int nodesCount;
   int elementsCount;
   int boundaryEdgesCount;
@@ -84,9 +90,7 @@ public:
   int nonzeroMatrixNumCount;
 
   Matrix D;
-  MyArray nodesX;
-  MyArray nodesY;
-  MyArray nodesZ;
+  std::vector<MyArray> nodes;
 
   MyArray CudaIndicesToConstraints;
   int CudaIndicesToConstraintsCount;
@@ -94,7 +98,7 @@ public:
   std::vector<Element>        elements;
   std::vector<Constraint>     constraints;
   std::vector<Load>           loads;
-  std::vector<BoundaryEdge>   boundary;       // stores only those boundary edges
+  std::vector<BoundaryEdge>	  boundary;       // stores only those boundary edges
   // that have nonzero boundary conditions
   //MyArray loads;
   MyArray displacements;
@@ -106,7 +110,8 @@ public:
 
 class ResultsDataKeeper {
 public:
-  ResultsDataKeeper(bool withSmooth, bool withMises, int nodesCount) {
+  ResultsDataKeeper(bool withStressAlongAxis, bool withSmooth, bool withMises, int nodesCount) {
+    this->withStressAlongAxis = withStressAlongAxis;
     this->withMises = withMises;
     this->withSmooth = withSmooth;
     SmoothStress.Resize(nodesCount); //take it out somewhere else!!
@@ -116,6 +121,7 @@ public:
     //SmoothStress.Resize();
   }
 
+  bool withStressAlongAxis;
   bool withSmooth;
   bool withMises;
 

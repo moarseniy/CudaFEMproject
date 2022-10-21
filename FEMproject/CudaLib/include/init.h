@@ -29,7 +29,7 @@
 
 class gpuDataKeeper{
 public:
-  gpuDataKeeper(int elementsCount, int nodesCount, bool doAssemblyRes);
+  gpuDataKeeper(int DIM, int elementsCount, int nodesCount, bool doAssemblyRes);
   ~gpuDataKeeper();
   float* get_Klocals() { return thrust::raw_pointer_cast(gpuKlocals.data());}
   float* get_B() { return thrust::raw_pointer_cast(gpuB.data());}
@@ -68,7 +68,7 @@ struct WeightedAddCoef {
 
 class gpuDataKeeper_DYN : public gpuDataKeeper {
 public:
-  gpuDataKeeper_DYN(int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped);
+  gpuDataKeeper_DYN(int DIM, int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped);
   ~gpuDataKeeper_DYN();
   float* get_Mlocals() { return thrust::raw_pointer_cast(gpuMlocals.data());}
   float* get_diagM() { return thrust::raw_pointer_cast(diagM.data());}
@@ -88,7 +88,7 @@ protected:
 
 class gpuDataKeeper_DYN_DAMP : public gpuDataKeeper_DYN {
 public:
-  gpuDataKeeper_DYN_DAMP(int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped, float damping_alpha, float damping_beta);
+  gpuDataKeeper_DYN_DAMP(int DIM, int elementsCount, int nodesCount, bool doAssemblyRes, bool isLumped, float damping_alpha, float damping_beta);
   ~gpuDataKeeper_DYN_DAMP();
   void set_SLAU_matrix_coefs(float cM, float cK, float cC);
   void set_damping_coefs(float cM, float cK);
@@ -131,13 +131,12 @@ void gpuCalculateKlocal2(gpuDataKeeper &gpu_data, FEMdataKeeper &FEMdata);
 void gpuCalculateMlocal(gpuDataKeeper &gpu_data, int elementsCount,
                          float *h_nodesX, float *h_nodesY, int nodesCount);
 
-void gpuMultiplyKlocalByVec(gpuDataKeeper &gpu_data, int elementsCount);
+void gpuMultiplyKlocalByVec(gpuDataKeeper &gpu_data, int DIM, int elementsCount);
 void gpuMultiplyAlocalByVec(gpuDataKeeper_DYN &gpu_data, int elementsCount);
 void gpuMultiplyAlocalByVec_DAMP(gpuDataKeeper_DYN_DAMP &gpu_data, int elementsCount);
 void gpuMultiplyMatrixByVec(float* Matr, float* Vec, float* Res, int elementsCount);
 void gpuMultiplyClocalByVec(gpuDataKeeper_DYN_DAMP &gpu_data, float* Vec, float* Res, int elementsCount);
-void gpuCalculateMlocal(gpuDataKeeper_DYN &gpu_data, int elementsCount,
-                         float *h_nodesX, float *h_nodesY, int nodesCount, float rho);
+void gpuCalculateMlocal(gpuDataKeeper_DYN &gpu_data, FEMdataKeeper &FEMdata, float rho);
 void gpuCalculateDiag(gpuDataKeeper_DYN &gpu_data, int elementsCount);
 void gpuCalculateDiag_DAMP(gpuDataKeeper_DYN_DAMP &gpu_data, int elementsCount);
 void gpuCopyDeviceToDevice(float *data, float *dest, int size);
@@ -145,7 +144,7 @@ void gpuCopyDeviceToHost(float *data, float *dest, int size);
 void gpuCopyHostToDevice(float *data, float *dest, int size);
 void gpuCountNAdjElem(gpuDataKeeper &gpu_data, int grid_size);
 
-void gpuGenerateMask(gpuDataKeeper &gpuD, int elementsCount);
+void gpuGenerateMask(gpuDataKeeper &gpuD, int DIM, int elementsCount);
 void gpuTransform_2N_to_6E(float *d_v, int n_gl_dofs, float *d_mask, float *d_res, int grid_size);
 void gpuSolveDiag(float *diag, float *r, float *res,
                   float *mask, float *n_adjelem,
@@ -154,6 +153,6 @@ void gpuSolveDiag(float *diag, float *r, float *res,
 float gpuCNorm(float *v, int size);
 void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD);
 void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD);
-void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVectors, int elementsCount);
+void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVectors, int DIM, int elementsCount);
 
 #endif

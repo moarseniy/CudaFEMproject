@@ -12,7 +12,6 @@
 #include "VTKfile.h"
 #include "init.h"
 #include "datakeeper.h"
-#include "tests.h"
 
 int main(int argc, char *argv[]) {
   if (argc == 1) {

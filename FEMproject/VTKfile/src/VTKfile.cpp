@@ -3,22 +3,21 @@
 
 
 void MakeVTKfile2D(std::string output_vtk,
-                   MyArray nodesX,
-                   MyArray nodesY,
-                   std::vector<Element> elements,
-                   MyArray displacements,
-                   std::vector<MyArray> Stress,
-                   std::vector<float> sigma_mises,
-                   std::vector<MyArray> Deformation,
-                   std::vector<float> epsilon_mises,
-                   MyArray SmoothStress) {
+                   std::vector<MyArray> &nodes,
+                   std::vector<Element> &elements,
+                   MyArray &displacements,
+                   std::vector<MyArray> &Stress,
+                   std::vector<float> &sigma_mises,
+                   std::vector<MyArray> &Deformation,
+                   std::vector<float> &epsilon_mises,
+                   MyArray &SmoothStress) {
   CheckRunTime(__func__)
   fstream outvtk;
   outvtk.open(output_vtk, fstream::out);
   outvtk << "# vtk DataFile Version 1.0\nresults.vtk  2D Unstructured Grid of Linear Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "
-           << nodesX.get_size() << " double\n";
-  for (int i = 0; i < nodesX.get_size(); i++) {
-    outvtk << nodesX[i] << " " << nodesY[i] << " " << 0.0 << "\n";
+           << nodes[0].get_size() << " double\n";
+  for (int i = 0; i < nodes[0].get_size(); i++) {
+    outvtk << nodes[0][i] << " " << nodes[1][i] << " " << 0.0 << "\n";
   }
 
   outvtk << "CELLS " << elements.size() << " " << elements.size() * 4 << "\n";
@@ -31,7 +30,7 @@ void MakeVTKfile2D(std::string output_vtk,
     outvtk << 5 << "\n";
   }
 
-  outvtk << "\nPOINT_DATA " << nodesX.get_size() << "\n";
+  outvtk << "\nPOINT_DATA " << nodes[0].get_size() << "\n";
   outvtk << "VECTORS displacements double\n";
   for (int i = 0; i < displacements.get_size() - 1; i += 2) {
     outvtk << displacements[i] << " " << displacements[i + 1] << " 0.0\n";
@@ -82,9 +81,7 @@ void MakeVTKfile2D(std::string output_vtk,
 }
 
 void MakeVTKfile3D(std::string output_vtk,
-                   MyArray &nodesX,
-                   MyArray &nodesY,
-                   MyArray &nodesZ,
+                   std::vector<MyArray> &nodes,
                    std::vector<Element> &elements,
                    MyArray &displacements,
                    std::vector<MyArray> &Stress,
@@ -95,9 +92,9 @@ void MakeVTKfile3D(std::string output_vtk,
   fstream outvtk;
   outvtk.open(output_vtk, fstream::out);
   outvtk << "# vtk DataFile Version 1.0\nresults.vtk  3D Unstructured Grid of Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "
-           << nodesX.get_size() << " float\n";
-  for (int i = 0; i < nodesX.get_size(); i++) {
-    outvtk << nodesX[i] << " " << nodesY[i] << " " << nodesZ[i] << "\n";
+           << nodes[0].get_size() << " float\n";
+  for (int i = 0; i < nodes[0].get_size(); i++) {
+    outvtk << nodes[0][i] << " " << nodes[1][i] << " " << nodes[2][i] << "\n";
   }
 
   outvtk << "CELLS " << elements.size() << " " << elements.size() * 5 << "\n";
@@ -110,7 +107,7 @@ void MakeVTKfile3D(std::string output_vtk,
     outvtk << 10 << "\n";
   }
 
-  outvtk << "\nPOINT_DATA " << nodesX.get_size() << "\n";
+  outvtk << "\nPOINT_DATA " << nodes[0].get_size() << "\n";
 
   outvtk << "\nVECTORS displacements float\n";
   for (int i = 0; i < displacements.get_size() - 2; i += 3) {
