@@ -48,17 +48,15 @@ void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, M
 // (call AssignLoadElement before calling this function)
 void ApplyLoads_EbE(FEMdataKeeper &FEMdata) {
   CheckRunTime(__func__)
-  int DIM = FEMdata.DIM;
+  const int DIM = FEMdata.DIM;
   for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
-    //        int n_elems = nodeAdjElem[it->node].size();
-    //        for (std::vector<int>::const_iterator it_elem = nodeAdjElem[it->node].begin(); it_elem != nodeAdjElem[it->node].end(); ++it_elem) {
-    //            Element *elem = &FEMdata.elements[*it_elem];
-    //            std::cout << *it_elem << std::endl;
-    //            elem->Flocal[elem->Global2LocalNode(it->node) * 2 + 0] += it->x / static_cast<float>(n_elems);
-    //            elem->Flocal[elem->Global2LocalNode(it->node) * 2 + 1] += it->y / static_cast<float>(n_elems);
-    //        }
     assert(it->elem != -1);
-    FEMdata.elements[it->elem].blocal[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] += it->value;
+    //FEMdata.elements[it->elem].blocal[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] += it->value;
+
+    const int loadGlobalNode  = it->dof / DIM;
+    const int loadFreedomAxis = it->dof % DIM;
+    Element *elem = &FEMdata.elements[it->elem];
+    elem->Flocal[elem->Global2LocalNode(loadGlobalNode) * DIM + loadFreedomAxis] += it->value;
   }
 }
 
@@ -355,11 +353,14 @@ void CalculateMisesAlongLineMises(std::vector<float> &MisesComponents,
   }
 }
 
-void CalculateNodeAdjElem(FEMdataKeeper FEMdata, std::unordered_map <int, std::vector<int>> &a) {
+void CalculateNodeAdjElem(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &a) {
   for (int n = 0; n < FEMdata.elements.size(); ++n) {
     a[FEMdata.elements[n].nodesIds[0]].push_back(n);
     a[FEMdata.elements[n].nodesIds[1]].push_back(n);
     a[FEMdata.elements[n].nodesIds[2]].push_back(n);
+    if (FEMdata.DIM == 3) {
+      a[FEMdata.elements[n].nodesIds[3]].push_back(n);
+    }
   }
 }
 
@@ -428,26 +429,14 @@ void CalculateFEM_EbE_vec_GPU(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
       FEMdata.elements[it->adj_elem1].CalculateFlocal3D(*it, FEMdata.nodes, 0.0f);
   }
 
-  //    std::unordered_map <int, std::vector<int>> nodeAdjElem;
-  //    CalculateNodeAdjElem(FEMdata, nodeAdjElem);
+  std::unordered_map <int, std::vector<int>> nodeAdjElem;
+  CalculateNodeAdjElem(FEMdata, nodeAdjElem);
 
-  //    AssignLoadElement(FEMdata, nodeAdjElem);
-  //    ApplyLoads_EbE(FEMdata);
+  AssignLoadElement(FEMdata, nodeAdjElem);
+  ApplyLoads_EbE(FEMdata);
 
-  //    int nonzero_matrix_numbers = 0;
   ApplyConstraints_EbE(FEMdata);
-  //    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-  //        nonzero_matrix_numbers += it->Klocal.CountNonzero();
-  //    }
-  //    FEMdata.nonzeroMatrixNumCount = nonzero_matrix_numbers;
 
-  //    for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-  //        it->Alocal = it->Klocal;
-  //    }
-  //    for (std::vector<BoundaryEdge>::iterator it = FEMdata.boundary.begin(); it != FEMdata.boundary.end(); ++it) {
-  //        FEMdata.elements[it->adj_elem1].blocal.add(FEMdata.elements[it->adj_elem1].Flocal);
-  //    }
-  //    PCG_EbE_vec(FEMdata, FEMdata.displacements, true, 1e-10f, PRINT_DEBUG_INFO);
 
   // Arseniy:
   gpuPCG_EbE_vec(FEMdata, FEMdata.displacements, true, 1e-4f, PRINT_DEBUG_INFO);

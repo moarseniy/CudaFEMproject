@@ -1,7 +1,7 @@
 {
 	"CudaFEMproject_path": "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/",
 	"working_path": "C:/Users/mexika/Desktop/fem_stuff/",
-	"task": ["point_source2"],
+	"task": ["point_source2_M12"],
 	"task_type": "dynamics",
 	"DIM": 2,
 	"youngModulus": 35216992930.08641,
@@ -9,8 +9,8 @@
 	"rho": 2400,
 	"damping_alpha": 0.0,
 	"damping_beta": 0.0,
-	"dt": 2e-3,
-	"endtime": 0.2,
+	"dt": 1.8e-3,
+	"endtime": 0.12,
 	"beta1": 0.5,
 	"beta2": 0.0,
 	

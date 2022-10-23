@@ -1,7 +1,7 @@
 {
-	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
-	"working_path": "C:/Users/mokin/Desktop/fem_stuff_test/",
-	"task": ["9task_3"],
+	"CudaFEMproject_path": "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/",
+	"working_path": "C:/Users/mexika/Desktop/fem_stuff/",
+	"task": ["test_rect_pcg"],
 	"DIM": 2,
 	"youngModulus": 2e+7,
 	"poissonRatio": 0.25

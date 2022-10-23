@@ -9,7 +9,7 @@
 	"rho": 2400,
 	"damping_alpha": 0.0,
 	"damping_beta": 0.0,
-	"dt": 2e-3,
+	"dt": 6e-4,
 	"endtime": 0.3,
 	"beta1": 0.5,
 	"beta2": 0.0

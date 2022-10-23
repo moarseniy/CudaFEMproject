@@ -68,16 +68,14 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
   }
 
   //    std::cout << "LOADS" << std::endl;
-  // ToDO: Add parsing of time-dependant functions like Ricker
   for (int i = 0; i < loadsCount; ++i) {
-    int node; //float xampl, yampl;
+    int node;
     std::string xstr, ystr, str;
+    std::string zstr; // if 3D
 
-    //loads_file >> node >> xampl >> yampl;
     loads_file >> node;
     std::getline(loads_file, str);
     // https://stackoverflow.com/a/39080627
-    //std::cout << str << std::endl;
     std::regex wavelet_expression("(\\w+(\\((.*?)\\))|[+-]?(\\d+([.]\\d*)?([eE][+-]?\\d+)?|[.]\\d+([eE][+-]?\\d+)?))");
     smatch res;
 
@@ -86,40 +84,34 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
       ++loop_it;
       if (loop_it == 1)      xstr = res[0];
       else if (loop_it == 2) ystr = res[0];
+      else if (DIM == 3 && loop_it == 3) zstr = res[0];
       str = res.suffix();
     }
-    //std::cout << "X:\n";
+    // X
     Load loadX;
     loadX.parseString(xstr);
     if (!(loadX.ampl == 0.0f)) {
-      loadX.dof = node * 2 + 0;
+      loadX.dof = node * DIM + 0;
       loads.push_back(loadX);
     }
-    //std::cout << "Y:\n";
+    // Y
     Load loadY;
     loadY.parseString(ystr);
     if (!(loadY.ampl == 0.0f)) {
-      loadY.dof = node * 2 + 1;
+      loadY.dof = DIM == node * DIM + 1;
       loads.push_back(loadY);
     }
 
-    //        if (!(yampl == 0.0)) {
-    //            Load load;
-    //            load.dof = node * 2 + 1;
-    //            // EDITED!!!! For Ricker
-    //            load.wavelet = &Load::Ricker;
-    //            load.value = yampl;
-    //            load.ampl = yampl;
-    //            load.freq = 15;
-    //            loads.push_back(load);
-    //        }
+    // Z
+    if (DIM == 3) {
+      Load loadZ;
+      loadZ.parseString(zstr);
+      if (!(loadZ.ampl == 0.0f)) {
+        loadZ.dof = node * DIM + 2;
+        loads.push_back(loadZ);
+      }
+    }
 
-    //        int node;
-    //        float x, y;
-    //        loads_file >> node >> x >> y;
-    //        loads[2 * node + 0] = x;
-    //        loads[2 * node + 1] = y;
-    //        std::cout << node << ' ' << x << ' ' << y << std::endl;
   }
 
   for (int i = 0; i < boundaryEdgesCount; ++i) {

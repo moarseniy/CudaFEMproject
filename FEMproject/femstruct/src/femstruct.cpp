@@ -344,10 +344,12 @@ int Element::Global2LocalNode(int glob_num) {
     return 1;
   if (glob_num == this->nodesIds[2])
     return 2;
+  if (this->DIM == 3 && glob_num == this->nodesIds[3])
+    return 3;
   assert(false);
 }
 
-void Load::assignElement(int DIM, std::unordered_map <int, std::vector<int>> nodeAdjElem) {
+void Load::assignElement(int DIM, std::unordered_map <int, std::vector<int>> &nodeAdjElem) {
   this->elem = nodeAdjElem[this->dof / DIM][0];
 }
 

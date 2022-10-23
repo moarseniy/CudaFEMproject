@@ -151,7 +151,7 @@ struct Load : TimeDependentEntity {
     elem = -1; // no element assigned
   }
 
-  void assignElement(int DIM, std::unordered_map <int, std::vector<int>> nodeAdjElem);
+  void assignElement(int DIM, std::unordered_map <int, std::vector<int>> &nodeAdjElem);
 };
 
 #endif
