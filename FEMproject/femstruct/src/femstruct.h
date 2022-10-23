@@ -16,8 +16,6 @@
 #include <cctype>
 #include <string>
 
-using namespace std;
-
 struct TimeDependentEntity {
   float value;
   float ampl, freq, timeshift;

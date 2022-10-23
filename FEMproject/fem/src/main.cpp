@@ -16,6 +16,8 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  // ToDO: Don't send so many parameters into the command prompt
+  //       Think how to mage through a config file.
   std::string name = argv[1];
   int DIM = std::stoi(argv[2]);
   std::string project_directory = argv[3];
@@ -48,7 +50,7 @@ int main(int argc, char *argv[]) {
   if (isDYN) {
     gpuCalculateFEM_DYN(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
   } else {
-    CalculateFEM_EbE_vec_GPU(FEMdata, PRINT_DEBUG_INFO);
+    gpuCalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
   }
 
   ResultsDataKeeper RESdata(withStressAlongAxis, withSmooth, withMises, FEMdata.nodesCount);

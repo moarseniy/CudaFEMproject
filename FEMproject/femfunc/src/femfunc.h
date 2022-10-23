@@ -14,22 +14,15 @@
 #include <unordered_map>
 #include <algorithm>
 
-using namespace std;
-
 void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data);
 
 void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO);
-void gpuCalculateFEM_implicit(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO);
-void gpuCalculateFEM_implicit_DYN(FEMdataKeeper &FEMdata, float rho, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO);
-void gpuCalculateFEM_implicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO);
-void gpuCalculateFEM_explicit(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO);
-void gpuCalculateFEM_explicit_DYN(FEMdataKeeper &FEMdata, float rho, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO);
-void gpuCalculateFEM_explicit_DYN_DAMP(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, bool PRINT_DEBUG_INFO);
+
+void gpuCalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
 
 void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);
 void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);
 void gpuPCG_EbE_vec_DYN_DAMP(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN_DAMP &gpu_data, bool doAssemblyRes,  float eps, bool PRINT_DEBUG_INFO);
-void CalculateFEM_EbE_vec_GPU(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
 
 void CalculateNodeAdjElem(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &a);
 void AssignLoadElement(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem);
@@ -37,8 +30,8 @@ void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, M
 void ApplyConstraints_EbE(FEMdataKeeper &FEMdata);
 void GenerateMask(FEMdataKeeper FEMdata, MyArray &mask);
 
-void MakeResults(FEMdataKeeper FEMdata, ResultsDataKeeper &RESdata);
-void WriteResults(FEMdataKeeper FEMdata, ResultsDataKeeper RESdata, std::string output_vtk, bool PRINT_DEBUG_INFO);
+void MakeResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata);
+void WriteResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata, std::string output_vtk, bool PRINT_DEBUG_INFO);
 
 void CalculateStressAlongAxis(std::vector<float> &StressComponents,
                               std::string axe,

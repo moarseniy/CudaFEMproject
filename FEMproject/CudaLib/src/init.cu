@@ -56,6 +56,7 @@ gpuDataKeeper::~gpuDataKeeper() {}
 //WeightedAddCoef::WeightedAddCoef(float v1, float v2, float v3): val1(v1), val2(v2), val3(v3) {}
 
 void gpuDataKeeper::setZeroVec() {
+  CheckRunTime(__func__)
   thrust::fill(x.begin(), x.end(), 0.0f);
 }
 

@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
         #final_results
         if os.path.exists(results_dir + '/output/'):
-            shutil.rmtree(results_dir)
+            shutil.rmtree(results_dir + '/output/')
             os.makedirs(results_dir + '/output/')
         else:
             if not os.path.exists(work_dir + 'fem_results/'):

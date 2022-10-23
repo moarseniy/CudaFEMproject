@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 // https://stackoverflow.com/q/21667295
 #include <regex>
@@ -28,7 +29,27 @@ public:
     this->prep_mesh_dir = prepared_meshes_directory;
     this->res_dir = results_directory;
 
-    this->nonzeroMatrixNumCount = -1;
+    nodes_file.open         (this->prep_mesh_dir + "/nodes.txt",         fstream::in);
+    elements_file.open      (this->prep_mesh_dir + "/elements.txt",      fstream::in);
+    loads_file.open         (this->prep_mesh_dir + "/loads.txt",         fstream::in);
+    constraints_file.open   (this->prep_mesh_dir + "/constraints.txt",   fstream::in);
+    stress_file.open        (this->prep_mesh_dir + "/stress.txt",        fstream::in);
+
+    nodes_file          >> nodesCount;
+    elements_file       >> elementsCount;
+    constraints_file    >> constraintsCount;
+    loads_file          >> loadsCount;
+    stress_file         >> boundaryEdgesCount;
+
+    // Allocate dynamic memory
+    for (int i = 0; i < DIM; ++i) {
+      MyArray nodes_vec(nodesCount);
+      nodes.push_back(nodes_vec);
+    }
+    displacements.Resize(DIM * nodesCount);
+    D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
+    pressure.Resize(boundaryEdgesCount);
+    all_B.Resize(3 * (DIM - 1) * 6 * (DIM - 1) * elementsCount);
   }
 
   void ParseFiles(float poissonRatio, float youngModulus);
@@ -62,20 +83,6 @@ public:
     this->boundaryEdgesCount = boundaryEdgesCount;
   }
 
-  void AllocateDynamicMemory() {
-    for (int i = 0; i < DIM; ++i) {
-      MyArray nodes_vec(nodesCount);
-      nodes.push_back(nodes_vec);
-    }
-//    nodesX.Resize(nodesCount);
-//    nodesY.Resize(nodesCount);
-    //loads.Resize(DIM * nodesCount);
-    displacements.Resize(DIM * nodesCount);
-    D.Resize(3 * (DIM - 1), 3 * (DIM - 1));
-    pressure.Resize(boundaryEdgesCount);
-    all_B.Resize(3 * (DIM - 1) * 6 * (DIM - 1) * elementsCount);
-  }
-
   std::string name;
   std::string proj_dir;
   std::string prep_mesh_dir;
@@ -87,7 +94,6 @@ public:
   int boundaryEdgesCount;
   int loadsCount;
   int constraintsCount;
-  int nonzeroMatrixNumCount;
 
   Matrix D;
   std::vector<MyArray> nodes;
@@ -106,6 +112,8 @@ public:
 
   MyArray all_B;
 
+  fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
+
 };
 
 class ResultsDataKeeper {
@@ -115,10 +123,6 @@ public:
     this->withMises = withMises;
     this->withSmooth = withSmooth;
     SmoothStress.Resize(nodesCount); //take it out somewhere else!!
-  }
-
-  void AllocateDynamicMemory() {
-    //SmoothStress.Resize();
   }
 
   bool withStressAlongAxis;

@@ -1,26 +1,7 @@
-
 #include "datakeeper.h"
-
-using namespace std;
 
 void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
   CheckRunTime(__func__)
-
-  fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
-
-  nodes_file.open         (prep_mesh_dir + "/nodes.txt",         fstream::in);
-  elements_file.open      (prep_mesh_dir + "/elements.txt",      fstream::in);
-  loads_file.open         (prep_mesh_dir + "/loads.txt",         fstream::in);
-  constraints_file.open   (prep_mesh_dir + "/constraints.txt",   fstream::in);
-  stress_file.open        (prep_mesh_dir + "/stress.txt",        fstream::in);
-
-  nodes_file          >> nodesCount;
-  elements_file       >> elementsCount;
-  constraints_file    >> constraintsCount;
-  loads_file          >> loadsCount;
-  stress_file         >> boundaryEdgesCount;
-
-  AllocateDynamicMemory();
 
   if (DIM == 2) {
     D(0,0) = 1.0;			D(0, 1) = poissonRatio;	D(0, 2) = 0.0;
@@ -36,19 +17,21 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     throw std::runtime_error("DIM error");
   }
 
+  // NODES
   for (int i = 0; i < nodesCount; ++i) {
     for (int j = 0; j < DIM; ++j) {
       nodes_file >> nodes[j][i];
     }
   }
 
+  // ELEMENTS
   for (int i = 0; i < elementsCount; ++i) {
     Element element(DIM);
     for (int j = 0; j < DIM + 1; ++j) {
       elements_file >> element.nodesIds[j];
     }
 
-    // Jacobian calucation
+    // ToDO in future: Jacobian calculation
     //        float X2 = nodesX[element.nodesIds[1]] - nodesX[element.nodesIds[0]];
     //        float X3 = nodesX[element.nodesIds[2]] - nodesX[element.nodesIds[0]];
     //        float Y2 = nodesY[element.nodesIds[1]] - nodesY[element.nodesIds[0]];
@@ -57,17 +40,16 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     elements.push_back(element);
   }
 
-  //    std::cout << "CONSTRAINTS" << std::endl;
+  // CONSTRAINTS
   for (int i = 0; i < constraintsCount; ++i) {
     Constraint constraint;
     int type;
     constraints_file >> constraint.node >> type;
     constraint.type = static_cast<Constraint::Type>(type);
     constraints.push_back(constraint);
-    //        std::cout << constraint.node << ' ' << type << std::endl;
   }
 
-  //    std::cout << "LOADS" << std::endl;
+  // LOADS
   for (int i = 0; i < loadsCount; ++i) {
     int node;
     std::string xstr, ystr, str;
@@ -114,10 +96,10 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
 
   }
 
+  // BOUNDARY EDGES
   for (int i = 0; i < boundaryEdgesCount; ++i) {
     BoundaryEdge edge(DIM);
     MyArray normal_vec(DIM);
-    //        stress_file >> edge.node0 >> edge.node1 >> edge.adj_elem1 >> normal_x >> normal_y >> pressure[i];
 
     for (int j = 0; j < DIM; ++j) {
       stress_file >> edge.node[j];
@@ -138,12 +120,10 @@ void FEMdataKeeper::ParseFiles(float poissonRatio, float youngModulus) {
     string str;
     std::getline(stress_file, str);
     // https://stackoverflow.com/a/39080627
-    std::cout << "DEBUG pressure: " << str << std::endl;
     std::regex wavelet_expression("(\\w+(\\((.*?)\\))|[+-]?(\\d+([.]\\d*)?([eE][+-]?\\d+)?|[.]\\d+([eE][+-]?\\d+)?))");
     smatch res;
     std::regex_search(str, res, wavelet_expression);
     str = res[0];
-    std::cout << "DEBUG pressure 2: " << str << std::endl;
     edge.parseString(str);
 
     float normal_length = 0.f;
