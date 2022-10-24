@@ -402,7 +402,7 @@ void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEM
   gpuCopyDeviceToHost(gpu_data.get_displ_global(), h_temp.get_data(), n_gl_dofs);
 
   fstream out;
-  out.open(FEMdata.res_dir + "/snapshots.csv", fstream::out | fstream::app);
+  out.open(FEMdata.GetResDir() + "/snapshots.csv", fstream::out | fstream::app);
   out << t;
   for (int i = 1; i < 2 * num_receivers + 1; i += 2)
     out << " " << h_temp[i] << " " << h_temp[i + 1];
@@ -942,7 +942,7 @@ void MakeResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata) {
 }
 
 void WriteResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata, std::string output_vtk, bool PRINT_DEBUG_INFO) {
-  std::string path_stress = FEMdata.res_dir + "/output/out_stress_" + FEMdata.get_name() + ".txt";
+  std::string path_stress = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + ".txt";
   if (RESdata.withStressAlongAxis) {
     std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
     fstream out1;
@@ -956,7 +956,7 @@ void WriteResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata, std::strin
 
   if (RESdata.withSmooth) {
     fstream out2;
-    std::string path_stress_smooth = FEMdata.res_dir + "/output/out_stress_" + FEMdata.get_name() + "_smooth.txt";
+    std::string path_stress_smooth = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + "_smooth.txt";
     if (PRINT_DEBUG_INFO) {
       std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
     }
@@ -969,7 +969,7 @@ void WriteResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata, std::strin
 
   if (RESdata.withMises) {
     fstream out3;
-    std::string path_stress_mises = FEMdata.res_dir + "/output/out_stress_" + FEMdata.get_name() + "_mises.txt";
+    std::string path_stress_mises = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + "_mises.txt";
     if (PRINT_DEBUG_INFO) {
       std::cout << "MisesComponents Size = " << RESdata.MisesComponents.size() << "\n";
     }

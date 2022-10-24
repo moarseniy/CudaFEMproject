@@ -54,5 +54,23 @@ void CalculateStressAndDeformation(int DIM,
 
 MyArray AssemblyF(FEMdataKeeper &FEMdata);
 
+// 2D only
+void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,
+                   int nodesCount, std::vector<MyArray> &nodes, std::vector<Element> elements);
+// 2D only
+void CalculateStressAlongAxisSmooth(std::vector<float> &StressComponentsSmooth,
+                                    std::string axe,
+                                    float fixed_value,
+                                    float a,
+                                    float b,
+                                    MyArray StressSmooth,
+                                    std::vector<MyArray> &nodes,
+                                    std::vector<Element> elements);
+void CalculateMisesAlongLineMises(std::vector<float> &MisesComponents,
+                                  float k, float m,
+                                  float a, float b,
+                                  std::vector<float> sigma_mises,
+                                  std::vector<MyArray> &nodes,
+                                  std::vector<Element> elements);
 
 #endif

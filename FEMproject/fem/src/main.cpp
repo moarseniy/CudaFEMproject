@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
     beta2 = std::stof(argv[16]);
   }
 
-  FEMdataKeeper FEMdata(name, DIM, project_directory, prepared_meshes_directory, results_directory);
-  FEMdata.ParseFiles(poissonRatio, youngModulus);
+  FEMdataKeeper FEMdata(name, DIM, project_directory, prepared_meshes_directory, results_directory,
+                        poissonRatio, youngModulus);
   FEMdata.ShowInfo();
 
   if (isDYN) {
@@ -53,7 +53,9 @@ int main(int argc, char *argv[]) {
     gpuCalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
   }
 
-  ResultsDataKeeper RESdata(withStressAlongAxis, withSmooth, withMises, FEMdata.nodesCount);
+  ResultsDataKeeper RESdata(&FEMdata,
+                            withStressAlongAxis, withSmooth, withMises,
+                            FEMdata.nodesCount);
 
   MakeResults(FEMdata, RESdata);
   WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
