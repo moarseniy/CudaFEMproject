@@ -2,6 +2,17 @@ cmake_minimum_required(VERSION 3.5)
 
 project(FemProject)
 
+find_package(CUDA QUIET REQUIRED)
+
+MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
+
+set(CUDA_64_BIT_DEVICE_CODE ON)
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -arch=sm_52" )
+
+MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
+
+
+
 option(TOOLS_TIMER CACHED ON)
 option(SMOOTH CACHED OFF)
 option(MISES CACHED OFF)
@@ -38,5 +49,6 @@ add_subdirectory(Tools)
 add_subdirectory(CudaLib)
 add_subdirectory(femstruct)
 add_subdirectory(testing)
-#add_subdirectory(matrix_pack)
-#add_subdirectory(oneApiLib)
+add_subdirectory(matrix_pack)
+#add_subdirectory(thirdparty/boost-cmake)
+#add_subdirectory(thirdparty/gtest)

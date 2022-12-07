@@ -1,0 +1,3 @@
+[submodule "FEMproject/boost-cmake"]
+	path = FEMproject/boost-cmake
+	url = https://github.com/Orphis/boost-cmake.git
