@@ -1,0 +1,12 @@
+PROJECT(gtest)
+
+ADD_LIBRARY(gtest STATIC gtest.h src/gtest-all.cc)
+
+FIND_PACKAGE(Threads)
+TARGET_LINK_LIBRARIES(gtest ${CMAKE_THREAD_LIBS_INIT})
+
+install (TARGETS gtest
+LIBRARY DESTINATION lib
+ARCHIVE DESTINATION lib)
+
+INSTALL(FILES gtest.h DESTINATION include/gtest)

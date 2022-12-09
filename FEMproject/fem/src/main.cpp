@@ -53,8 +53,7 @@ int main(int argc, char *argv[]) {
     gpuCalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
   }
 
-  ResultsDataKeeper RESdata(&FEMdata,
-                            withStressAlongAxis, withSmooth, withMises,
+  ResultsDataKeeper RESdata(withStressAlongAxis, withSmooth, withMises,
                             FEMdata.nodesCount);
 
   MakeResults(FEMdata, RESdata);

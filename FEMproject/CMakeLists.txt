@@ -2,6 +2,29 @@ cmake_minimum_required(VERSION 3.5)
 
 project(FemProject)
 
+# is required for windows
+include_directories(thirdparty)
+
+enable_testing()
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "cmake targets")
+
+set(SOURCE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR})
+set(BINARY_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(THIRDPARTY_DIR_NAME thirdparty)
+set(THIRDPARTY_SOURCE_DIR ${SOURCE_ROOT_DIR}/${THIRDPARTY_DIR_NAME})
+set(THIRDPARTY_BINARY_DIR ${BINARY_ROOT_DIR}/${THIRDPARTY_DIR_NAME})
+
+add_subdirectory(
+        ${THIRDPARTY_SOURCE_DIR}/gtest
+        ${THIRDPARTY_BINARY_DIR}/gtest
+        ${THIRDPARTY_ADDING_EXTRA_ARG}
+  )
+
+
+
+
 find_package(CUDA QUIET REQUIRED)
 
 MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
@@ -50,5 +73,4 @@ add_subdirectory(CudaLib)
 add_subdirectory(femstruct)
 add_subdirectory(testing)
 add_subdirectory(matrix_pack)
-#add_subdirectory(thirdparty/boost-cmake)
-#add_subdirectory(thirdparty/gtest)
+add_subdirectory(thirdparty/boost)

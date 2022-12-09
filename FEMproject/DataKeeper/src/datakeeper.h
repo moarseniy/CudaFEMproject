@@ -72,13 +72,11 @@ private:
 
 class ResultsDataKeeper {
 public:
-  ResultsDataKeeper(FEMdataKeeper *FEMdata,
-                    bool withStressAlongAxis, bool withSmooth, bool withMises,
+  ResultsDataKeeper(bool withStressAlongAxis, bool withSmooth, bool withMises,
                     int nodesCount) {
     this->withStressAlongAxis = withStressAlongAxis;
     this->withMises = withMises;
     this->withSmooth = withSmooth;
-    this->FEMdata = FEMdata;
     SmoothStress.Resize(nodesCount); //take it out somewhere else!!
   }
   //void MakeResults();
@@ -96,8 +94,6 @@ public:
   std::vector<float> StressComponentsSmooth;
 
   MyArray SmoothStress;
-protected:
-  FEMdataKeeper *FEMdata;
 
   //void CalculateStressAndDeformation();
 };
