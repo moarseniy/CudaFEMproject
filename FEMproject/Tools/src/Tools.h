@@ -4,6 +4,11 @@
 #include <iostream>
 #include <ctime>
 
+namespace fs {
+  std::string joinString(const std::string &src1,
+                         const std::string &src2);
+} // namespace fs
+
 class Timer{
 public:
   Timer(std::string namefunc) {

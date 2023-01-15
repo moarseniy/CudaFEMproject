@@ -23,9 +23,12 @@
 
 #include <math.h>
 #include <vector>
-#include "Linal2.h"
-#include "Tools.h"
-#include "datakeeper.h"
+
+#include <matrix_pack/matrix_pack.h>
+#include <cuda_matrix_pack/cuda_matrix.h>
+
+#include <Tools.h>
+#include <datakeeper.h>
 
 class gpuDataKeeper{
 public:
@@ -146,6 +149,6 @@ void gpuSolveDiag(float *diag, float *r, float *res,
 float gpuCNorm(float *v, int size);
 void copyElementsAndFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD);
 void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD);
-void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVectors, int DIM, int elementsCount);
+void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, CPU_Matrix> &loadVectors, int DIM, int elementsCount);
 
 #endif

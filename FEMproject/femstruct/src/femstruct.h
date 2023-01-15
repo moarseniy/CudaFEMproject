@@ -7,9 +7,10 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#include "Linal2.h"
-#include "Tools.h"
-//#include "femfunc.h"
+#include <matrix_pack/matrix_pack.h>
+#include <cuda_matrix_pack/cuda_matrix.h>
+
+#include <Tools.h>
 
 // https://stackoverflow.com/a/313990
 #include <algorithm>
@@ -74,67 +75,61 @@ struct BoundaryEdge : Edge, TimeDependentEntity {
   std::vector<Constraint::Type> type;
 };
 
+class ElementsData {
+public:
+  ElementsData(size_t DIM, size_t elementsCount);
+  void CalculateKlocal();
+
+private:
+  Matrix *Flocals;
+  Matrix *Klocals;
+  Matrix *B;
+};
+
 struct Element {
+  float calculateArea(CPU_Matrix &Coordinates);
+  void calculateGradientMatrix(CPU_Matrix &Coordinates, float area);
+  void calculateCoordinates(CPU_Matrix &Coordinates,
+                            std::vector<Matrix> &nodes);
+
   // CalculateStiffnessMatrix will be deprecated!
-  void CalculateKlocal(Matrix& D, std::vector<MyArray> &nodes);
-  void CalculateMlocal(float rho, std::vector<MyArray> &nodes, bool lumped);
+  void CalculateKlocal(Matrix& D, std::vector<CPU_Matrix> &nodes);
+  void CalculateMlocal(float rho, std::vector<CPU_Matrix> &nodes, bool lumped);
   void CalculateClocal(float alpha, float beta);
-  void CalculateFlocal2D(BoundaryEdge& edge, std::vector<MyArray> &nodes, float t);
-  void CalculateFlocal3D(BoundaryEdge& edge, std::vector<MyArray> &nodes, float t);
+  void CalculateFlocal2D(BoundaryEdge& edge, std::vector<CPU_Matrix> &nodes, float t);
+  void CalculateFlocal3D(BoundaryEdge& edge, std::vector<CPU_Matrix> &nodes, float t);
   int Global2LocalNode(int glob_num);
-  Element(int DIM) {
-    this->DIM = DIM;
-    nodesIds.resize(DIM + 1);
-    B.Resize(3 * (DIM - 1), 6 * (DIM - 1));
-    Klocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
-    Mlocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
-    Clocal.Resize(6 * (DIM - 1), 6 * (DIM - 1)); alpha = 0; beta = 0;
-    Alocal.Resize(6 * (DIM - 1), 6 * (DIM - 1));
-    Flocal.Resize(6 * (DIM - 1));
-    blocal.Resize(6 * (DIM - 1));
-    res.Resize(6 * (DIM - 1));
-    //Q.Resize();
+  Element(int dim);
+  ~Element();
 
-    // for PCG EbE
-    m.Resize(3 * DIM); x.Resize(3 * DIM); r.Resize(3 * DIM);
-    z.Resize(3 * DIM); s.Resize(3 * DIM); p.Resize(3 * DIM);
-    u.Resize(3 * DIM);
+  int DIM;
+  std::vector<int> nodesIds;
 
-    // for dynamics
-    x_pred.Resize(3 * DIM); vel_pred.Resize(3 * DIM); vel.Resize(3 * DIM);
+  CPU_Matrix B;
+  CPU_Matrix Klocal;
+  CPU_Matrix Mlocal;
+  CPU_Matrix Clocal;
+  float alpha, beta;   // C = alpha * M + beta * K;
+  CPU_Matrix Flocal;
 
-    // for debug in PCG EbE. Delete after is done!
-    b.Resize(3 * DIM);
-  }
-  //void FindSparseSize(std::vector<couple> &Sparse);
-  Matrix B;
-  Matrix Klocal;
-  Matrix Mlocal;
-  Matrix Clocal; float alpha, beta;   // C = alpha * M + beta * K;
-  MyArray Flocal;
-
-  Matrix Alocal;
-  MyArray blocal;
-  MyArray res;
-  //Matrix Q;
+  CPU_Matrix Alocal;
+  CPU_Matrix blocal;
+  CPU_Matrix res;
 
   // for dynamics
   // --------------------------
-  MyArray x_pred, vel_pred, vel;
+  CPU_Matrix x_pred, vel_pred, vel;
   // --------------------------
 
   // for PCG EbE
   // --------------------------
-  MyArray m, x, r, z, s, p, u;
+  CPU_Matrix m, x, r, z, s, p, u;
   // --------------------------
 
   // for debug in PCG EbE. Delete after is done!
   // --------------------------
-  MyArray b;
+  CPU_Matrix b;
   // --------------------------
-
-  int DIM;
-  std::vector<int> nodesIds;
 
   //float jacobian; // node 1 -> (0,0) ; node 2 -> (1,0) ; node 3 -> (0,1)
 };

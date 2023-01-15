@@ -1,5 +1,5 @@
-#include "femfunc.h"
-
+#include <femfunc.h>
+/*
 float SetConstraints(int i, int j, float v, int index) {
   if (i == index || j == index) {
     return i == j ? 1.0f : 0.0f;
@@ -13,56 +13,6 @@ void ApplyLoads(MyArray& F, const std::vector<Load>& loads) {
   for (std::vector<Load>::const_iterator it = loads.begin(); it != loads.end(); ++it) {
     F[it->dof] += it->value;
   }
-}
-
-void AssignLoadElement(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem) {
-  CheckRunTime(__func__)
-  for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
-    it->assignElement(FEMdata.DIM, nodeAdjElem);
-  }
-}
-
-// Make sure that elements are assigned to each load before calling this function!
-// (call AssignLoadElement before calling this function)
-// And make sure that loadVectors is empty before calling this function!
-void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, MyArray> &loadVectors, float t) {
-  CheckRunTime(__func__)
-  int DIM = FEMdata.DIM;
-  for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
-    assert(it->elem != -1);
-    it->TimeDependentEntity::update(t);
-    MyArray elem_load(6 * (DIM - 1));
-    elem_load[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] = it->value;
-    if (loadVectors.find(it->elem) == loadVectors.end())        // Key not present
-      loadVectors[it->elem] = elem_load;
-    else
-      loadVectors[it->elem].add(elem_load);
-  }
-}
-
-// Make sure that elements are assigned to each load before calling this function!
-// (call AssignLoadElement before calling this function)
-void ApplyLoads_EbE(FEMdataKeeper &FEMdata) {
-  CheckRunTime(__func__)
-  const int DIM = FEMdata.DIM;
-  for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
-    assert(it->elem != -1);
-    const int loadGlobalNode  = it->dof / DIM;
-    const int loadFreedomAxis = it->dof % DIM;
-    Element *elem = &FEMdata.elements[it->elem];
-    elem->Flocal[elem->Global2LocalNode(loadGlobalNode) * DIM + loadFreedomAxis] += it->value;
-  }
-}
-
-MyArray AssemblyF(FEMdataKeeper &FEMdata) {
-  MyArray F(FEMdata.DIM * FEMdata.nodesCount);
-  for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
-    for (int i = 0; i < 3; ++i) {
-      F[2 * it->nodesIds[i] + 0] += it->Flocal[2 * i + 0];
-      F[2 * it->nodesIds[i] + 1] += it->Flocal[2 * i + 1];
-    }
-  }
-  return F;
 }
 
 void AssemblyX(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem) {
@@ -347,6 +297,82 @@ void CalculateMisesAlongLineMises(std::vector<float> &MisesComponents,
   }
 }
 
+void GenerateMask(FEMdataKeeper FEMdata, MyArray &mask) {
+  CheckRunTime(__func__)
+  int DIM = FEMdata.DIM;
+  for (int eIdx = 0; eIdx < FEMdata.elementsCount; ++eIdx) {
+    mask[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].nodesIds[0] * DIM + 0;
+    mask[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].nodesIds[0] * DIM + 1;
+    mask[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].nodesIds[1] * DIM + 0;
+    mask[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].nodesIds[1] * DIM + 1;
+    mask[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].nodesIds[2] * DIM + 0;
+    mask[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].nodesIds[2] * DIM + 1;
+  }
+}
+
+void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data) {
+  MyArray h_temp(n_gl_dofs);
+  gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), h_temp.get_data(), n_gl_dofs);
+
+  std::fstream out;
+  out.open(FEMdata.GetResDir() + "/snapshots.csv", std::fstream::out | std::fstream::app);
+  out << t;
+  for (int i = 1; i < 2 * num_receivers + 1; i += 2)
+    out << " " << h_temp[i] << " " << h_temp[i + 1];
+  out << "\n";
+  out.close();
+}
+*/
+
+// Make sure that elements are assigned to each load before calling this function!
+// (call AssignLoadElement before calling this function)
+void ApplyLoads_EbE(FEMdataKeeper &FEMdata) {
+  CheckRunTime(__func__)
+  const int DIM = FEMdata.DIM;
+  for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
+    assert(it->elem != -1);
+    const int loadGlobalNode  = it->dof / DIM;
+    const int loadFreedomAxis = it->dof % DIM;
+    Element *elem = &FEMdata.elements[it->elem];
+    elem->Flocal[elem->Global2LocalNode(loadGlobalNode) * DIM + loadFreedomAxis] += it->value;
+  }
+}
+
+void AssemblyF(CPU_Matrix &F, FEMdataKeeper &FEMdata) {
+  for (std::vector<Element>::iterator it = FEMdata.elements.begin(); it != FEMdata.elements.end(); ++it) {
+    for (int i = 0; i < 3; ++i) {
+      F[2 * it->nodesIds[i] + 0] += it->Flocal[2 * i + 0];
+      F[2 * it->nodesIds[i] + 1] += it->Flocal[2 * i + 1];
+    }
+  }
+}
+
+// Make sure that elements are assigned to each load before calling this function!
+// (call AssignLoadElement before calling this function)
+// And make sure that loadVectors is empty before calling this function!
+void GetMapElement2Loadvector(FEMdataKeeper &FEMdata, std::unordered_map <int, CPU_Matrix> &loadVectors, float t) {
+  CheckRunTime(__func__)
+  int DIM = FEMdata.DIM;
+  for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
+    assert(it->elem != -1);
+    it->TimeDependentEntity::update(t);
+    CPU_Matrix elem_load(6 * (DIM - 1), 1);
+    elem_load[ FEMdata.elements[it->elem].Global2LocalNode(it->dof / DIM) * DIM + it->dof % DIM ] = it->value;
+    if (loadVectors.find(it->elem) == loadVectors.end())        // Key not present
+      loadVectors[it->elem] = elem_load;
+    else
+      loadVectors[it->elem].add(elem_load);
+  }
+}
+
+void AssignLoadElement(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> nodeAdjElem) {
+  CheckRunTime(__func__)
+  for (std::vector<Load>::iterator it = FEMdata.loads.begin(); it != FEMdata.loads.end(); ++it) {
+    it->assignElement(FEMdata.DIM, nodeAdjElem);
+  }
+}
+
 void CalculateNodeAdjElem(FEMdataKeeper &FEMdata, std::unordered_map <int, std::vector<int>> &a) {
   for (int n = 0; n < FEMdata.elements.size(); ++n) {
     a[FEMdata.elements[n].nodesIds[0]].push_back(n);
@@ -375,39 +401,12 @@ void ApplyConstraints_EbE(FEMdataKeeper &FEMdata) {
 
   //CUDA
   //std::cout << "CONSTRAINTS\n";
-  FEMdata.CudaIndicesToConstraints.Resize(indicesToConstraint.size());
+  FEMdata.CudaIndicesToConstraints.resize(indicesToConstraint.size(), 1);
   for (int i = 0; i < indicesToConstraint.size(); ++i) {
     FEMdata.CudaIndicesToConstraints[i] = indicesToConstraint[i];
     //std::cout << FEMdata.CudaIndicesToConstraints[i] << " ";
   }
   FEMdata.CudaIndicesToConstraintsCount = indicesToConstraint.size();
-}
-
-void GenerateMask(FEMdataKeeper FEMdata, MyArray &mask) {
-  CheckRunTime(__func__)
-  int DIM = FEMdata.DIM;
-  for (int eIdx = 0; eIdx < FEMdata.elementsCount; ++eIdx) {
-    mask[3 * DIM * eIdx + 0] = FEMdata.elements[eIdx].nodesIds[0] * DIM + 0;
-    mask[3 * DIM * eIdx + 1] = FEMdata.elements[eIdx].nodesIds[0] * DIM + 1;
-    mask[3 * DIM * eIdx + 2] = FEMdata.elements[eIdx].nodesIds[1] * DIM + 0;
-    mask[3 * DIM * eIdx + 3] = FEMdata.elements[eIdx].nodesIds[1] * DIM + 1;
-    mask[3 * DIM * eIdx + 4] = FEMdata.elements[eIdx].nodesIds[2] * DIM + 0;
-    mask[3 * DIM * eIdx + 5] = FEMdata.elements[eIdx].nodesIds[2] * DIM + 1;
-  }
-}
-
-void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data) {
-  MyArray h_temp(n_gl_dofs);
-  gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
-  gpuCopyDeviceToHost(gpu_data.get_displ_global(), h_temp.get_data(), n_gl_dofs);
-
-  fstream out;
-  out.open(FEMdata.GetResDir() + "/snapshots.csv", fstream::out | fstream::app);
-  out << t;
-  for (int i = 1; i < 2 * num_receivers + 1; i += 2)
-    out << " " << h_temp[i] << " " << h_temp[i + 1];
-  out << "\n";
-  out.close();
 }
 
 void gpuCalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
@@ -430,10 +429,10 @@ void gpuCalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
 
   ApplyConstraints_EbE(FEMdata);
 
-  gpuPCG_EbE_vec(FEMdata, FEMdata.displacements, true, 1e-4f, PRINT_DEBUG_INFO);
+  gpuPCG_EbE_vec(FEMdata, *FEMdata.displacements, true, 1e-4f, PRINT_DEBUG_INFO);
 }
 
-void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO) {
+void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, Matrix &res, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO) {
   CheckRunTime(__func__)
   int n_elems  = FEMdata.elementsCount;
   int n_gl_dofs = FEMdata.nodesCount * FEMdata.DIM;
@@ -514,14 +513,16 @@ void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, MyArray &res, bool doAssemblyRes, fl
     }
     gamma = gamma_new;
   } while (1);
+
   if (doAssemblyRes) {
     gpuReductionWithMask2(gpu_data.get_x(), gpu_data.get_mask(), grid_size, gpu_data.get_temp_res());
     gpuDivideByElementwise(gpu_data.get_temp_res(), gpu_data.get_n_adjelem(), gpu_data.get_temp_res(), n_gl_dofs);
     gpuCopyDeviceToHost(gpu_data.get_temp_res(), res.get_data(), n_gl_dofs);
+
   } else {
     gpuCopyDeviceToHost(gpu_data.get_x(), res.get_data(), grid_size);
   }
-
+  res.Show();
 }
 
 void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO) {
@@ -592,7 +593,7 @@ void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha,
       float t = nt*dt;
       if (PRINT_DEBUG_INFO) {
         std::cout << "======= Time iteration #" << nt;
-        if (!is_relax) cout << "/" << endnt << " =======";
+        if (!is_relax) std::cout << "/" << endnt << " =======";
         std::cout << " =======";
         std::cout << "\n=========== Time " << t << " ===========\n\n";
       }
@@ -623,7 +624,7 @@ void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha,
       gpuAddWeighted2(gpu_data.get_r(), gpu_data.get_Flocals(), -1.0f, 1.0f, grid_size);
 
       // Think how not to use loadVectors! Too dificult!
-      std::unordered_map <int, MyArray> loadVectors;
+      std::unordered_map <int, CPU_Matrix> loadVectors;
       loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
                               // instead of assigned. See if-statement in for-loop in the function's body
       GetMapElement2Loadvector(FEMdata, loadVectors, t);
@@ -673,7 +674,7 @@ void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha,
   gpuReductionWithMask2(gpu_data.get_displ(), gpu_data.get_mask(), grid_size, gpu_data.get_displ_global());
   gpuDivide(gpu_data.get_displ_global(), gpu_data.get_n_adjelem(), n_gl_dofs);        // displ = displ./n_adjelem
 
-  gpuCopyDeviceToHost(gpu_data.get_displ_global(), FEMdata.displacements.get_data(), n_gl_dofs);
+  gpuCopyDeviceToHost(gpu_data.get_displ_global(), FEMdata.displacements->get_data(), n_gl_dofs);
 }
 
 void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, bool doAssemblyRes,  float eps, bool PRINT_DEBUG_INFO) {
@@ -836,7 +837,7 @@ void gpuPCG_EbE_vec_DYN_DAMP(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN_DAMP &gpu
   }
 
 }
-
+/*
 // 2D only
 void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vector<MyArray> Stress,
                    int nodesCount, std::vector<MyArray> &nodes, std::vector<Element> elements) {
@@ -905,86 +906,88 @@ void SmoothResults(std::string stress_component, MyArray &SmoothStress, std::vec
   }
   C.LU_solve(R, SmoothStress, nodesCount);
 }
+*/
 
 void MakeResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata) {
   //POSTPROCESSING
 
-  CalculateStressAndDeformation(FEMdata.DIM, RESdata.Deformation,
-                                RESdata.Stress,
-                                RESdata.epsilon_mises,
-                                RESdata.sigma_mises,
-                                FEMdata.D, FEMdata.elements, FEMdata.displacements, FEMdata.all_B);
+//  CalculateStressAndDeformation(FEMdata.DIM, RESdata.Deformation,
+//                                RESdata.Stress,
+//                                RESdata.epsilon_mises,
+//                                RESdata.sigma_mises,
+//                                FEMdata.D, FEMdata.elements, FEMdata.displacements, FEMdata.all_B);
 
-  float fixed_value = 1.0;// x -3.0; y -3.0
-  float a = 0.0f;// x -3.0 y -4.0
-  float b = 8.0f;// x 5.0 y -3.0;
+//  float fixed_value = 1.0;// x -3.0; y -3.0
+//  float a = 0.0f;// x -3.0 y -4.0
+//  float b = 8.0f;// x 5.0 y -3.0;
 
-  if (RESdata.withStressAlongAxis) {
-    CalculateStressAlongAxis(RESdata.StressComponents,
-                           "x", "xy", fixed_value, a, b,
-                           RESdata.Stress, FEMdata.nodes, FEMdata.elements);
-  }
-  if (RESdata.withSmooth) {
-    SmoothResults("xx", RESdata.SmoothStress, RESdata.Stress, FEMdata.nodesCount, FEMdata.nodes, FEMdata.elements);
-    CalculateStressAlongAxisSmooth(RESdata.StressComponentsSmooth,
-                                   "x", fixed_value, a, b, RESdata.SmoothStress, FEMdata.nodes, FEMdata.elements);
-  }
+//  if (RESdata.withStressAlongAxis) {
+//    CalculateStressAlongAxis(RESdata.StressComponents,
+//                           "x", "xy", fixed_value, a, b,
+//                           RESdata.Stress, FEMdata.nodes, FEMdata.elements);
+//  }
+//  if (RESdata.withSmooth) {
+//    SmoothResults("xx", RESdata.SmoothStress, RESdata.Stress, FEMdata.nodesCount, FEMdata.nodes, FEMdata.elements);
+//    CalculateStressAlongAxisSmooth(RESdata.StressComponentsSmooth,
+//                                   "x", fixed_value, a, b, RESdata.SmoothStress, FEMdata.nodes, FEMdata.elements);
+//  }
 
-  a = 0.0f;
-  b = 6.0f;
-  float k = -0.6655f;
-  float m = -0.0035f;
+//  a = 0.0f;
+//  b = 6.0f;
+//  float k = -0.6655f;
+//  float m = -0.0035f;
 
-  if (RESdata.withMises) {
-    CalculateMisesAlongLineMises(RESdata.MisesComponents,
-                                 k, m, a, b, RESdata.sigma_mises, FEMdata.nodes, FEMdata.elements);
-  }
+//  if (RESdata.withMises) {
+//    CalculateMisesAlongLineMises(RESdata.MisesComponents,
+//                                 k, m, a, b, RESdata.sigma_mises, FEMdata.nodes, FEMdata.elements);
+//  }
 }
 
 void WriteResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata, std::string output_vtk, bool PRINT_DEBUG_INFO) {
-  std::string path_stress = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + ".txt";
-  if (RESdata.withStressAlongAxis) {
-    std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
-    fstream out1;
+//  std::string path_stress = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + ".txt";
+//  if (RESdata.withStressAlongAxis) {
+//    std::cout << "StressComponents Size = " << RESdata.StressComponents.size() << "\n";
+//    std::fstream out1;
 
-    out1.open(path_stress, fstream::out);
-    out1 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
-    for (int i = 0; i < RESdata.StressComponents.size(); i+=2) {
-      out1 << RESdata.StressComponents[i] << " " << RESdata.StressComponents[i + 1] << "\n";
-    }
-  }
+//    out1.open(path_stress, std::fstream::out);
+//    out1 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
+//    for (int i = 0; i < RESdata.StressComponents.size(); i+=2) {
+//      out1 << RESdata.StressComponents[i] << " " << RESdata.StressComponents[i + 1] << "\n";
+//    }
+//  }
 
-  if (RESdata.withSmooth) {
-    fstream out2;
-    std::string path_stress_smooth = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + "_smooth.txt";
-    if (PRINT_DEBUG_INFO) {
-      std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
-    }
-    out2.open(path_stress_smooth, fstream::out);
-    out2 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
-    for (int i = 0; i < RESdata.StressComponentsSmooth.size(); i+=2) {
-      out2 << RESdata.StressComponentsSmooth[i] << " " << RESdata.StressComponentsSmooth[i + 1] << "\n";
-    }
-  }
+//  if (RESdata.withSmooth) {
+//    std::fstream out2;
+//    std::string path_stress_smooth = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + "_smooth.txt";
+//    if (PRINT_DEBUG_INFO) {
+//      std::cout << "StressComponentsSmooth Size = " << RESdata.StressComponentsSmooth.size() << "\n";
+//    }
+//    out2.open(path_stress_smooth, std::fstream::out);
+//    out2 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
+//    for (int i = 0; i < RESdata.StressComponentsSmooth.size(); i+=2) {
+//      out2 << RESdata.StressComponentsSmooth[i] << " " << RESdata.StressComponentsSmooth[i + 1] << "\n";
+//    }
+//  }
 
-  if (RESdata.withMises) {
-    fstream out3;
-    std::string path_stress_mises = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + "_mises.txt";
-    if (PRINT_DEBUG_INFO) {
-      std::cout << "MisesComponents Size = " << RESdata.MisesComponents.size() << "\n";
-    }
-    out3.open(path_stress_mises, fstream::out);
-    out3 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
-    for (int i = 0; i < RESdata.MisesComponents.size(); i+=2) {
-      out3 << RESdata.MisesComponents[i] << " " << RESdata.MisesComponents[i + 1] << "\n";
-    }
-  }
+//  if (RESdata.withMises) {
+//    std::fstream out3;
+//    std::string path_stress_mises = FEMdata.GetResDir() + "/output/out_stress_" + FEMdata.GetName() + "_mises.txt";
+//    if (PRINT_DEBUG_INFO) {
+//      std::cout << "MisesComponents Size = " << RESdata.MisesComponents.size() << "\n";
+//    }
+//    out3.open(path_stress_mises, std::fstream::out);
+//    out3 << FEMdata.nodesCount << " " << FEMdata.elementsCount << "\n";
+//    for (int i = 0; i < RESdata.MisesComponents.size(); i+=2) {
+//      out3 << RESdata.MisesComponents[i] << " " << RESdata.MisesComponents[i + 1] << "\n";
+//    }
+//  }
 
   if (FEMdata.DIM == 2) {
     MakeVTKfile2D(output_vtk, FEMdata.nodes, FEMdata.elements,
-                FEMdata.displacements, RESdata.Stress, RESdata.sigma_mises, RESdata.Deformation, RESdata.epsilon_mises, RESdata.SmoothStress);
+                *FEMdata.displacements, RESdata.Stress, RESdata.sigma_mises, RESdata.Deformation, RESdata.epsilon_mises, RESdata.SmoothStress);
   } else if (FEMdata.DIM == 3) {
     MakeVTKfile3D(output_vtk, FEMdata.nodes, FEMdata.elements,
-                FEMdata.displacements, RESdata.Stress, RESdata.sigma_mises, RESdata.Deformation, RESdata.epsilon_mises);
+                *FEMdata.displacements, RESdata.Stress, RESdata.sigma_mises, RESdata.Deformation, RESdata.epsilon_mises);
   }
 }
+

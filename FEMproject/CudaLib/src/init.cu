@@ -1,4 +1,4 @@
-#include "init.h"
+#include <init.h>
 #include <stdio.h>
 
 #include <cuda_runtime.h>
@@ -15,6 +15,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/discard_iterator.h>
+#include <thrust/reduce.h>
 
 #include <iostream>
 #include <cuda.h>
@@ -22,11 +23,8 @@
 
 #include <math.h>
 #include <vector>
-#include "init.h"
 
-#include <thrust/reduce.h>
-
-#include "Linal2.h"
+#include <matrix_pack/matrix_pack.h>
 
 using namespace std;
 
@@ -206,7 +204,7 @@ float det3x3(float *c, int id) {
 }
 
 __device__
-float det3(float a0, float a1, float a2, float a3,
+float det33(float a0, float a1, float a2, float a3,
            float a4, float a5, float a6, float a7, float a8) {
   return a0 * a4 * a8 +
       a1 * a6 * a5 +
@@ -218,25 +216,15 @@ float det3(float a0, float a1, float a2, float a3,
 
 __device__
 float det4x4(float *c, int id) {
-  float v1 = det3(c[5 + 16 * id], c[6 + 16 * id], c[7 + 16 * id], c[9 + 16 * id],
+  float v1 = det33(c[5 + 16 * id], c[6 + 16 * id], c[7 + 16 * id], c[9 + 16 * id],
       c[10 + 16 * id], c[11 + 16 * id], c[13 + 16 * id], c[14 + 16 * id], c[15 + 16 * id]);
-  float v2 = det3(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[9 + 16 * id],
+  float v2 = det33(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[9 + 16 * id],
       c[10 + 16 * id], c[11 + 16 * id], c[13 + 16 * id], c[14 + 16 * id], c[15 + 16 * id]);
-  float v3 = det3(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[5 + 16 * id],
+  float v3 = det33(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[5 + 16 * id],
       c[6 + 16 * id], c[7 + 16 * id], c[13 + 16 * id], c[14 + 16 * id], c[15 + 16 * id]);
-  float v4 = det3(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[5 + 16 * id],
+  float v4 = det33(c[1 + 16 * id], c[2 + 16 * id], c[3 + 16 * id], c[5 + 16 * id],
       c[6 + 16 * id], c[7 + 16 * id], c[9 + 16 * id], c[10 + 16 * id], c[11 + 16 * id]);
   return v1 - v2 + v3 - v4;
-}
-
-bool Difference_MyArray_Thrust(MyArray a, thrust::device_vector<float> b) {
-    MyArray _b(a.get_size());
-    for (int i = 0; i < _b.get_size(); ++i) {
-        float tmp = b[i];
-        _b[i] = tmp;
-    }
-
-    return a.equalsToArray(_b, 1e-15f);
 }
 
 __device__
@@ -393,10 +381,10 @@ float det(float *c, int size) {
         c[0]*c[5]*c[7] -
         c[1]*c[3]*c[8];
   } else if (size == 4) {
-    float v1 = det3(c[5], c[6], c[7], c[9], c[10], c[11], c[13], c[14], c[15]);
-    float v2 = det3(c[1], c[2], c[3], c[9], c[10], c[11], c[13], c[14], c[15]);
-    float v3 = det3(c[1], c[2], c[3], c[5], c[6], c[7], c[13], c[14], c[15]);
-    float v4 = det3(c[1], c[2], c[3], c[5], c[6], c[7], c[9], c[10], c[11]);
+    float v1 = det33(c[5], c[6], c[7], c[9], c[10], c[11], c[13], c[14], c[15]);
+    float v2 = det33(c[1], c[2], c[3], c[9], c[10], c[11], c[13], c[14], c[15]);
+    float v3 = det33(c[1], c[2], c[3], c[5], c[6], c[7], c[13], c[14], c[15]);
+    float v4 = det33(c[1], c[2], c[3], c[5], c[6], c[7], c[9], c[10], c[11]);
     return v1 - v2 + v3 - v4;
   }
 }
@@ -1309,7 +1297,7 @@ void copyFlocals(FEMdataKeeper &FEMdata, gpuDataKeeper &gpuD) {
   gpuCopyHostToDevice(thrust::raw_pointer_cast(HostFlocal.data()), gpuD.get_Flocals(), 6 * FEMdata.elementsCount);
 }
 
-void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, MyArray> &loadVectors, int DIM, int elementsCount) {
+void copyLoads(gpuDataKeeper &gpuD, std::unordered_map <int, CPU_Matrix> &loadVectors, int DIM, int elementsCount) {
   CheckRunTime(__func__)
   thrust::host_vector<float> hLoad(6 * elementsCount, 0.0f);
 

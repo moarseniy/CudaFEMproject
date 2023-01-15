@@ -23,7 +23,17 @@ add_subdirectory(
   )
 
 
+option(WITH_CUDA "Use CUDA for calculations" ON)
+option(WITH_ONEAPI "Use ONEAPI for calculations" OFF)
+if (WITH_CUDA)
+    add_definitions(-DWITH_CUDA=true)
+    add_definitions(-DWITH_ONEAPI=false)
 
+
+elseif (WITH_ONEAPI)
+    add_definitions(-DWITH_CUDA=false)
+    add_definitions(-DWITH_ONEAPI=true)
+endif()
 
 find_package(CUDA QUIET REQUIRED)
 
@@ -63,14 +73,15 @@ if (TOOLS_TIMER)
     add_definitions(-DTOOLS_TIMER)
 endif()
 
-add_subdirectory(Linal2)
+#add_subdirectory(Linal2)
 add_subdirectory(fem)
 add_subdirectory(VTKfile)
 add_subdirectory(femfunc)
-add_subdirectory(Datakeeper)
+add_subdirectory(DataKeeper)
 add_subdirectory(Tools)
 add_subdirectory(CudaLib)
 add_subdirectory(femstruct)
 add_subdirectory(testing)
 add_subdirectory(matrix_pack)
-add_subdirectory(thirdparty/boost)
+#add_subdirectory(fem_utils)
+add_subdirectory(thirdparty/json)

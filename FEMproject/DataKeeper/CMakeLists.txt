@@ -9,4 +9,4 @@ add_library(
 target_include_directories(datakeeper PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 
-TARGET_LINK_LIBRARIES(datakeeper Linal2 Tools femstruct)
+TARGET_LINK_LIBRARIES(datakeeper matrix_pack cuda_matrix_pack Tools femstruct nlohmann_json::nlohmann_json)

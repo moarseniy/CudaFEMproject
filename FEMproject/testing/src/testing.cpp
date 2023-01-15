@@ -6,12 +6,15 @@
 #include <time.h>
 #include <unordered_map>
 
-#include "Tools.h"
-#include "Linal2.h"
-#include "femfunc.h"
-#include "VTKfile.h"
-#include "init.h"
-#include "datakeeper.h"
+#include <Tools.h>
+
+#include <matrix_pack/matrix_pack.h>
+#include <cuda_matrix_pack/cuda_matrix.h>
+
+#include <femfunc.h>
+#include <VTKfile.h>
+#include <init.h>
+#include <datakeeper.h>
 
 int main(int argc, char *argv[]) {
   if (argc == 1) {

@@ -10,11 +10,88 @@
 // https://stackoverflow.com/q/21667295
 #include <regex>
 
-#include "Linal2.h"
-#include "Tools.h"
-#include "femstruct.h"
+#include <matrix_pack/matrix_pack.h>
+#include <cuda_matrix_pack/cuda_matrix.h>
 
-using namespace std;
+#include <Tools.h>
+#include <femstruct.h>
+
+#include <fstream>
+
+struct MechanicalParams {
+  // common params
+  float poissonRatio, youngModulus, rho;
+  // damping params
+  float damping_alpha, damping_beta;
+  // time params
+  float dt, endtime;
+  // newmark's scheme params
+  float beta1, beta2;
+};
+
+struct dataPaths {
+  // CudaFemProject path
+  std::string proj_dir;
+  // prepared_meshes directory path
+  std::string prep_mesh_dir;
+
+  // working directory path
+  std::string work_dir;
+  // results directory path
+  std::string res_dir;
+  // vtk file results path
+  std::string output_vtk;
+
+  std::string getResDir() { return this->res_dir; }
+};
+
+
+class dataKeeper {
+public:
+  dataKeeper(std::string configPath, std::string taskName);
+
+  void ShowInfo();
+  std::string getTaskName() const { return this->taskName; }
+  dataPaths getDataPaths() const { return this->paths; }
+protected:
+  void parseJsonConfig(std::string jsonPath);
+  void parseCounters();
+  void allocateMemory();
+  void CreateMatrixD();
+  void ParseNodes();
+  void ParseElements();
+  void ParseConstraints();
+  void ParseLoads();
+  void ParseBoundaryEdges();
+  void parseFiles();
+
+  std::string taskName;
+  std::string taskType;
+
+  size_t DIM;
+  size_t nodesCount;
+  size_t elementsCount;
+  size_t boundaryEdgesCount;
+  size_t loadsCount;
+  size_t constraintsCount;
+
+  std::unordered_map <int, std::vector<int>> nodeAdjElem;
+
+  CPU_Matrix nodes;
+  CPU_Matrix elementsIds;
+  CPU_Matrix constraintsIds;
+  CPU_Matrix D;
+
+  std::vector<Element>        elements;
+  std::vector<Constraint>     constraints;
+  std::vector<Load>           loads;
+  std::vector<BoundaryEdge>	  boundary;  // stores only boundary edges with nonzero b.c.
+
+  MechanicalParams mechParams;
+  dataPaths paths;
+
+  std::fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
+};
 
 class FEMdataKeeper {
 public:
@@ -36,23 +113,24 @@ public:
   int loadsCount;
   int constraintsCount;
 
-  Matrix D;
-  std::vector<MyArray> nodes;
+  CPU_Matrix D;
+  std::vector<CPU_Matrix> nodes;
 
-  MyArray CudaIndicesToConstraints;
+  CPU_Matrix CudaIndicesToConstraints;
   int CudaIndicesToConstraintsCount;
+
+  CPU_Matrix elementsNodesIds;
+  CPU_Matrix all_B;
 
   std::vector<Element>        elements;
   std::vector<Constraint>     constraints;
   std::vector<Load>           loads;
   std::vector<BoundaryEdge>	  boundary;       // stores only boundary edges with nonzero b.c.
-  MyArray displacements;
-  MyArray pressure;
-
-  MyArray all_B;
+  Matrix *displacements;
+  Matrix *pressure;
 
 protected:
-  void Parse();
+  void parseFiles();
   void ParseNodes();
   void ParseElements();
   void ParseConstraints();
@@ -66,7 +144,11 @@ private:
   std::string prep_mesh_dir;
   std::string res_dir;
   float poissonRatio, youngModulus;
-  fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
+  std::fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
+
+};
+
+class CUDA_FEMdataKeeper {
 
 };
 
@@ -77,7 +159,7 @@ public:
     this->withStressAlongAxis = withStressAlongAxis;
     this->withMises = withMises;
     this->withSmooth = withSmooth;
-    SmoothStress.Resize(nodesCount); //take it out somewhere else!!
+//    SmoothStress.Resize(nodesCount); //take it out somewhere else!!
   }
   //void MakeResults();
 
@@ -85,15 +167,15 @@ public:
   bool withSmooth;
   bool withMises;
 
-  std::vector<MyArray> Deformation;
-  std::vector<MyArray> Stress;
+  std::vector<CPU_Matrix> Deformation;
+  std::vector<CPU_Matrix> Stress;
   std::vector<float> sigma_mises;
   std::vector<float> epsilon_mises;
   std::vector<float> StressComponents;
   std::vector<float> MisesComponents;
   std::vector<float> StressComponentsSmooth;
 
-  MyArray SmoothStress;
+  CPU_Matrix SmoothStress;
 
   //void CalculateStressAndDeformation();
 };

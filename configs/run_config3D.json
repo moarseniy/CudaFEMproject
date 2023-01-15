@@ -1,7 +1,7 @@
 {
 	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
 	"working_path": "C:/Users/mokin/Desktop/fem_stuff_test/",
-	"task": ["small_test"],
+	"task": ["large_bulk"],
 	"DIM": 3,
 	"youngModulus": 2e+7,
 	"poissonRatio": 0.25

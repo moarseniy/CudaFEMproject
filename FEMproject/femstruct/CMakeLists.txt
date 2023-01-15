@@ -9,4 +9,4 @@ add_library(
 target_include_directories(femstruct PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 
-TARGET_LINK_LIBRARIES(femstruct Linal2 Tools)
+TARGET_LINK_LIBRARIES(femstruct matrix_pack cuda_matrix_pack Tools)

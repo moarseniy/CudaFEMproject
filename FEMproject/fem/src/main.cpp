@@ -2,11 +2,10 @@
 #include <iostream>
 #include <string>
 
-#include "Tools.h"
-#include "femfunc.h"
-#include "datakeeper.h"
-#include "init.h"
-
+#include <Tools.h>
+#include <femfunc.h>
+#include <datakeeper.h>
+#include <init.h>
 
 int main(int argc, char *argv[]) {
   CheckRunTime(__func__)
@@ -16,8 +15,6 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  // ToDO: Don't send so many parameters into the command prompt
-  //       Think how to mage through a config file.
   std::string name = argv[1];
   int DIM = std::stoi(argv[2]);
   std::string project_directory = argv[3];
@@ -27,10 +24,6 @@ int main(int argc, char *argv[]) {
   float poissonRatio = std::stof(argv[6]), youngModulus = std::stof(argv[7]);
   float rho, damping_alpha, damping_beta, dt, endtime, beta1, beta2;
   bool PRINT_DEBUG_INFO = std::atoi(argv[8]);
-
-  bool withStressAlongAxis = STRESS_ALONG_AXIS;
-  bool withSmooth = SMOOTH;
-  bool withMises = MISES;
 
   bool isDYN = ( argc > 9 && std::atoi(argv[9]) );
   if (isDYN) {
@@ -43,15 +36,23 @@ int main(int argc, char *argv[]) {
     beta2 = std::stof(argv[16]);
   }
 
+  bool withStressAlongAxis = STRESS_ALONG_AXIS;
+  bool withSmooth = SMOOTH;
+  bool withMises = MISES;
+
+//  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json";
+//  std::string task_name = "test_rect_pcg";
+//  dataKeeper dk(config_path, task_name);
+
   FEMdataKeeper FEMdata(name, DIM, project_directory, prepared_meshes_directory, results_directory,
                         poissonRatio, youngModulus);
   FEMdata.ShowInfo();
 
-  if (isDYN) {
-    gpuCalculateFEM_DYN(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
-  } else {
+//  if (isDYN) {
+//    gpuCalculateFEM_DYN(FEMdata, rho, damping_alpha, damping_beta, endtime, dt, beta1, beta2, PRINT_DEBUG_INFO);
+//  } else {
     gpuCalculateFEM_EbE_vec(FEMdata, PRINT_DEBUG_INFO);
-  }
+//  }
 
   ResultsDataKeeper RESdata(withStressAlongAxis, withSmooth, withMises,
                             FEMdata.nodesCount);

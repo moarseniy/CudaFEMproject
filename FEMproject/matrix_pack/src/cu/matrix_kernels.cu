@@ -17,3 +17,7 @@ void multiplyByVec_Ker(const float *data, const size_t numMatr,
                        float *tgt) {
   kernelMultiply<<<(numMatr + 255) / 256, 256>>>(numMatr, data, vec_data, vecSize, tgt);
 }
+
+void copy_Ker(const float *src, float *dst, const size_t numElements) {
+
+}

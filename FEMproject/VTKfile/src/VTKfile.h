@@ -1,7 +1,9 @@
 #ifndef VTKfile_H
 #define VTKfile_H
 
-#include "Linal2.h"
+#include <matrix_pack/matrix_pack.h>
+#include <cuda_matrix_pack/cuda_matrix.h>
+
 #include "femfunc.h"
 #include "Tools.h"
 
@@ -11,22 +13,22 @@
 #include <string>
 
 void MakeVTKfile2D(std::string output_vtk,
-                   std::vector<MyArray> &nodes,
+                   std::vector<CPU_Matrix> &nodes,
                    std::vector<Element> &elements,
-                   MyArray &displacements,
-                   std::vector<MyArray> &Stress,
+                   Matrix &displacements,
+                   std::vector<CPU_Matrix> &Stress,
                    std::vector<float> &sigma_mises,
-                   std::vector<MyArray> &Deformation,
+                   std::vector<CPU_Matrix> &Deformation,
                    std::vector<float> &epsilon_mises,
-                   MyArray &SmoothStress);
+                   CPU_Matrix &SmoothStress);
 
 void MakeVTKfile3D(std::string output_vtk,
-                   std::vector<MyArray> &nodes,
+                   std::vector<CPU_Matrix> &nodes,
                    std::vector<Element> &elements,
-                   MyArray &displacements,
-                   std::vector<MyArray> &Stress,
+                   Matrix &displacements,
+                   std::vector<CPU_Matrix> &Stress,
                    std::vector<float> &sigma_mises,
-                   std::vector<MyArray> &Deformation,
+                   std::vector<CPU_Matrix> &Deformation,
                    std::vector<float> &epsilon_mises);
 
 #endif

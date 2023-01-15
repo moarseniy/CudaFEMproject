@@ -1,70 +1,113 @@
-#include "femstruct.h"
+#include <femstruct.h>
+
+ElementsData::ElementsData(size_t DIM, size_t elementsCount) {
+  B = Matrix::setMatrix(CPU, elementsCount, 3 * (DIM - 1) * 6 * (DIM - 1));
+}
+
+Element::Element(int dim) :
+  DIM(dim),
+  nodesIds(DIM + 1),
+  B(3 * (DIM - 1), 6 * (DIM - 1)),
+  Klocal(6 * (DIM - 1), 6 * (DIM - 1)),
+  Mlocal(6 * (DIM - 1), 6 * (DIM - 1)),
+  Clocal(6 * (DIM - 1), 6 * (DIM - 1)),
+  Flocal(6 * (DIM - 1), 1),
+  Alocal(6 * (DIM - 1), 6 * (DIM - 1)),
+  blocal(6 * (DIM - 1), 1),
+  res(6 * (DIM - 1), 1),
+  x_pred(3 * DIM, 1),
+  vel_pred(3 * DIM, 1),
+  vel(3 * DIM, 1),
+  m(3 * DIM, 1),
+  x(3 * DIM, 1),
+  r(3 * DIM, 1),
+  z(3 * DIM, 1),
+  s(3 * DIM, 1),
+  p(3 * DIM, 1),
+  u(3 * DIM, 1),
+  b(3 * DIM, 1) {}
+
+Element::~Element() {}
+
+float Element::calculateArea(CPU_Matrix &Coordinates) {
+  CPU_Matrix C(DIM + 1, DIM + 1);
+  for (size_t i = 0; i < C.get_numRows(); ++i) {
+    for (size_t j = 0; j < C.get_numCols(); ++j) {
+      C.get_data()[j + i * C.get_numCols()] =
+          j == 0 ? 1.f : Coordinates(j - 1, i);
+    }
+  }
+  return C.det();
+}
+
+void Element::calculateGradientMatrix(CPU_Matrix &Coordinates, float area) {
+  B(0, 0) = Coordinates(1, 1) - Coordinates(1, 2);
+  B(0, 1) = 0.f;
+  B(0, 2) = Coordinates(1, 2) - Coordinates(1, 0);
+  B(0, 3) = 0.f;
+  B(0, 4) = Coordinates(1, 0) - Coordinates(1, 1);
+  B(0, 5) = 0.f;
+
+  B(1, 0) = 0.f;
+  B(1, 1) = Coordinates(0, 2) - Coordinates(0, 1);
+  B(1, 2) = 0.f;
+  B(1, 3) = Coordinates(0, 0) - Coordinates(0, 2);
+  B(1, 4) = 0.f;
+  B(1, 5) = Coordinates(0, 1) - Coordinates(0, 0);
+
+  B(2, 0) = Coordinates(0, 2) - Coordinates(0, 1);
+  B(2, 1) = Coordinates(1, 1) - Coordinates(1, 2);
+  B(2, 2) = Coordinates(0, 0) - Coordinates(0, 2);
+  B(2, 3) = Coordinates(1, 2) - Coordinates(1, 0);
+  B(2, 4) = Coordinates(0, 1) - Coordinates(0, 0);
+  B(2, 5) = Coordinates(1, 0) - Coordinates(1, 1);
+
+  B.divideElementwise(std::abs(area));
+}
+
+void Element::calculateCoordinates(CPU_Matrix &Coordinates,
+                                   std::vector<Matrix> &nodes) {
+  for (size_t i = 0; i < Coordinates.get_numRows(); ++i) {
+    for (size_t j = 0; j < Coordinates.get_numCols(); ++j) {
+      Coordinates(i, j) = nodes[i][nodesIds[j]];
+    }
+  }
+}
 
 // CalculateStiffnessMatrix will be deprecated!
-
+/*
 // 2D only
-void Element::CalculateKlocal(Matrix& D, std::vector<MyArray> &nodes) {
-  MyArray x(3), y(3);
-  x[0] = nodes[0][nodesIds[0]]; x[1] = nodes[0][nodesIds[1]]; x[2] = nodes[0][nodesIds[2]];
-  y[0] = nodes[1][nodesIds[0]]; y[1] = nodes[1][nodesIds[1]]; y[2] = nodes[1][nodesIds[2]];
+void Element::CalculateKlocal(Matrix& D, std::vector<Matrix> &nodes) {
 
-  //    x.Show();
-  //    y.Show();
-  //    cout << endl;
-
-  //Matrix B(3, 6);
+  CPU_Matrix Coordinates(DIM, 3);
+  calculateCoordinates(Coordinates, nodes);
+  float area = calculateArea(Coordinates);
+  calculateGradientMatrix(Coordinates, area);
 
 
-  Matrix C(3, 3);
-  C(0, 0) = C(1, 0) = C(2, 0) = 1.0;
-  C(0, 1) = x[0]; C(1, 1) = x[1]; C(2, 1) = x[2];
-  C(0, 2) = y[0]; C(1, 2) = y[1]; C(2, 2) = y[2];
-
-  Matrix IC(3, 3);
-  //C.Show();
-  C.inverse(IC, 3, 0);
-  double determinant = C.det(3);
-
-  for (int i = 0; i < 3; i++) {
-    B(0, 2 * i + 0) = IC(1, i);
-    B(0, 2 * i + 1) = 0.0;
-    B(1, 2 * i + 0) = 0.0;
-    B(1, 2 * i + 1) = IC(2, i);
-    B(2, 2 * i + 0) = IC(2, i);
-    B(2, 2 * i + 1) = IC(1, i);
-  }
-  //    B(0, 0) = y[1] - y[2]; B(0, 2) = y[2] - y[0]; B(0, 4) = y[0] - y[1];
-  //    B(1, 1) = x[2] - x[1]; B(1, 3) = x[0] - x[2]; B(1, 5) = x[1] - x[0];
-
-  //    B(2, 0) = x[2] - x[1]; B(2, 1) = y[1] - y[2]; B(2, 2) = x[0] - x[2];
-  //    B(2, 3) = y[2] - y[0]; B(2, 4) = x[1] - x[0]; B(2, 5) = y[0] - y[1];
-
-  //    float s = std::abs(1.0 / (determinant));
-  //    B.scale(s);
-
-  Matrix temp1(6, 3);
-  Matrix temp_B(3, 6);
+//  Matrix temp1(6, 3);
+//  Matrix temp_B(3, 6);
 
 
   //K = B.transpose() * D * B * std::abs(C.det()) / 2.0;
 
-  temp_B = B;
+//  temp_B = B;
 
-  temp_B.transpose2();
+//  temp_B.transpose2();
 
-  temp1 = temp_B.Product(D);
+//  temp1 = temp_B.Product(D);
 
-  Klocal = temp1.Product(B);
+//  Klocal = temp1.Product(B);
 
-  Klocal.scale(std::abs(determinant) * 0.5);
+//  Klocal.scale(std::abs(determinant) * 0.5);
 }
 
 // 2D only
-void Element::CalculateMlocal(float rho, std::vector<MyArray> &nodes, bool lumped) {
+void Element::CalculateMlocal(float rho, std::vector<Matrix> &nodes, bool lumped) {
   // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 16.2.3
   float X0 = nodes[0][nodesIds[0]], X1 = nodes[0][nodesIds[1]], X2 = nodes[0][nodesIds[2]];
   float Y0 = nodes[1][nodesIds[0]], Y1 = nodes[1][nodesIds[1]], Y2 = nodes[1][nodesIds[2]];
-  float area = 0.5 * std::abs( (X0 - X2) * (Y1 - Y2) - (X1 - X2) * (Y0 - Y2) );
+  float area = 0.5f * std::abs( (X0 - X2) * (Y1 - Y2) - (X1 - X2) * (Y0 - Y2) );
   float mass = rho * area;
 
   if (lumped) {
@@ -75,13 +118,14 @@ void Element::CalculateMlocal(float rho, std::vector<MyArray> &nodes, bool lumpe
         Mlocal(0, 2) = Mlocal(1, 3) = Mlocal(0, 4) = Mlocal(1, 5) = Mlocal(2, 4) = Mlocal(3, 5) = mass / 12;
   }
 }
-
+*/
 void Element::CalculateClocal(float alpha, float beta) {
-  if (!(alpha == 0.0f && beta == 0.0f)) Clocal = Mlocal.weightedSum(Klocal, alpha, beta);
+//  Mlocal.addWeighted(Klocal, alpha, beta);
+//  Mlocal.copy(Clocal);
 }
 
 // 2D only
-void Element::CalculateFlocal2D(BoundaryEdge& edge, std::vector<MyArray> &nodes, float t) {
+void Element::CalculateFlocal2D(BoundaryEdge& edge, std::vector<CPU_Matrix> &nodes, float t) {
   //CheckRunTime(__func__)
   edge.update(t);
   float pressure_value = edge.value;
@@ -90,7 +134,7 @@ void Element::CalculateFlocal2D(BoundaryEdge& edge, std::vector<MyArray> &nodes,
   float edge_length = std::sqrt((X1 - X0) * (X1 - X0) + (Y1 - Y0) * (Y1 - Y0));
 
   // Grisha: Consider adding the third node when parsing to avoid this abundance of if-else statements
-  MyArray edge2elem_num(DIM + 1);
+  std::vector<int> edge2elem_num(DIM + 1);
   if (edge.node[0] == nodesIds[0]) {
     edge2elem_num[0] = 0;
   } else if (edge.node[0] == nodesIds[1]) {
@@ -125,29 +169,29 @@ void Element::CalculateFlocal2D(BoundaryEdge& edge, std::vector<MyArray> &nodes,
   if (edge.type[0] & Constraint::UX) {
     Flocal[2 * edge2elem_num[0] + 0] = 0.0f;
   } else {
-    Flocal[2 * edge2elem_num[0] + 0] = - 0.5 * pressure_value * edge_length * edge.normal[0];
+    Flocal[2 * edge2elem_num[0] + 0] = - 0.5f * pressure_value * edge_length * edge.normal[0];
   }
   if (edge.type[0] & Constraint::UY) {
     Flocal[2 * edge2elem_num[0] + 1] = 0.0f;
   } else {
-    Flocal[2 * edge2elem_num[0] + 1] = - 0.5 * pressure_value * edge_length * edge.normal[1];
+    Flocal[2 * edge2elem_num[0] + 1] = - 0.5f * pressure_value * edge_length * edge.normal[1];
   }
 
   if (edge.type[1] & Constraint::UX) {
     Flocal[2 * edge2elem_num[1] + 0] = 0.0f;
   } else {
-    Flocal[2 * edge2elem_num[1] + 0] = - 0.5 * pressure_value * edge_length * edge.normal[0];
+    Flocal[2 * edge2elem_num[1] + 0] = - 0.5f * pressure_value * edge_length * edge.normal[0];
   }
   if (edge.type[1] & Constraint::UY) {
     Flocal[2 * edge2elem_num[1] + 1] = 0.0f;
   } else {
-    Flocal[2 * edge2elem_num[1] + 1] = - 0.5 * pressure_value * edge_length * edge.normal[1];
+    Flocal[2 * edge2elem_num[1] + 1] = - 0.5f * pressure_value * edge_length * edge.normal[1];
   }
 
 }
 
 
-void Element::CalculateFlocal3D(BoundaryEdge& edge, std::vector<MyArray> &nodes, float t) {
+void Element::CalculateFlocal3D(BoundaryEdge& edge, std::vector<CPU_Matrix> &nodes, float t) {
   //CheckRunTime(__func__)
   edge.update(t);
   float pressure_value = edge.value;
@@ -162,7 +206,7 @@ void Element::CalculateFlocal3D(BoundaryEdge& edge, std::vector<MyArray> &nodes,
                             (a.x * b.y - a.y * b.x) * (a.x * b.y - a.y * b.x));
 
   // Grisha: Consider adding the third node when parsing to avoid this abundance of if-else statements
-  MyArray edge2elem_num(DIM + 1);
+  std::vector<int> edge2elem_num(DIM + 1);
   if (edge.node[0] == nodesIds[0]) {
     edge2elem_num[0] = 0;
   } else if (edge.node[0] == nodesIds[1]) {
