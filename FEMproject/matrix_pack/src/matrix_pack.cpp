@@ -50,6 +50,10 @@ void Matrix::copy(Matrix &tgt) {
   }
 }
 
+void Matrix::setDevice(DEVICE_NAME device) {
+  _device = device;
+}
+
 void Matrix::fillRandValues(float v1, float v2) {
   assert(_numElements > 0);
   for (size_t i = 0; i < _numRows; ++i) {
@@ -68,6 +72,10 @@ void Matrix::Show() {
     }
     std::cout << "\n";
   }
+}
+
+bool Matrix::isSameAs(Matrix &src) {
+  return _numRows == src.get_numRows() && _numCols == src.get_numCols();
 }
 
 Matrix* Matrix::setMatrix(DEVICE_NAME device, size_t numRows, size_t numCols) {
@@ -111,7 +119,7 @@ std::unique_ptr<Matrix> Matrix::subMatrix(size_t startRow, size_t endRow, size_t
     return std::unique_ptr<CUDA_Matrix>{new CUDA_Matrix(_data + startRow * _numCols + startCol, endRow - startRow, endCol - startCol)};
 #endif
   } else {
-    throw std::runtime_error("Matrix::setMatrix -> No type for device");
+    throw std::runtime_error("Matrix::subMatrix -> No type for device");
   }
 }
 
@@ -137,7 +145,7 @@ void Matrix::getRows(size_t startRow, size_t endRow, Matrix &target) const {
   subMatrix(startRow, endRow, 0, _numCols, target);
 }
 
-float& Matrix::operator [](int index) {
+float& Matrix::operator [](size_t index) {
   assert(_device == CPU);
   return _data[index];
 }

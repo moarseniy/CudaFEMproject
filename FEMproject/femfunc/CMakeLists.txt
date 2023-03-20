@@ -9,4 +9,4 @@ add_library(
 
 target_include_directories(femfunc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-TARGET_LINK_LIBRARIES(femfunc matrix_pack cuda_matrix_pack Tools datakeeper femstruct VTKfile cuda_lib)
+TARGET_LINK_LIBRARIES(femfunc matrix_pack cuda_matrix_pack Tools datakeeper femstruct VTKfile cuda_lib fem_utils cuda_fem_utils)

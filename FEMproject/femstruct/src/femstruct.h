@@ -75,16 +75,16 @@ struct BoundaryEdge : Edge, TimeDependentEntity {
   std::vector<Constraint::Type> type;
 };
 
-class ElementsData {
-public:
-  ElementsData(size_t DIM, size_t elementsCount);
-  void CalculateKlocal();
+//class ElementsData {
+//public:
+//  ElementsData(size_t DIM, size_t elementsCount);
+//  void CalculateKlocal();
 
-private:
-  Matrix *Flocals;
-  Matrix *Klocals;
-  Matrix *B;
-};
+//private:
+//  Matrix *Flocals;
+//  Matrix *Klocals;
+//  Matrix *B;
+//};
 
 struct Element {
   float calculateArea(CPU_Matrix &Coordinates);

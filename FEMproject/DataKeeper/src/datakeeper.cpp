@@ -13,7 +13,7 @@ void dataKeeper::parseJsonConfig(std::string configPath) {
   paths.work_dir = config.value("working_path", "undefined_path");
 
   paths.res_dir = fs::joinString(paths.work_dir, "/fem_results/" + std::to_string(DIM) + "D/" + taskName);
-  paths.prep_mesh_dir = fs::joinString(paths.proj_dir, "/prepared_meshes/" + std::to_string(DIM) + "D/" + taskName);
+  paths.prep_mesh_dir = fs::joinString(paths.work_dir, "/prepared_meshes/" + std::to_string(DIM) + "D/" + taskName);
   paths.output_vtk = fs::joinString(paths.res_dir, "/results.vtk");
 
   // required for static problems
@@ -48,28 +48,55 @@ void dataKeeper::parseCounters() {
 }
 
 void dataKeeper::allocateMemory() {
-  nodes.resize(nodesCount, DIM);
-  elementsIds.resize(elementsCount, DIM + 1);
-  D.resize(3 * (DIM - 1), 3 * (DIM - 1));
-  constraintsIds.resize(1, constraintsCount);
+//  nodes->resize(nodesCount, DIM);
+//  elementsIds.resize(elementsCount, DIM + 1);
+//  D.resize(3 * (DIM - 1), 3 * (DIM - 1));
+//  constraintsIds.resize(1, constraintsCount);
+  nodes = Matrix::setMatrix(CPU, nodesCount, DIM);
+  elementsIds = Matrix::setMatrix(CPU, elementsCount, DIM + 1);
+  D = Matrix::setMatrix(CPU, 3 * (DIM - 1), 3 * (DIM - 1));
 
-//  displacements = Matrix::setMatrix(CPU, DIM, nodesCount);
+//  constraintsIds = Matrix::setMatrix(CPU, nodesCount, DIM);
+//  constraintsIds->setTo(0);
+//  constraintsIds = Matrix::setMatrix(CPU);
+  constraintsTypes = Matrix::setVector(CPU, nodesCount);
+  constraintsTypes->setTo(0);
+
+  boundaryNormals = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM);
+  boundaryAdjElems = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
+  boundaryNodes = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM + 1);
+  boundaryPressureValues = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
+
+  displacements = Matrix::setMatrix(CPU, DIM, nodesCount);
 //  pressure = Matrix::setVector(CPU, boundaryEdgesCount);
 }
 
+dataKeeper::~dataKeeper() {
+  delete nodes;
+  delete elementsIds;
+  delete D;
+  delete constraintsIds;
+  delete constraintsTypes;
+
+  delete boundaryNormals;
+  delete boundaryAdjElems;
+  delete boundaryNodes;
+  delete boundaryPressureValues;
+  delete displacements;
+}
 void dataKeeper::CreateMatrixD() {
   float poissonRatio = mechParams.poissonRatio;
   float youngModulus = mechParams.youngModulus;
   if (DIM == 2) {
-    D(0, 0) = 1.0;          D(0, 1) = poissonRatio; D(0, 2) = 0.0;
-    D(1, 0) = poissonRatio;	D(1, 1) = 1.0;          D(1, 2) = 0.0;
-    D(2, 0) = 0.0;          D(2, 1) = 0.0;          D(2, 2) = (1.0 - poissonRatio) / 2.0;
-    D.scale(youngModulus / (1.0 - pow(poissonRatio, 2.0)));
+    (*D)(0, 0) = 1.0;          (*D)(0, 1) = poissonRatio; (*D)(0, 2) = 0.0;
+    (*D)(1, 0) = poissonRatio; (*D)(1, 1) = 1.0;          (*D)(1, 2) = 0.0;
+    (*D)(2, 0) = 0.0;          (*D)(2, 1) = 0.0;          (*D)(2, 2) = (1.0 - poissonRatio) / 2.0;
+    D->scale(youngModulus / (1.0 - pow(poissonRatio, 2.0)));
   } else if (DIM == 3) {
-    D(0, 0) = D(1, 1) = D(2, 2) = 1.0;
-    D(0, 1) = D(1, 0) = D(0, 2) = D(2, 0) = D(2, 1) = D(1, 2) = poissonRatio / (1.0 - poissonRatio);
-    D(3, 3) = D(4, 4) = D(5, 5) = (1.0 - 2.0 * poissonRatio) / (2.0 * (1.0 - poissonRatio));
-    D.scale((youngModulus * (1.0 - poissonRatio)) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio)));
+    (*D)(0, 0) = (*D)(1, 1) = (*D)(2, 2) = 1.0;
+    (*D)(0, 1) = (*D)(1, 0) = (*D)(0, 2) = (*D)(2, 0) = (*D)(2, 1) = (*D)(1, 2) = poissonRatio / (1.0 - poissonRatio);
+    (*D)(3, 3) = (*D)(4, 4) = (*D)(5, 5) = (1.0 - 2.0 * poissonRatio) / (2.0 * (1.0 - poissonRatio));
+    D->scale((youngModulus * (1.0 - poissonRatio)) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio)));
   } else {
     throw std::runtime_error("Error in FEMdataKeeper::CreateMatrixD()");
   }
@@ -77,15 +104,15 @@ void dataKeeper::CreateMatrixD() {
 
 void dataKeeper::ParseNodes() {
   CheckRunTime(__func__)
-  for (size_t i = 0; i < nodes.get_numElements(); ++i) {
-      nodes_file >> nodes[i];
+  for (size_t i = 0; i < nodes->get_numElements(); ++i) {
+      nodes_file >> (*nodes)[i];
   }
 }
 
 void dataKeeper::ParseElements() {
   CheckRunTime(__func__)
-  for (size_t i = 0; i < elementsIds.get_numElements(); ++i) {
-    this->elements_file >> elementsIds[i];
+  for (size_t i = 0; i < elementsIds->get_numElements(); ++i) {
+    this->elements_file >> (*elementsIds)[i];
   }
 
 // TODO: Jacobian calculation
@@ -98,22 +125,27 @@ void dataKeeper::ParseElements() {
 
 void dataKeeper::ParseConstraints() {
   CheckRunTime(__func__)
+
+  int node, type;
+  Constraint::Type constraintType;
+  std::vector<float> temp;
   for (size_t i = 0; i < constraintsCount; ++i) {
-    Constraint constraint;
-    int type;
-    constraints_file >> constraint.node >> type;
-    constraint.type = static_cast<Constraint::Type>(type);
-    if (type & Constraint::UX) {
-      constraintsIds[i] = DIM * constraint.node + 0;
+    constraints_file >> node >> type;
+    (*constraintsTypes)[node] = type;
+
+    constraintType = static_cast<Constraint::Type>(type);
+    if (constraintType & Constraint::UX) {
+      temp.push_back(DIM * node + 0);
     }
-    if (type & Constraint::UY) {
-      constraintsIds[i] = DIM * constraint.node + 1;
+    if (constraintType & Constraint::UY) {
+      temp.push_back(DIM * node + 1);
     }
-    if (type & Constraint::UZ) {
-      constraintsIds[i] = DIM * constraint.node + 2;
+    if (constraintType & Constraint::UZ) {
+      temp.push_back(DIM * node + 2);
     }
-    constraints.push_back(constraint);
   }
+
+  constraintsIds = new CPU_Matrix(temp.data(), temp.size(), 1);
 }
 
 void dataKeeper::ParseLoads() {
@@ -168,6 +200,29 @@ void dataKeeper::ParseLoads() {
 void dataKeeper::ParseBoundaryEdges() {
   CheckRunTime(__func__)
   for (size_t i = 0; i < boundaryEdgesCount; ++i) {
+    for (size_t j = 0; j < DIM + 1; ++j) {
+      stress_file >> (*boundaryNodes)(i, j);
+    }
+    stress_file >> (*boundaryAdjElems)[i];
+
+    std::vector<float> normal_vec(DIM);
+    float normal_length = 0.f;
+    for (size_t j = 0; j < DIM; ++j) {
+      stress_file >> normal_vec[j];
+//      std::cout << normal_vec[j] << " ";
+      normal_length += normal_vec[j] * normal_vec[j];
+    }
+    for (size_t j = 0; j < DIM; ++j) {
+      (*boundaryNormals)(i, j) = normal_vec[j] / std::sqrt(normal_length);
+    }
+
+    stress_file >> (*boundaryPressureValues)[i];
+  }
+//  boundaryNormals->Show();
+
+
+  /*
+  for (size_t i = 0; i < boundaryEdgesCount; ++i) {
     BoundaryEdge edge(DIM);
     std::vector<float> normal_vec(DIM);
 
@@ -203,8 +258,10 @@ void dataKeeper::ParseBoundaryEdges() {
       edge.normal[j] = normal_vec[j] / std::sqrt(normal_length);
     }
 
-    if (!(edge.ampl == 0.0f)) this->boundary.push_back(edge);
+    if (!(edge.ampl == 0.0f))
+      this->boundary.push_back(edge);
   }
+  */
 }
 
 void dataKeeper::parseFiles() {
@@ -384,6 +441,9 @@ void FEMdataKeeper::ParseBoundaryEdges() {
     for (int j = 0; j < this->DIM; ++j) {
       this->stress_file >> edge.node[j];
     }
+    int temp;
+    stress_file >> temp;
+
     this->stress_file >> edge.adj_elem1;
     for (int j = 0; j < this->DIM; ++j) {
       this->stress_file >> normal_vec[j];
@@ -412,7 +472,7 @@ void FEMdataKeeper::ParseBoundaryEdges() {
     for (int j = 0; j < DIM; ++j) {
       normal_length += normal_vec[j] * normal_vec[j];
     }
-    for (int j = 0; j < DIM; ++j) {
+    for (int j = 0; j < DIM; ++j) {      
       edge.normal[j] = normal_vec[j] / std::sqrt(normal_length);
     }
 

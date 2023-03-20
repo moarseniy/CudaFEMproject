@@ -49,10 +49,27 @@ struct dataPaths {
 class dataKeeper {
 public:
   dataKeeper(std::string configPath, std::string taskName);
+  ~dataKeeper();
 
   void ShowInfo();
-  std::string getTaskName() const { return this->taskName; }
-  dataPaths getDataPaths() const { return this->paths; }
+  std::string getTaskName() const { return taskName; }
+  dataPaths getDataPaths() const { return paths; }
+  size_t get_dim() const { return this->DIM; }
+  size_t get_elementsCount() const { return elementsCount; }
+  size_t get_nodesCount() const { return nodesCount; }
+  size_t get_boundaryEdgesCount() const { return boundaryEdgesCount; }
+
+  Matrix* get_nodes() const { return nodes; }
+  Matrix* get_elementsIds() const { return elementsIds; }
+  Matrix* get_constraintsIds() const { return constraintsIds; }
+  Matrix* get_constraintsTypes() const { return constraintsTypes; }
+  Matrix* get_boundaryAdjElems() const { return boundaryAdjElems; }
+  Matrix* get_boundaryNodes() const { return boundaryNodes; }
+  Matrix* get_boundaryNormals() const { return boundaryNormals; }
+  Matrix* get_boundaryPressures() const { return boundaryPressureValues; }
+  Matrix* get_D() const { return D; }
+  Matrix* get_displacements() const { return displacements; }
+
 protected:
   void parseJsonConfig(std::string jsonPath);
   void parseCounters();
@@ -74,18 +91,27 @@ protected:
   size_t boundaryEdgesCount;
   size_t loadsCount;
   size_t constraintsCount;
+  size_t constraintsIdsCounts;
 
   std::unordered_map <int, std::vector<int>> nodeAdjElem;
 
-  CPU_Matrix nodes;
-  CPU_Matrix elementsIds;
-  CPU_Matrix constraintsIds;
-  CPU_Matrix D;
+  Matrix *nodes;
+  Matrix *elementsIds;
+  Matrix *constraintsIds;
+  Matrix *constraintsTypes;
+  Matrix *D;
+
+  Matrix *boundaryNormals;
+  Matrix *boundaryAdjElems;
+  Matrix *boundaryNodes;
+  Matrix *boundaryPressureValues;
 
   std::vector<Element>        elements;
   std::vector<Constraint>     constraints;
   std::vector<Load>           loads;
   std::vector<BoundaryEdge>	  boundary;  // stores only boundary edges with nonzero b.c.
+
+  Matrix *displacements;
 
   MechanicalParams mechParams;
   dataPaths paths;

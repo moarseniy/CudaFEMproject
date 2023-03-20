@@ -21,20 +21,43 @@ CPU_Matrix::~CPU_Matrix() {
     delete[] _data;
 }
 
-void CPU_Matrix::product(Matrix &src, Matrix &tgt) {
-  assert(_numElements > 0);
+void CPU_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, bool b_tr) {
+  assert(_numElements > 0 && src.get_numElements() > 0);
+  if (a_tr)
+    this->transpose();
+  if (b_tr)
+    src.transpose();
+
+  float a, b;
   if (_numCols == src.get_numRows()) {
     for (size_t i = 0; i < _numRows; ++i) {
       for (size_t j = 0; j < src.get_numCols(); ++j) {
         tgt.get_data()[j + tgt.get_numCols() * i] = 0.f;
         for (size_t k = 0; k < _numCols; ++k) {
-          tgt.get_data()[j + tgt.get_numCols() * i] += _data[k + i * _numCols] * src.get_data()[j + src.get_numCols() * k];
+          a = a_tr ? _data[i + k * _numRows] :
+                     _data[k + i * _numCols];
+          b = b_tr ? src.get_data()[j + src.get_numCols() * k] :
+                     src.get_data()[j + src.get_numCols() * k]; // TODO: FIX IT!
+          tgt.get_data()[j + tgt.get_numCols() * i] += a * b;
         }
       }
     }
   } else {
-    throw std::runtime_error("product: numCols1 != numRows2\n");
+    throw std::runtime_error("CPU_Matrix::product: numCols1 != numRows2\n");
   }
+
+  if (a_tr)
+    this->transpose();
+  if (b_tr)
+    src.transpose();
+}
+
+void CPU_Matrix::product(Matrix &src, bool a_tr, bool b_tr) {
+  product(src, *this, a_tr, b_tr);
+}
+
+void CPU_Matrix::transpose() {
+  std::swap(_numRows, _numCols);
 }
 
 float CPU_Matrix::dotProduct(Matrix &vec) {
@@ -54,6 +77,13 @@ void CPU_Matrix::divideElementwise(float value) {
   }
 }
 
+void CPU_Matrix::divideElementwise(Matrix &vec, Matrix &tgt) {
+  assert(_numElements > 0 && _numElements == vec.get_numElements());
+  for (size_t i = 0; i < _numElements; ++i) {
+     tgt.get_data()[i] = _data[i] / vec.get_data()[i];
+  }
+}
+
 void CPU_Matrix::divideElementwise(Matrix &vec) {
   assert(_numElements > 0 && _numElements == vec.get_numElements());
   for (size_t i = 0; i < _numElements; ++i) {
@@ -66,6 +96,10 @@ void CPU_Matrix::scale(float value) {
   for (size_t i = 0; i < _numElements; ++i) {
      _data[i] *= value;
   }
+}
+
+void CPU_Matrix::resize(Matrix &like) {
+  this->resize(like.get_numRows(), like.get_numCols());
 }
 
 void CPU_Matrix::resize(size_t numRows, size_t numCols) {
@@ -97,6 +131,7 @@ void CPU_Matrix::sort_by_key(Matrix &keys) {
 
   size_t i = 0;
   for (auto &el : multimap_data) {
+    keys.get_data()[i] = el.first;
     _data[i] = el.second;
     ++i;
   }
@@ -120,6 +155,13 @@ void CPU_Matrix::reduce_by_key(Matrix &keys, Matrix &target) {
         [](float a, std::pair<float, float> b) { return a + b.second; });
     ++i;
   }
+}
+
+void CPU_Matrix::sort(Matrix &target) {
+  assert(_numElements > 0);
+  Matrix::copy(target);
+  std::stable_sort(target.get_data(),
+                   target.get_data() + _numElements);
 }
 
 void CPU_Matrix::sort() {
@@ -180,15 +222,16 @@ void CPU_Matrix::setTo(float value) {
 void CPU_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {
   assert(_numElements > 0);
 
-  size_t subVec_size = _numCols;
-  size_t numSubMatr = vec.get_numElements() / subVec_size;
-//  assert(_numCols == vec_size);
+  size_t numSubMatr = _numElements / _numCols;
+  size_t subVec_size = vec.get_numElements() / numSubMatr;
+  //  assert(_numCols == vec_size);
 
   for (size_t index = 0; index < numSubMatr; ++index) {
     for (size_t j = 0; j < subVec_size; ++j) {
       target.get_data()[j + index * subVec_size] = 0.f;
       for (size_t k = 0; k < subVec_size; ++k) {
-        target.get_data()[j + index * subVec_size] += _data[k + j * subVec_size + index * subVec_size * subVec_size] *
+        target.get_data()[j + index * subVec_size] +=
+           _data[k + j * subVec_size + index * subVec_size * subVec_size] *
            vec.get_data()[k + index * subVec_size];
       }
     }
@@ -205,8 +248,14 @@ void CPU_Matrix::addWeighted(Matrix &b, float alpha, float beta) {
 }
 
 void CPU_Matrix::copy(Matrix &src, Matrix &tgt) {
-  assert(src.get_numElements() > 0 && src.get_numElements() == tgt.get_numElements());
+  assert(src.get_numElements() > 0);
+  if (!src.isSameAs(tgt))
+    tgt.resize(src);
   std::memcpy(tgt.get_data(),
               src.get_data(),
               src.get_numElements() * sizeof(float));
 }
+
+//float& CPU_Matrix::operator [](size_t index) {
+//  return _data[index];
+//}

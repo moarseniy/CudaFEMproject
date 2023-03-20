@@ -1,6 +1,6 @@
 {
-	"CudaFEMproject_path": "C:/Users/mexika/Documents/Qt_code/CudaFEMproject/",
-	"working_path": "C:/Users/mexika/Desktop/fem_stuff/",
+	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
+	"working_path": "C:/Users/mokin/Desktop/fem_stuff_test/",
 	"task": ["quasi1Dwave_taller"],
 	"task_type": "dynamics",
 	"DIM": 2,

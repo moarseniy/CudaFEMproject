@@ -409,6 +409,128 @@ void ApplyConstraints_EbE(FEMdataKeeper &FEMdata) {
   FEMdata.CudaIndicesToConstraintsCount = indicesToConstraint.size();
 }
 
+void gpuCalculateFEM_EbE_vec2(dataKeeper &FEMdata, DEVICE_NAME deviceType, bool PRINT_DEBUG_INFO) {
+  CheckRunTime(__func__)
+  ElementsData *elemsData = ElementsData::setElementsData(deviceType, FEMdata);
+  elemsData->genMask();
+  elemsData->calculateKlocals();
+  elemsData->calculateFlocals();
+
+  gpuPCG_EbE_vec2(FEMdata, *elemsData, true, 1e-4f, PRINT_DEBUG_INFO);
+}
+
+void gpuPCG_EbE_vec2(dataKeeper &FEMdata, ElementsData &elemsData, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO) {
+  CheckRunTime(__func__)
+  size_t n_elems  = FEMdata.get_elementsCount();
+  size_t DIM = FEMdata.get_dim();
+  size_t n_gl_dofs = FEMdata.get_nodesCount() * DIM;
+  size_t grid_size = 6 * (DIM - 1) * n_elems;
+
+  // (0a)
+  elemsData.get_Flocals()->copy(*elemsData.get_r());
+//  elemsData.get_Flocals()->Show();
+  // (0b)
+
+  CPU_Matrix tmp;
+  Matrix *r = Matrix::setMatrix(CUDA, elemsData.get_r()->get_numRows(), elemsData.get_r()->get_numCols() );
+  Matrix *m = Matrix::setMatrix(CUDA, elemsData.get_m()->get_numRows(), elemsData.get_m()->get_numCols());
+  Matrix *res = Matrix::setMatrix(CUDA, elemsData.get_m()->get_numRows(), elemsData.get_m()->get_numCols());
+
+  elemsData.reductionWithMaskAndTransform(*elemsData.get_diag(), *elemsData.get_m(), n_gl_dofs);
+  // (0c)
+  elemsData.get_r()->divideElementwise(*elemsData.get_m(), *elemsData.get_z());
+  // (0d)
+
+  gpuDivideByElementwise(r->get_data(), m->get_data(), res->get_data(),  grid_size);
+//  elemsData.get_Klocals()->Show();
+
+//  elemsData.get_r()->Show();
+//  std::cout << "\n";
+//  elemsData.get_m()->Show();
+//  std::cout << "\n";
+//  elemsData.get_z()->Show();
+//  std::cout << "\n";
+//  res->copy(tmp);
+//  tmp.Show();
+
+  elemsData.reductionWithMaskAndTransform(*elemsData.get_z(), *elemsData.get_s(), n_gl_dofs);
+
+
+  float gamma0 = elemsData.get_r()->dotProduct(*elemsData.get_s());
+  float gamma = gamma0;
+  float gamma_new = 0.0f;
+
+
+  // (0e)
+  elemsData.get_s()->copy(*elemsData.get_p());
+
+  if (PRINT_DEBUG_INFO) {
+    //std::cout.precision(16);
+    std::cout << "gamma0\t\t\t= " << gamma0 << std::endl << std::endl;
+  }
+
+  int n_iter = 0;
+  do {
+    ++n_iter;
+    if (PRINT_DEBUG_INFO) {
+      std::cout << "Iteration #" << n_iter << std::endl;
+    }
+
+    // (1a)
+    elemsData.get_Klocals()->multiplyByVec(*elemsData.get_p(), *elemsData.get_u());
+    // (1b)
+    float sumElem = elemsData.get_p()->dotProduct(*elemsData.get_u());
+    // (1c,d)
+    float alpha = gamma / sumElem;
+    // (2a)
+    elemsData.get_x()->addWeighted(*elemsData.get_p(), 1.f, alpha);
+    // (2b)
+    elemsData.get_r()->addWeighted(*elemsData.get_u(), 1.f, -1.f * alpha);
+    // (3)
+    elemsData.get_r()->divideElementwise(*elemsData.get_m(), *elemsData.get_z());
+    // (4)
+    elemsData.reductionWithMaskAndTransform(*elemsData.get_z(), *elemsData.get_s(), n_gl_dofs);
+    gamma_new = elemsData.get_r()->dotProduct(*elemsData.get_s());
+
+    if (PRINT_DEBUG_INFO) {
+      // Verbose
+      // -----------------------------------------------------------------------
+      std::cout << "alpha (gamma / sumElem)\t= " << alpha << std::endl;
+      std::cout << "alpha numerator (gamma)\t= " << gamma << std::endl;
+      std::cout << "alpha denominator\t= " << sumElem << std::endl;
+      // -----------------------------------------------------------------------
+    }
+    // (5)
+    if (gamma_new < eps * gamma0)
+      break;
+
+    // (6)
+    elemsData.get_p()->addWeighted(*elemsData.get_s(), gamma_new / gamma, 1.f);
+
+    if (PRINT_DEBUG_INFO) {
+      // Verbose
+      // -----------------------------------------------------------------------
+      std::cout << "beta\t\t\t= " << gamma_new / gamma << std::endl;
+      std::cout << "gamma_new\t\t= " << gamma_new << std::endl;
+      std::cout << std::endl;
+      // -----------------------------------------------------------------------
+    }
+    gamma = gamma_new;
+  } while (1);
+
+  if (doAssemblyRes) {
+    Matrix *temp = Matrix::setVector(elemsData.get_device(), n_gl_dofs);
+    elemsData.reductionWithMask(*elemsData.get_x(), *temp);
+    temp->divideElementwise(*elemsData.get_adjElements(), *temp);
+    temp->copy(*FEMdata.get_displacements());
+    delete temp;
+  } else {
+    elemsData.get_x()->copy(*FEMdata.get_displacements());
+  }
+  FEMdata.get_displacements()->Show();
+
+}
+
 void gpuCalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
   CheckRunTime(__func__)
 

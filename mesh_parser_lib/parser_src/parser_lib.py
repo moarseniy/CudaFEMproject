@@ -324,6 +324,7 @@ class FileParser:
                             pressure = float(forces[force_num])
                             line = str(nodes_num[load[3]]) + ' ' + \
                                    str(nodes_num[load[4]]) + ' ' + \
+                                   str(nodes_num[load[8]]) + ' ' + \
                                    str(load[9]) + ' ' + str(xn) + ' ' + str(yn) + ' ' + str(pressure) + '\n'
                             #line += str(pressure * xn1) + ' ' + str(pressure * yn1) + '\n'
                             #line += str(list(nodes.keys()).index(load[4])) + ' '

@@ -25,7 +25,6 @@
 #include <matrix_pack/matrix_pack.h>
 #include "cuda_matrix_pack/matrix_kernels.h"
 
-class Matrix;
 class CUDA_Matrix : public Matrix {
 private:
   void gpuClearData();
@@ -38,17 +37,23 @@ public:
   ~CUDA_Matrix();
 
 //  void addWeighted();
-  void product(Matrix &src, Matrix &tgt) override;
+  void product(Matrix &src, Matrix &tgt, bool a_tr = false, bool b_tr = false) override;
+  void product(Matrix &src, bool a_tr = false, bool b_tr = false) override;
 
+  void transpose() override;
   void add(Matrix &src) override;
 
-  void copy(Matrix &target);
+//  void copy(Matrix &target);
   void resize(size_t numRows, size_t numCols) override;
+  void resize(Matrix &like) override;
+
+  void divideElementwise(Matrix &src, Matrix &target) override;
   void divideElementwise(Matrix &src) override;
   void divideElementwise(float value) override;
   void scale(float value) override;
   float dotProduct(Matrix &src) override;
   void sort() override;
+  void sort(Matrix &target) override;
   void sort_by_key(Matrix &keys) override;
   void reduce_by_key(Matrix &keys, Matrix &target) override;
   float det() override;

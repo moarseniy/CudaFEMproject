@@ -25,9 +25,9 @@ def run_parser(proj_dir, prepared_mesh_dir, raw_mesh_dir, filename, dim):
 
 if __name__ == '__main__':
     print('Write task dimension:')
-    dim = 3#int(input())
+    dim = 2#int(input())
     print('Write filename to parse mesh from:')
-    filename = 'small_test'#str(input())
+    filename = 'test_rect_pcg'#str(input())
 
     # UPDATE IT!!!
     raw_mesh_dir = 'C:/Users/mokin/Desktop/git/CudaFEMproject/raw_meshes/' + str(dim) + \

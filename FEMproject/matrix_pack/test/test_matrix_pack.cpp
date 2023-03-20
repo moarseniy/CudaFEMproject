@@ -80,6 +80,34 @@ TEST(MatrixFuncs, copy) {
   m1.Show();
 }
 
+TEST(MatrixFuncs, sort) {
+  std::cout << "SORT\n";
+
+  CPU_Matrix m1(4, 4);
+  m1.fillRandValues(0.f, 1.f);
+  m1.Show();
+
+  CPU_Matrix m2;
+  m1.sort(m2);
+  m2.Show();
+}
+
+TEST(MatrixFuncs, mult) {
+  std::cout << "product\n";
+
+  CPU_Matrix m1(2, 3);
+  m1.fillRandValues(0.f, 1.f);
+  m1.Show();
+
+  CPU_Matrix m2(2, 2);
+  m2.fillRandValues(0.f, 1.f);
+  m2.Show();
+
+  CPU_Matrix m3(3, 2);
+  m1.product(m2, m3, true);
+  m3.Show();
+}
+
 int main(int argc, char *argv[]) {
   CPU_Matrix A(7, 10);
 

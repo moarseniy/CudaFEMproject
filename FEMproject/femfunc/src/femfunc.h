@@ -3,6 +3,10 @@
 
 #include <matrix_pack/matrix_pack.h>
 #include <cuda_matrix_pack/cuda_matrix.h>
+
+#include <fem_utils/fem_utils.h>
+#include <cuda_fem_utils/cuda_fem_utils.h>
+
 #include <Tools.h>
 #include <datakeeper.h>
 #include <femstruct.h>
@@ -20,6 +24,9 @@ void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEM
 void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO);
 
 void gpuCalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
+
+void gpuCalculateFEM_EbE_vec2(dataKeeper &FEMdata, DEVICE_NAME deviceType, bool PRINT_DEBUG_INFO);
+void gpuPCG_EbE_vec2(dataKeeper &FEMdata, ElementsData &elemsData, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);
 
 void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, Matrix &res, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);
 void gpuPCG_EbE_vec_DYN(FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);

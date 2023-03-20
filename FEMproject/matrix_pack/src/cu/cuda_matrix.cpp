@@ -41,6 +41,10 @@ float CUDA_Matrix::dotProduct(Matrix &vec) {
                                vec.get_data(), 0.f);
 }
 
+void CUDA_Matrix::divideElementwise(Matrix &vec, Matrix &tgt) {
+  assert(false);
+}
+
 void CUDA_Matrix::divideElementwise(Matrix &vec) {
   assert(_numElements > 0);
   thrust::transform(_data,
@@ -51,7 +55,9 @@ void CUDA_Matrix::divideElementwise(Matrix &vec) {
 
 
 void CUDA_Matrix::copy(Matrix &src, Matrix &tgt) {
-  assert(src.get_numElements() > 0 && src.get_numElements() == tgt.get_numElements());
+  assert(src.get_numElements() > 0);
+  if (!src.isSameAs(tgt))
+    tgt.resize(src);
 
   if (src.get_device() == CUDA && tgt.get_device() == CUDA) {
     cudaMemcpy(tgt.get_data(), src.get_data(), src.get_numElements() * sizeof(float), cudaMemcpyDeviceToDevice);
@@ -81,7 +87,13 @@ void CUDA_Matrix::reduce_by_key(Matrix &keys, Matrix &target) {
 
 void CUDA_Matrix::sort() {
   assert(_numElements > 0);
-  thrust::sort(_data, _data + _numElements);
+  thrust::stable_sort(_data, _data + _numElements);
+}
+
+void CUDA_Matrix::sort(Matrix &target) {
+  assert(_numElements > 0);
+  thrust::stable_sort(_data, _data + _numElements);
+  Matrix::copy(target);
 }
 
 void CUDA_Matrix::setTo(float value) {
@@ -118,8 +130,20 @@ float CUDA_Matrix::det() {
   return 0.f;
 }
 
-void CUDA_Matrix::product(Matrix &src, Matrix &tgt) {
+void CUDA_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, bool b_tr) {
   assert(false);
+}
+
+void CUDA_Matrix::transpose() {
+  std::swap(_numRows, _numCols);
+}
+
+void CUDA_Matrix::product(Matrix &src, bool a_tr, bool b_tr) {
+  product(src, *this);
+}
+
+void CUDA_Matrix::resize(Matrix &like) {
+  this->resize(like.get_numRows(), like.get_numCols());
 }
 
 void CUDA_Matrix::resize(size_t numRows, size_t numCols) {

@@ -1,9 +1,5 @@
 #include <femstruct.h>
 
-ElementsData::ElementsData(size_t DIM, size_t elementsCount) {
-  B = Matrix::setMatrix(CPU, elementsCount, 3 * (DIM - 1) * 6 * (DIM - 1));
-}
-
 Element::Element(int dim) :
   DIM(dim),
   nodesIds(DIM + 1),
@@ -34,7 +30,7 @@ float Element::calculateArea(CPU_Matrix &Coordinates) {
   for (size_t i = 0; i < C.get_numRows(); ++i) {
     for (size_t j = 0; j < C.get_numCols(); ++j) {
       C.get_data()[j + i * C.get_numCols()] =
-          j == 0 ? 1.f : Coordinates(j - 1, i);
+          j == 0 ? 1.f : Coordinates(j - 1, i); // 2 x 3
     }
   }
   return C.det();
