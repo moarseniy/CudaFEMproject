@@ -108,17 +108,6 @@ gpuDataKeeper_DYN_DAMP::gpuDataKeeper_DYN_DAMP(int DIM, int elementsCount, int n
 
 gpuDataKeeper_DYN_DAMP::~gpuDataKeeper_DYN_DAMP() {}
 
-struct divideElementwise {
-  float *gpu_data;
-  float value;
-  divideElementwise(float *s, float v){gpu_data=s; value=v;}
-  __host__ __device__
-  void operator()(int i)
-  {
-    gpu_data[i] /= value;
-  }
-};
-
 __global__ void kernelAddWeighted(int n, float *a, float *b, float v1, float v2) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n)
@@ -608,6 +597,8 @@ __global__ void kernelCalculateKlocal2D(int elementsCount, float *elements, floa
         for (int k = 0; k < 3; k++) {
           temp[j + i * 3 + 18 * index] += B_T[k + i * 3 + 18 * index] * D[j + k * 3];
         }
+//        if (index == 1)
+//          printf("%f ", temp[j + i * 3 + 18 * index]);
       }
     }
 //    matrixMultiply(B_T, 6, 3, 3, D, temp, index);

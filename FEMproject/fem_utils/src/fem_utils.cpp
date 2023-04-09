@@ -4,9 +4,10 @@
 #include <cuda_fem_utils/cuda_fem_utils.h>
 #endif
 
-ElementsData::ElementsData(size_t DIM, size_t elementsCount, size_t boundaryEdgesCount, DEVICE_NAME device) :
+ElementsData::ElementsData(size_t DIM, size_t elementsCount, size_t nodesCount, size_t boundaryEdgesCount, DEVICE_NAME device) :
   _DIM(DIM),
   _elementsCount(elementsCount),
+  _nodesCount(nodesCount),
   _boundaryEdgesCount(boundaryEdgesCount),
   _device(device) {}
 

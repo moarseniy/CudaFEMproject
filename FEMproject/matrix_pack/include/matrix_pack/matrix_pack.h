@@ -10,10 +10,18 @@
 #include <map>
 #include <set>
 
+#include <Tools.h>
+
 enum DEVICE_NAME {
   CPU,
   CUDA,
   ONEAPI
+};
+
+enum Axis {
+  X,
+  Y,
+  ALL
 };
 
 class Matrix {
@@ -24,15 +32,18 @@ public:
   void setDevice(DEVICE_NAME device);
 
 //  virtual void addWeighted() = 0;
-  virtual void product(Matrix &src, Matrix &tgt, bool a_tr = false, bool b_tr = false) = 0;
-  virtual void product(Matrix &src, bool a_tr = false, bool b_tr = false) = 0;
-
+  virtual void product(Matrix &src, Matrix &tgt, bool a_tr = false, float scaleA = 1.f,
+                                                 bool b_tr = false, float scaleB = 1.f) = 0;
+  virtual void bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
+                   const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha = 1.f) = 0;
   virtual void transpose() = 0;
 
+  virtual void divideElementwise(Matrix &v, Axis ax) = 0;
   virtual void divideElementwise(Matrix &src, Matrix &tgt) = 0;
   virtual void divideElementwise(Matrix &src) = 0;
   virtual void divideElementwise(float value) = 0;
   virtual void scale(float value) = 0;
+  virtual void scale(Matrix &v, Axis ax = ALL) = 0;
   virtual float dotProduct(Matrix &src) = 0;
   virtual void sort(Matrix &target) = 0;
   virtual void sort() = 0;
@@ -47,9 +58,10 @@ public:
 
   virtual void add(Matrix &src) = 0;
 
-  void copy(Matrix &tgt);
+  void copy(Matrix &tgt) const;
   virtual void resize(size_t numRows, size_t numCols) = 0;
-  virtual void resize(Matrix &like) = 0;
+  virtual void resize(const Matrix &like) = 0;
+  virtual void flatten() = 0;
 
   static Matrix* setMatrix(DEVICE_NAME device, size_t numRows, size_t numCols);
   static Matrix* setMatrix(DEVICE_NAME device);
@@ -71,7 +83,7 @@ public:
   void getRow(size_t numRow, Matrix &target) const;
 
   void Show();
-  bool isSameAs(Matrix &src);
+  bool isSameAs(Matrix &src) const;
 
   DEVICE_NAME get_device() const;
   size_t get_numRows() const;
@@ -101,29 +113,36 @@ public:
   CPU_Matrix();
   CPU_Matrix(size_t numRows, size_t numCols);
   CPU_Matrix(float *data, size_t numRows, size_t numCols, bool hasData = false);
-  CPU_Matrix(const CPU_Matrix &like);
+  CPU_Matrix(const CPU_Matrix &like, bool copy = false);
   ~CPU_Matrix();
 
   // A =
 //  void addWeighted();
-  void product(Matrix &src, Matrix &tgt, bool a_tr = false, bool b_tr = false) override;
-  void product(Matrix &src, bool a_tr = false, bool b_tr = false) override;
+  void product(Matrix &src, Matrix &tgt, bool a_tr = false, float scaleA = 1.f,
+                                         bool b_tr = false, float scaleB = 1.f) override;
+
+  void bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
+           const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha = 1.f) override;
+
   void transpose() override;
 
   void addWeighted(Matrix &b, float alpha, float beta) override;
 
   void add(Matrix &src) override;
 
-//  void copy(Matrix &tgt);
+  void copy(Matrix &tgt);
   void resize(size_t numRows, size_t numCols) override;
-  void resize(Matrix &like) override;
+  void resize(const Matrix &like) override;
+  void flatten() override;
 
-  static void copy(Matrix &src, Matrix &tgt);
+  static void copy(const Matrix &src, Matrix &tgt);
 
+  void divideElementwise(Matrix &v, Axis ax) override;
   void divideElementwise(Matrix &src, Matrix &target) override;
   void divideElementwise(Matrix &src) override;
   void divideElementwise(float value) override;
   void scale(float value) override;
+  void scale(Matrix &v, Axis ax = ALL) override;
   float dotProduct(Matrix &src) override;
   void sort() override;
   void sort(Matrix &target) override;

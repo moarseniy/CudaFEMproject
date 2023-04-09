@@ -4,53 +4,43 @@
 #include <iostream>
 #include <cassert>
 
-//#include <cublas.h>
-#include <cuda.h>
-#include <curand.h>
-#include <curand_kernel.h>
-
-#include <cuda_runtime.h>
-#include <cuda.h>
-
-#include <thrust/transform.h>
-#include <thrust/reduce.h>
-#include <thrust/sort.h>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <thrust/execution_policy.h>
-#include <thrust/iterator/discard_iterator.h>
-#include <thrust/iterator/constant_iterator.h>
-#include <thrust/inner_product.h>
-
 #include <matrix_pack/matrix_pack.h>
 #include "cuda_matrix_pack/matrix_kernels.h"
 
 class CUDA_Matrix : public Matrix {
 private:
-  void gpuClearData();
-  void gpuInitData();
+  static cublasHandle_t _handle;
+
+  void _gpuClearData();
+  void _gpuInitData();
 public:
+  static void _initCUDA();
+
   CUDA_Matrix();
   CUDA_Matrix(size_t numRows, size_t numCols);
   CUDA_Matrix(float *data, size_t numRows, size_t numCols, bool hasData = false);
-  CUDA_Matrix(const CUDA_Matrix &like);
+  CUDA_Matrix(const CUDA_Matrix &like, bool copy = false); //TODO: make it const
   ~CUDA_Matrix();
 
 //  void addWeighted();
-  void product(Matrix &src, Matrix &tgt, bool a_tr = false, bool b_tr = false) override;
-  void product(Matrix &src, bool a_tr = false, bool b_tr = false) override;
-
+  void product(Matrix &src, Matrix &tgt, bool a_tr = false, float scaleA = 1.f,
+                                         bool b_tr = false, float scaleB = 1.f) override;
+  void bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
+           const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha = 1.f) override;
   void transpose() override;
   void add(Matrix &src) override;
 
-//  void copy(Matrix &target);
+  void copy(Matrix &target);
   void resize(size_t numRows, size_t numCols) override;
-  void resize(Matrix &like) override;
+  void resize(const Matrix &like) override;
+  void flatten() override;
 
+  void divideElementwise(Matrix &v, Axis ax) override;
   void divideElementwise(Matrix &src, Matrix &target) override;
   void divideElementwise(Matrix &src) override;
   void divideElementwise(float value) override;
   void scale(float value) override;
+  void scale(Matrix &v, Axis ax = ALL) override;
   float dotProduct(Matrix &src) override;
   void sort() override;
   void sort(Matrix &target) override;
@@ -64,7 +54,7 @@ public:
 
   void multiplyByVec(const Matrix &vec, Matrix &target) const override;
   void addWeighted(Matrix &b, float alpha, float beta) override;
-  static void copy(Matrix &src, Matrix &tgt);
+  static void copy(const Matrix &src, Matrix &tgt);
 };
 
 

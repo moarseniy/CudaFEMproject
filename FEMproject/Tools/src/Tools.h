@@ -2,6 +2,7 @@
 #define TOOLS_H
 
 #include <iostream>
+#include <string>
 #include <ctime>
 
 namespace fs {
@@ -30,5 +31,7 @@ private:
 #define CheckRunTime(nameFunc)
 #endif
 
+#define CheckAssert(a) _my_assert(a, __FILE__, __LINE__, __FUNCTION__)
+void _my_assert(const bool expr, const char *file, const int line, const char *func);
 
 #endif

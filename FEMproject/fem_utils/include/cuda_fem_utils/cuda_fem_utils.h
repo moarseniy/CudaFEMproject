@@ -32,23 +32,22 @@ public:
   CUDA_ElementsData(const dataKeeper &dk);
   ~CUDA_ElementsData();
 
-  void getDiagonalElements(Matrix &K, size_t el) override;
+  void getDiagonalElements() override;
   void transformWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMaskAndTransform(Matrix &src, Matrix &dest, size_t size) override;
-  void applyConstraints(size_t el) override;
-  void calculateKlocal(size_t elementId) override;
+  void applyConstraints() override;
+  void calculateKlocal() override;
   void calculateKlocals() override;
-  size_t getLocalId(size_t elementId, size_t nodeId) override;
-  void calculateFlocal(size_t elementId) override;
+  void calculateFlocal() override;
   void calculateFlocals() override;
-  float calculateArea(size_t elementId) override;
-  float calculateLength(size_t elementId) override;
+  void calculateArea() override;
+  void calculateLength() override;
   void genMask() override;
   void genAdjElements() override;
-  void genCoordinates(size_t elementId) override;
-  void genFCoordinates(size_t elementId) override;
-  float genGradientMatrix(size_t elementId) override;
+  void genCoordinates() override;
+  void genFCoordinates() override;
+  void genGradientMatrix() override;
 
 };
 

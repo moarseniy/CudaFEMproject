@@ -15,26 +15,25 @@
 
 class ElementsData {
 public:
-  ElementsData(size_t DIM, size_t elementsCount, size_t boundaryEdgesCount, DEVICE_NAME device);
+  ElementsData(size_t DIM, size_t elementsCount, size_t nodesCount, size_t boundaryEdgesCount, DEVICE_NAME device);
   virtual ~ElementsData() {};
 
-  virtual void getDiagonalElements(Matrix &K, size_t el) = 0;
+  virtual void getDiagonalElements() = 0;
   virtual void transformWithMask(Matrix &src, Matrix &dest) = 0;
   virtual void reductionWithMask(Matrix &src, Matrix &dest) = 0;
   virtual void reductionWithMaskAndTransform(Matrix &src, Matrix &dest, size_t size) = 0;
-  virtual void applyConstraints(size_t elementId) = 0;
-  virtual void calculateKlocal(size_t elementId) = 0;
+  virtual void applyConstraints() = 0;
+  virtual void calculateKlocal() = 0;
   virtual void calculateKlocals() = 0;
-  virtual size_t getLocalId(size_t elementId, size_t nodeId) = 0;
-  virtual void calculateFlocal(size_t elementId) = 0;
+  virtual void calculateFlocal() = 0;
   virtual void calculateFlocals() = 0;
-  virtual float calculateLength(size_t elementId) = 0;
-  virtual float calculateArea(size_t elementId) = 0;
+  virtual void calculateLength() = 0;
+  virtual void calculateArea() = 0;
   virtual void genMask() = 0;
   virtual void genAdjElements() = 0;
-  virtual void genCoordinates(size_t elementId) = 0;
-  virtual void genFCoordinates(size_t elementId) = 0;
-  virtual float genGradientMatrix(size_t elementId) = 0;
+  virtual void genCoordinates() = 0;
+  virtual void genFCoordinates() = 0;
+  virtual void genGradientMatrix() = 0;
 
   DEVICE_NAME get_device() const;
   size_t get_dim() const;
@@ -61,6 +60,7 @@ public:
 protected:
   size_t _DIM;
   size_t _elementsCount;
+  size_t _nodesCount;
   size_t _boundaryEdgesCount;
   DEVICE_NAME _device;
 
@@ -82,6 +82,8 @@ protected:
   Matrix *mask;
   Matrix *mask_sorted;
   Matrix *adjElements;
+  Matrix *elementsAreas;
+  Matrix *bEdgesLengths;
 
   Matrix *coordinates;
   Matrix *fcoordinates;
@@ -96,23 +98,23 @@ public:
   CPU_ElementsData(const dataKeeper &dk);
   ~CPU_ElementsData();
 
-  void getDiagonalElements(Matrix &K, size_t el) override;
+  void getDiagonalElements() override;
   void transformWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMaskAndTransform(Matrix &src, Matrix &dest, size_t size) override;
-  void applyConstraints(size_t elementId) override;
-  void calculateKlocal(size_t elementId) override;
+  void applyConstraints() override;
+  void calculateKlocal() override;
   void calculateKlocals() override;
-  size_t getLocalId(size_t elementId, size_t nodeId) override;
-  void calculateFlocal(size_t elementId) override;
+  int getLocalId(size_t elementId, size_t nodeId);
+  void calculateFlocal() override;
   void calculateFlocals() override;
-  float calculateArea(size_t elementId) override;
-  float calculateLength(size_t elementId) override;
+  void calculateArea() override;
+  void calculateLength() override;
   void genMask() override;
   void genAdjElements() override;
-  void genCoordinates(size_t elementId) override;
-  void genFCoordinates(size_t elementId) override;
-  float genGradientMatrix(size_t elementId) override;
+  void genCoordinates() override;
+  void genFCoordinates() override;
+  void genGradientMatrix() override;
 };
 
 #endif // FEM_UTILS_H

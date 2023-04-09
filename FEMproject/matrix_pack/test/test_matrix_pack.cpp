@@ -12,6 +12,85 @@
 #include <unordered_set>
 #include <map>
 
+#define EPS 1e-4
+
+TEST(MatrixFuncs, sort) {
+  CPU_Matrix m(4, 4);
+  m.fillRandValues(0.f, 1.f);
+  m.Show();
+  CUDA_Matrix m_d;
+  m.copy(m_d);
+
+  m_d.sort();
+  exit(-1);
+}
+
+TEST(MatrixFuncs, Sdgmm) {
+  CPU_Matrix A(2, 4), v(4, 1);
+  CUDA_Matrix A_d, v_d;
+
+  A.fillRandValues(0.f, 5.f);
+  A.copy(A_d);
+  v.fillRandValues(0.f, 5.f);
+  v.copy(v_d);
+  A.Show();
+   std::cout << "\n";
+  v.Show();
+   std::cout << "\n";
+
+  A.scale(v, Y);
+  A.Show();
+  std::cout << "\n";
+
+  A_d.scale(v_d, Y);
+  CPU_Matrix tmp;
+  A_d.copy(tmp);
+  tmp.Show();
+  exit(-1);
+}
+
+TEST(MatrixFuncs, Sgemm) {
+  Matrix *A = Matrix::setMatrix(CPU, 1, 3 * 6);
+  for (size_t i = 0; i < A->get_numElements(); ++i)
+    (*A)[i] =i;
+  std::cout << "A\n";
+  A->Show();
+  Matrix *B = Matrix::setMatrix(CPU, 1, 3 * 3);
+  for (size_t i = 0; i < B->get_numElements(); ++i)
+    (*B)[i] =i;
+  std::cout << "B\n";
+  B->Show();
+
+  Matrix *C = Matrix::setMatrix(CPU, 1, 3 * 6);
+  A->multiplyByVec(*B, *C);
+  std::cout << "C\n";
+  C->Show();
+
+  Matrix *A_d = Matrix::setMatrix(CUDA, A->get_numRows(), A->get_numCols());
+  Matrix *B_d = Matrix::setMatrix(CUDA, B->get_numRows(), B->get_numCols());
+  Matrix *C_d = Matrix::setMatrix(CUDA, C->get_numRows(), C->get_numCols());
+
+  C_d->setTo(0.f);
+  A->copy(*A_d);
+  B->copy(*B_d);
+
+
+
+  C->setTo(0.f);
+//  B->flatten();
+//  C->bmm(*B, 2, 2, false, *A, 3, true, 1); // (A(2x3))^T * B(2x2) = C(3x2)
+  C->bmm(*B, 3, 3, false, *A, 6, true, 1); // A(3x2) * B(2x3) = C(3x3)
+  std::cout << "C\n";
+  C->Show();
+
+  C_d->bmm(*B_d, 3, 3, false, *A_d, 6, true, 1);
+  CPU_Matrix tmp;
+  C_d->copy(tmp);
+//////  tmp.copy(*C_d);
+  std::cout << "C\n";
+  tmp.Show();
+  exit(-1);
+}
 
 TEST(MatrixFuncs, reduce) {
   const int N = 7;
@@ -78,18 +157,6 @@ TEST(MatrixFuncs, copy) {
   std::unique_ptr<Matrix> m3 = m1.getRows(1, 3);
   m3->setTo(1.f);
   m1.Show();
-}
-
-TEST(MatrixFuncs, sort) {
-  std::cout << "SORT\n";
-
-  CPU_Matrix m1(4, 4);
-  m1.fillRandValues(0.f, 1.f);
-  m1.Show();
-
-  CPU_Matrix m2;
-  m1.sort(m2);
-  m2.Show();
 }
 
 TEST(MatrixFuncs, mult) {

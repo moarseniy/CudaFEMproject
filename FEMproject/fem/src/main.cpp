@@ -59,7 +59,9 @@ int main(int argc, char *argv[]) {
     WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
 
   }
-  DEVICE_NAME deviceType = CPU;
+  DEVICE_NAME deviceType = CUDA;
+  if (deviceType == CUDA)
+    CUDA_Matrix::_initCUDA();
   std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json";
   std::string task_name = "test_rect_pcg";
   dataKeeper dk(config_path, task_name);

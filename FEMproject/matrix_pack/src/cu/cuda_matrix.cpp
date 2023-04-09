@@ -1,61 +1,83 @@
 #include <cuda_matrix_pack/cuda_matrix.h>
 
+cublasHandle_t CUDA_Matrix::_handle;
+
+void CUDA_Matrix::_initCUDA() {
+  if (!_handle)
+    cublasCreate(&_handle);
+}
+
 CUDA_Matrix::CUDA_Matrix() :
-  Matrix(0, 0, true, nullptr, CUDA) {}
+  Matrix(0, 0, true, nullptr, CUDA) {
+  _gpuInitData();
+}
 
 CUDA_Matrix::CUDA_Matrix(size_t numRows, size_t numCols) :
   Matrix(numRows, numCols, true, nullptr, CUDA) {
-
-  assert(numRows * numCols > 0);
-  cudaMalloc(&_data, _numElements * sizeof(float));
+  _gpuInitData();
 }
 
 CUDA_Matrix::CUDA_Matrix(float *data, size_t numRows, size_t numCols, bool hasData) :
-  Matrix(numRows, numCols, hasData, data, CUDA) {}
+  Matrix(numRows, numCols, hasData, data, CUDA) {
+  _gpuInitData();
+}
 
-CUDA_Matrix::CUDA_Matrix(const CUDA_Matrix &like) :
+CUDA_Matrix::CUDA_Matrix(const CUDA_Matrix &like, bool copy) :
   Matrix(like._numRows, like._numCols, true, nullptr, CUDA) {
-
-  assert(like._numRows * like._numCols > 0);
-  cudaMalloc(&_data, _numElements * sizeof(float));
+  _gpuInitData();
+  if (copy) {
+//    like.copy(*this);
+    CUDA_Matrix::copy(like, *this);
+  }
 }
 
 CUDA_Matrix::~CUDA_Matrix() {
   if (_numElements> 0 && _hasData)
-    gpuClearData();
+    _gpuClearData();
 }
 
-void CUDA_Matrix::gpuClearData() {
+void CUDA_Matrix::_gpuClearData() {
   cudaFree(_data);
 }
 
-void CUDA_Matrix::gpuInitData() {
+void CUDA_Matrix::_gpuInitData() {
+  if (_numElements > 0) {
+    cudaMalloc((void **)&_data, _numElements * sizeof(float));
+  }
 }
 
 //Thrust-based functions
 
 float CUDA_Matrix::dotProduct(Matrix &vec) {
-  assert(_numElements > 0);
-  return thrust::inner_product(_data,
-                               _data + _numElements,
-                               vec.get_data(), 0.f);
+  CheckAssert(_numElements > 0);
+  return thrust_dotProduct_Ker(_data, vec.get_data(), _numElements);
+}
+
+void CUDA_Matrix::divideElementwise(Matrix &v, Axis ax) {
+  CheckAssert(_numElements > 0 && v.get_numElements() > 0);
+  CUDA_Matrix inverted(dynamic_cast<CUDA_Matrix&>(v));
+  inverted.setTo(1.f);
+  inverted.divideElementwise(v);
+  scale(inverted, ax);
 }
 
 void CUDA_Matrix::divideElementwise(Matrix &vec, Matrix &tgt) {
-  assert(false);
+  CheckAssert(_numElements > 0);
+  CheckAssert(_numElements == vec.get_numElements());
+  CheckAssert( _numElements == tgt.get_numElements());
+  thrust_divideElementwise_Ker(_data, vec.get_data(), tgt.get_data(), _numElements);
 }
 
 void CUDA_Matrix::divideElementwise(Matrix &vec) {
-  assert(_numElements > 0);
-  thrust::transform(_data,
-                    _data + _numElements,
-                    vec.get_data(), _data,
-                    thrust::divides<float>());
+  divideElementwise(vec, *this);
 }
 
+void CUDA_Matrix::copy(Matrix &tgt) {
+  CUDA_Matrix::copy(dynamic_cast<Matrix&>(*this), tgt);
+}
 
-void CUDA_Matrix::copy(Matrix &src, Matrix &tgt) {
-  assert(src.get_numElements() > 0);
+void CUDA_Matrix::copy(const Matrix &src, Matrix &tgt) {
+  CheckAssert(src.get_numElements() > 0);
   if (!src.isSameAs(tgt))
     tgt.resize(src);
 
@@ -71,79 +93,139 @@ void CUDA_Matrix::copy(Matrix &src, Matrix &tgt) {
 }
 
 void CUDA_Matrix::sort_by_key(Matrix &keys) {
-  assert(_numElements > 0);
-  thrust::sort_by_key(keys.get_data(),
-                      keys.get_data() + keys.get_numElements(),
-                      _data);
+  CheckAssert(_numElements > 0);
+  CheckAssert(_numElements == keys.get_numElements());
+  thrust_sortByKey_Ker(keys.get_data(), _data, _numElements);
 }
 
 void CUDA_Matrix::reduce_by_key(Matrix &keys, Matrix &target) {
-  assert(_numElements > 0);
-  thrust::reduce_by_key(keys.get_data(),
-                        keys.get_data() + keys.get_numElements(),
-                        _data, thrust::make_discard_iterator(),
-                        target.get_data());
+  CheckAssert(_numElements > 0);
+  thrust_reduceByKey_Ker(keys.get_data(), _data, target.get_data(), _numElements);
 }
 
 void CUDA_Matrix::sort() {
-  assert(_numElements > 0);
-  thrust::stable_sort(_data, _data + _numElements);
+  CheckAssert(_numElements > 0);
+  thrust_sort_Ker(_data, _numElements);
 }
 
 void CUDA_Matrix::sort(Matrix &target) {
-  assert(_numElements > 0);
-  thrust::stable_sort(_data, _data + _numElements);
-  Matrix::copy(target);
+  CheckAssert(_numElements > 0);
+  copy(target);
+  thrust_sort_Ker(target.get_data(), target.get_numElements());
 }
 
 void CUDA_Matrix::setTo(float value) {
-  assert(_numElements > 0);
-  assert(false);
+  CheckAssert(_numElements > 0); // TODO: compare kernel and thrust
+//  setTo_Ker(_numElements, _data, value);
+  thrust_setTo_Ker(_data, _numElements, value);
 }
 
 void CUDA_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {
-  assert(_numElements > 0);
+  CheckAssert(_numElements > 0);
 
   size_t subVec_size = _numCols;
   size_t numSubMatr = vec.get_numElements() / subVec_size;
-  multiplyByVec_Ker(_data, numSubMatr, vec.get_data(), subVec_size, target.get_data());
+  multiplyByVec_Ker(numSubMatr, _data, vec.get_data(), subVec_size, target.get_data());
 }
 
 void CUDA_Matrix::add(Matrix &src) {
-  assert(false);
+  CheckAssert(_numElements > 0 && _numElements == src.get_numElements());
+  this->addWeighted(src, 1.f, 1.f);
 }
 
 void CUDA_Matrix::addWeighted(Matrix &b, float alpha, float beta) {
-  assert(false);
+  CheckAssert(_numRows == b.get_numRows() && _numCols == b.get_numCols());
+  addWeighted_Ker(_numElements, _data, b.get_data(), alpha, beta);
 }
 
 void CUDA_Matrix::divideElementwise(float value) {
-  assert(false);
+  CheckAssert(_numElements > 0);
+  this->scale(1.f / value);
 }
 
 void CUDA_Matrix::scale(float value) {
-  assert(false);
+  CheckAssert(_numElements > 0);
+  scale_Ker(_numElements, _data, value);
+}
+
+void CUDA_Matrix::scale(Matrix &v, Axis ax) {
+  CheckAssert(_numElements > 0 && v.get_numElements() > 0);
+  switch (ax) {
+  case X:
+    CheckAssert(_numRows == v.get_numElements());
+    cublasSdgmm(_handle, CUBLAS_SIDE_RIGHT,
+                _numCols, _numRows,
+                _data, _numCols,
+                v.get_data(), 1,
+                _data, _numCols);
+    break;
+  case Y:
+    CheckAssert(_numCols == v.get_numElements());
+    cublasSdgmm(_handle, CUBLAS_SIDE_LEFT,
+                _numCols, _numRows,
+                _data, _numCols,
+                v.get_data(), 1,
+                _data, _numCols);
+    break;
+  default:
+    CheckAssert(_numElements == v.get_numElements());
+    cublasSdgmm(_handle, CUBLAS_SIDE_RIGHT,
+                1, _numElements,
+                _data, 1,
+                v.get_data(), 1,
+                _data, 1);
+    break;
+  }
 }
 
 float CUDA_Matrix::det() {
-  assert(false);
+  CheckAssert(false);
   return 0.f;
 }
 
-void CUDA_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, bool b_tr) {
-  assert(false);
+//void CUDA_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, bool b_tr) {
+//  CheckAssert(false);
+//}
+
+void CUDA_Matrix::product(Matrix &src, Matrix &tgt, bool a_trans, float scaleA,
+                                                    bool b_trans, float scaleB)  {
+//  if (scaleThis == 0.f)
+//    this->resize(b.getNumRows(), a.getNumCols());
+//  else
+//    my_CheckAssert(this->getNumCols() == a.getNumCols() && this->getNumRows() == b.getNumRows());
+
+
+//  cublasSgemm('n', 'n', _numCols, b.get_numRows(), a.get_numRows(), scaleA,
+//              a.get_data(), a.get_numCols(), b.get_data(), b.get_numCols(), scaleB,
+//              _data, _numCols);
+}
+
+void CUDA_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
+                      const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha) {
+  CheckAssert(a.get_numElements() > 0 && b.get_numElements() > 0 && batchCount > 0);
+  resize(batchCount, subRowsA * subColsB);
+  const float beta = 0.f;
+  int strideA = subRowsA * subColsA == a.get_numElements() ? 0 : subRowsA * subColsA;
+  int strideB = subColsA * subColsB == b.get_numElements() ? 0 : subColsA * subColsB;
+  int strideC = subRowsA * subColsB;
+  cublasSgemmStridedBatched(_handle,
+                            trans_a ? CUBLAS_OP_T : CUBLAS_OP_N,
+                            trans_b ? CUBLAS_OP_T : CUBLAS_OP_N,
+                            subRowsA, subColsB, subColsA,
+                            &alpha,
+                            a.get_data(), trans_a ? subColsA : subRowsA, strideA,
+                            b.get_data(), trans_b ? subColsB : subColsA, strideB,
+                            &beta,
+                            _data, subRowsA, strideC,
+                            batchCount);
 }
 
 void CUDA_Matrix::transpose() {
   std::swap(_numRows, _numCols);
 }
 
-void CUDA_Matrix::product(Matrix &src, bool a_tr, bool b_tr) {
-  product(src, *this);
-}
-
-void CUDA_Matrix::resize(Matrix &like) {
-  this->resize(like.get_numRows(), like.get_numCols());
+void CUDA_Matrix::resize(const Matrix &like) {
+  resize(like.get_numRows(), like.get_numCols());
 }
 
 void CUDA_Matrix::resize(size_t numRows, size_t numCols) {
@@ -154,7 +236,7 @@ void CUDA_Matrix::resize(size_t numRows, size_t numCols) {
         _data = NULL;
       }
       if (numRows * numCols > 0) {
-        cudaMalloc(&_data, numRows * numCols * sizeof(float));
+        cudaMalloc((void **)&_data, numRows * numCols * sizeof(float));
       } else {
         _data = NULL;
       }
@@ -164,4 +246,8 @@ void CUDA_Matrix::resize(size_t numRows, size_t numCols) {
     _numCols = numCols;
     _numElements = numRows * numCols;
   }
+}
+
+void CUDA_Matrix::flatten() {
+  resize(1, _numElements);
 }

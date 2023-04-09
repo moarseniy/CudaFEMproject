@@ -23,3 +23,11 @@ std::string joinString(const std::string &src1,
 }
 
 } // namespace fs
+
+void _my_assert(const bool expr, const char *file, const int line, const char *func) {
+  if (!expr) {
+    fprintf(stderr, "Assertion failed in %s \nFile %s(%i)\n", func, file, line);
+    exit(EXIT_FAILURE);
+//    throw std::runtime_error(std::string("Assertion failed in ") + func + std::string(" \nFile ") + file + std::string("(") + std::to_string(line) + std::string(")\n"));
+  }
+}

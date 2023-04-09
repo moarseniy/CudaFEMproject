@@ -72,17 +72,27 @@ void dataKeeper::allocateMemory() {
 }
 
 dataKeeper::~dataKeeper() {
-  delete nodes;
-  delete elementsIds;
-  delete D;
-  delete constraintsIds;
-  delete constraintsTypes;
+  if (nodes)
+    delete nodes;
+  if (elementsIds)
+    delete elementsIds;
+  if (D)
+    delete D;
+  if (constraintsIds)
+    delete constraintsIds;
+  if (constraintsTypes)
+    delete constraintsTypes;
 
-  delete boundaryNormals;
-  delete boundaryAdjElems;
-  delete boundaryNodes;
-  delete boundaryPressureValues;
-  delete displacements;
+  if (boundaryNormals)
+    delete boundaryNormals;
+  if (boundaryAdjElems)
+    delete boundaryAdjElems;
+  if (boundaryNodes)
+    delete boundaryNodes;
+  if (boundaryPressureValues)
+    delete boundaryPressureValues;
+  if (displacements)
+    delete displacements;
 }
 void dataKeeper::CreateMatrixD() {
   float poissonRatio = mechParams.poissonRatio;
@@ -145,7 +155,11 @@ void dataKeeper::ParseConstraints() {
     }
   }
 
-  constraintsIds = new CPU_Matrix(temp.data(), temp.size(), 1);
+  if (temp.size() > 0) {
+    constraintsIds = new CPU_Matrix(temp.size(), 1);
+    std::copy(temp.data(), temp.data() + temp.size(), constraintsIds->get_data());
+  }
+  std::cout << "Constraints ID's (" << temp.size() << ") found\n";
 }
 
 void dataKeeper::ParseLoads() {

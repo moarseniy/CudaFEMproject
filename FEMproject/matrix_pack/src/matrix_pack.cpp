@@ -32,7 +32,7 @@ float* Matrix::get_data() const {
   return _data;
 }
 
-void Matrix::copy(Matrix &tgt) {
+void Matrix::copy(Matrix &tgt) const {
   if (this->get_device() == CPU &&
       tgt.get_device() == CPU) {
     CPU_Matrix::copy(*this, tgt);
@@ -74,7 +74,7 @@ void Matrix::Show() {
   }
 }
 
-bool Matrix::isSameAs(Matrix &src) {
+bool Matrix::isSameAs(Matrix &src) const {
   return _numRows == src.get_numRows() && _numCols == src.get_numCols();
 }
 

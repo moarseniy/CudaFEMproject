@@ -12,6 +12,8 @@ target_sources(matrix_pack PRIVATE
     src/cpu_matrix.cpp
 )
 
+target_link_libraries(matrix_pack Tools)
+
 CUDA_ADD_LIBRARY(
     cuda_matrix_pack
     include/cuda_matrix_pack/cuda_matrix.h
