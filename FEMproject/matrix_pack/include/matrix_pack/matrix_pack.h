@@ -36,7 +36,6 @@ public:
                                                  bool b_tr = false, float scaleB = 1.f) = 0;
   virtual void bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
                    const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha = 1.f) = 0;
-  virtual void transpose() = 0;
 
   virtual void divideElementwise(Matrix &v, Axis ax) = 0;
   virtual void divideElementwise(Matrix &src, Matrix &tgt) = 0;
@@ -50,13 +49,18 @@ public:
   virtual void sort_by_key(Matrix &keys) = 0;
   virtual void reduce_by_key(Matrix &keys, Matrix &target) = 0;
   virtual float det() = 0;
+  virtual float l2norm() = 0;
 
   // Right-vector multiplication
   virtual void multiplyByVec(const Matrix &vec, Matrix &target) const = 0;
 
   virtual void addWeighted(Matrix &b, float alpha, float beta) = 0;
+  virtual void addWeighted(Matrix &b, float alpha, float beta, Matrix &target) = 0;
 
   virtual void add(Matrix &src) = 0;
+  virtual void add(Matrix &src, Matrix &tgt) = 0;
+  virtual void subtract(Matrix &src) = 0;
+  virtual void subtract(Matrix &src, Matrix &tgt) = 0;
 
   void copy(Matrix &tgt) const;
   virtual void resize(size_t numRows, size_t numCols) = 0;
@@ -94,7 +98,8 @@ public:
   float& operator [](size_t index);
   float& operator ()(size_t i, size_t j);
 
-  void fillRandValues(float v1, float v2);
+  virtual void uniformRandomize(float v1 = 0.f, float v2 = 1.f) = 0;
+  virtual void fillSequence(float startValue) = 0;
 
 protected:
 
@@ -124,11 +129,12 @@ public:
   void bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
            const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha = 1.f) override;
 
-  void transpose() override;
-
   void addWeighted(Matrix &b, float alpha, float beta) override;
-
+  void addWeighted(Matrix &b, float alpha, float beta, Matrix &target) override;
+  void subtract(Matrix &src) override;
+  void subtract(Matrix &src, Matrix &tgt) override;
   void add(Matrix &src) override;
+  void add(Matrix &src, Matrix &tgt) override;
 
   void copy(Matrix &tgt);
   void resize(size_t numRows, size_t numCols) override;
@@ -137,7 +143,7 @@ public:
 
   static void copy(const Matrix &src, Matrix &tgt);
 
-  void divideElementwise(Matrix &v, Axis ax) override;
+  void divideElementwise(Matrix &v, Axis) override;
   void divideElementwise(Matrix &src, Matrix &target) override;
   void divideElementwise(Matrix &src) override;
   void divideElementwise(float value) override;
@@ -149,6 +155,9 @@ public:
   void sort_by_key(Matrix &keys) override;
   void reduce_by_key(Matrix &keys, Matrix &target) override;
   float det() override;
+  float l2norm() override;
+  void uniformRandomize(float v1 = 0.f, float v2 = 1.f) override;
+  void fillSequence(float startValue) override;
 
   void setTo(float value) override;
 //  std::unique_ptr<Matrix> subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol) const;

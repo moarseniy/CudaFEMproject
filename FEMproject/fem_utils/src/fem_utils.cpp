@@ -23,6 +23,36 @@ ElementsData* ElementsData::setElementsData(DEVICE_NAME device, const dataKeeper
   }
 }
 
+void ElementsData::Ricker(float t, float ampl, float freq) {
+  float tmp = M_PI * freq * t - M_PI;
+  float value = ampl * (1.f - 2.f * tmp * tmp) *
+                std::exp(-1.f * tmp * tmp);
+  boundaryPressures->setTo(value);
+}
+
+// Aldridge, D. F. (1990). The Berlage wavelet. GEOPHYSICS, 55(11), 1508–1511. doi:10.1190/1.1442799
+// CAE-Fidesys-4.0/preprocessor/bin/help/finite_element_model/non_exodus/time_formulas.htm
+void ElementsData::Berlage(float t, float ampl, float freq) {
+  float w0 = 2 * M_PI * freq;
+  float w1 = w0 / sqrtf(3.f);
+  float value = ampl * w1 * w1 / 4.f * std::exp(-1.f * w1 * t) * (
+                std::sin(w0 * t) * (1.f / (w1 * w1 * w1) + t / (w1 * w1) - t * t / w1) -
+                std::cos(w0 * t) * sqrtf(3.f) * (t * t / w1 + t / (w1 * w1)) );
+  boundaryPressures->setTo(value);
+}
+
+void ElementsData::updateWavelet(float t, const WaveletParams &waveParams) {
+  if (t < waveParams.timeshift) {
+    boundaryPressures->setTo(0.f);
+  } else {
+    if (waveParams.waveletType == "ricker") {
+      Ricker(t - waveParams.timeshift, waveParams.ampl, waveParams.freq);
+    } else if (waveParams.waveletType == "berlage") {
+      Berlage(t - waveParams.timeshift, waveParams.ampl, waveParams.freq);
+    }
+  }
+}
+
 DEVICE_NAME ElementsData::get_device() const {
   return _device;
 }
@@ -51,6 +81,10 @@ Matrix* ElementsData::get_coordinates() const {
   return coordinates;
 }
 
+Matrix* ElementsData::get_fcoordinates() const {
+  return fcoordinates;
+}
+
 Matrix* ElementsData::get_mask() const {
   return mask;
 }
@@ -59,34 +93,26 @@ Matrix* ElementsData::get_adjElements() const {
   return adjElements;
 }
 
-Matrix* ElementsData::get_diag() const {
-  return diag;
+Matrix* ElementsData::get_bEdgesLengths() const {
+  return bEdgesLengths;
 }
 
-Matrix* ElementsData::get_r() const {
-  return r;
+Matrix* ElementsData::get_Ccoords() const {
+  return Ccoords;
 }
 
-Matrix* ElementsData::get_m() const {
-  return m;
+Matrix* ElementsData::get_diagK() const {
+  return diagK;
 }
 
-Matrix* ElementsData::get_z() const {
-  return z;
+Matrix* ElementsData::get_diagM() const {
+  return diagM;
 }
 
-Matrix* ElementsData::get_s() const {
-  return s;
+Matrix* ElementsData::get_Mlocals() const {
+  return Mlocals;
 }
 
-Matrix* ElementsData::get_p() const {
-  return p;
-}
-
-Matrix* ElementsData::get_u() const {
-  return u;
-}
-
-Matrix* ElementsData::get_x() const {
-  return x;
+Matrix* ElementsData::get_Clocals() const {
+  return Clocals;
 }

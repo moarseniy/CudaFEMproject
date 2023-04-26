@@ -2,6 +2,7 @@ import re, os, time
 import math
 import numpy as np
 import collections
+import copy
 
 # Write a line to the beginning of file. Used in prepare_constraints() method
 def line_prepender(filename, line):
@@ -48,11 +49,10 @@ class FileParser:
                         line = [x for x in line if x != '']
                         nodes.append(line[:(self.dim+1)])
                         line = mesh.readline()
-        nodes.sort(key=lambda x: int(x[0]))
+        # nodes.sort(key=lambda x: int(x[0]))
         for i in range(len(nodes)):
             nodes_num[nodes[i][0]] = i
             #nodes[i] = nodes[i][1:]
-            
         print('Parsing file for nodes end.')
         self.nodes_num = nodes_num
         self.raw_nodes = nodes
@@ -132,7 +132,7 @@ class FileParser:
                 line = ' '.join(line[:])
                 write_file.write(line + '\n')
         
-        print('Prepare and writing elements in new file end. ' + str(time.time() - start_time))
+        print('Prepare and writing elements in new file end.')
         self.raw_load_segments = load_segments
         print('OK')
 
@@ -297,19 +297,23 @@ class FileParser:
                                         if load[1] == '3':
                                             line += '0.0 0.0 ' + str(float(forces[force_num]))
                             write_file.write(line + '\n')
-                            
+        # temp_nodes = copy.deepcopy(nodes)
+        # nodes.sort(key=lambda x: int(x[0]))
+        nodes_num = {}
+        for i in range(len(nodes)):
+            nodes_num[nodes[i][0]] = i
         with open(self.prepared_mesh_dir + '/stress.txt', 'w') as write_file:
             write_file.write(str(len(load_segments)) + '\n')
             for load in load_segments:
                 if dim == 2:
-                    x1 = float(nodes[nodes_num[load[3]]][0])
-                    y1 = float(nodes[nodes_num[load[3]]][1])
+                    x1 = float(nodes[nodes_num[load[3]]][1])
+                    y1 = float(nodes[nodes_num[load[3]]][2])
                     
-                    x2 = float(nodes[nodes_num[load[4]]][0])
-                    y2 = float(nodes[nodes_num[load[4]]][1])
+                    x2 = float(nodes[nodes_num[load[4]]][1])
+                    y2 = float(nodes[nodes_num[load[4]]][2])
                     
-                    xb = float(nodes[nodes_num[load[8]]][0])
-                    yb = float(nodes[nodes_num[load[8]]][1])
+                    xb = float(nodes[nodes_num[load[8]]][1])
+                    yb = float(nodes[nodes_num[load[8]]][2])
 
                     xn = y2 - y1  #/ (math.sqrt(y1*y1+x1*x1))
                     yn = -(x2 - x1) #/ (math.sqrt(y1*y1+x1*x1))
@@ -333,21 +337,21 @@ class FileParser:
                     # TODO: DISCUSS HOw TO IMPROVE DIFFERENT CASES
                 elif dim == 3:
                     
-                    x1 = float(nodes[nodes_num[load[3]]][0])
-                    y1 = float(nodes[nodes_num[load[3]]][1])
-                    z1 = float(nodes[nodes_num[load[3]]][2])
+                    x1 = float(nodes[nodes_num[load[3]]][1])
+                    y1 = float(nodes[nodes_num[load[3]]][2])
+                    z1 = float(nodes[nodes_num[load[3]]][3])
                     
-                    x2 = float(nodes[nodes_num[load[4]]][0])
-                    y2 = float(nodes[nodes_num[load[4]]][1])
-                    z2 = float(nodes[nodes_num[load[4]]][2])
+                    x2 = float(nodes[nodes_num[load[4]]][1])
+                    y2 = float(nodes[nodes_num[load[4]]][2])
+                    z2 = float(nodes[nodes_num[load[4]]][3])
 
-                    x3 = float(nodes[nodes_num[load[5]]][0])
-                    y3 = float(nodes[nodes_num[load[5]]][1])
-                    z3 = float(nodes[nodes_num[load[5]]][2])
+                    x3 = float(nodes[nodes_num[load[5]]][1])
+                    y3 = float(nodes[nodes_num[load[5]]][2])
+                    z3 = float(nodes[nodes_num[load[5]]][3])
 
-                    xb = float(nodes[nodes_num[load[8]]][0])
-                    yb = float(nodes[nodes_num[load[8]]][1])
-                    zb = float(nodes[nodes_num[load[8]]][2])
+                    xb = float(nodes[nodes_num[load[8]]][1])
+                    yb = float(nodes[nodes_num[load[8]]][2])
+                    zb = float(nodes[nodes_num[load[8]]][3])
 
                     a = [x2 - x1, y2 - y1, z2 - z1]
                     b = [x3 - x1, y3 - y1, z3 - z1]
@@ -366,6 +370,7 @@ class FileParser:
                             line = str(nodes_num[load[3]]) + ' ' + \
                                    str(nodes_num[load[4]]) + ' ' + \
                                    str(nodes_num[load[5]]) + ' ' + \
+                                   str(nodes_num[load[8]]) + ' ' + \
                                    str(load[9]) + ' ' + str(n[0]) + ' ' + str(n[1]) + \
                                    ' ' + str(n[2]) + ' ' + str(pressure) + '\n'
                             write_file.write(line)

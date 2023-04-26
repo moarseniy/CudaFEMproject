@@ -1,0 +1,22 @@
+{
+	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
+	"working_path": "C:/Users/mokin/Desktop/fem_stuff_test/",
+	"task": ["quasi1Dwave_taller_M10_2"],
+	"task_type": "dynamic",
+	"DIM": 2,
+	"youngModulus": 38400000000,
+	"poissonRatio": 0.0,
+	"rho": 2400,
+	"damping_alpha": 0.0,
+	"damping_beta": 0.0,
+	"dt": 1.5e-3,
+	"endtime": 0.3,
+	"beta1": 0.5,
+	"beta2": 0.0,
+	"wavelet": {
+		"WaveletType": "berlage",
+		"freq": 15.0,
+		"ampl": 1.0,
+		"timeshift": 0.0
+	}
+}

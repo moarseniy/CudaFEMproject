@@ -31,4 +31,14 @@ void MakeVTKfile3D(std::string output_vtk,
                    std::vector<CPU_Matrix> &Deformation,
                    std::vector<float> &epsilon_mises);
 
+void MakeVTKfile2D(std::string output_vtk,
+                   Matrix &nodes,
+                   Matrix &elements,
+                   Matrix &displacements);
+
+void MakeVTKfile3D(std::string output_vtk,
+                   Matrix &nodes,
+                   Matrix &elements,
+                   Matrix &displacements);
+
 #endif

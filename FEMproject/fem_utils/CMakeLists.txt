@@ -29,5 +29,5 @@ target_include_directories(cuda_fem_utils
 target_link_libraries(cuda_fem_utils fem_utils ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_cusparse_LIBRARY} ${CUDA_cusolver_LIBRARY})
 
 add_executable(test_common_fem_utils test/test_fem_utils.cpp)
-target_link_libraries(test_common_fem_utils fem_utils cuda_fem_utils gtest)
+target_link_libraries(test_common_fem_utils fem_utils cuda_fem_utils gtest femfunc)
 add_test(NAME test_common_fem_utils COMMAND test_common_fem_utils)

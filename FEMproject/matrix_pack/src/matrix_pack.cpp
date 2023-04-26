@@ -54,21 +54,14 @@ void Matrix::setDevice(DEVICE_NAME device) {
   _device = device;
 }
 
-void Matrix::fillRandValues(float v1, float v2) {
-  assert(_numElements > 0);
-  for (size_t i = 0; i < _numRows; ++i) {
-    for (size_t j = 0; j < _numCols; ++j) {
-      _data[j + i * _numCols] = v1 + rand() / (float) RAND_MAX * (v2 - v1);
-    }
-  }
-}
-
 void Matrix::Show() {
   assert(_numElements > 0);
-  assert(_device == CPU);
+//  assert(_device == CPU);
+  CPU_Matrix tmp;
+  this->copy(tmp);
   for (size_t i = 0; i < _numRows; ++i) {
     for (size_t j = 0; j < _numCols; ++j) {
-      std::cout << _data[j + i * _numCols] << " ";
+      std::cout << tmp.get_data()[j + i * _numCols] << " ";
     }
     std::cout << "\n";
   }

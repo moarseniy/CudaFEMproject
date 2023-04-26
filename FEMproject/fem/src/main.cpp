@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     std::string output_vtk = results_directory + "/results.vtk";
     float poissonRatio = std::stof(argv[6]), youngModulus = std::stof(argv[7]);
     float rho, damping_alpha, damping_beta, dt, endtime, beta1, beta2;
-    bool PRINT_DEBUG_INFO = false; //std::atoi(argv[8]);
+    bool PRINT_DEBUG_INFO = true; //std::atoi(argv[8]);
 
     bool isDYN = ( argc > 9 && std::atoi(argv[9]) );
     if (isDYN) {
@@ -57,16 +57,25 @@ int main(int argc, char *argv[]) {
 
     MakeResults(FEMdata, RESdata);
     WriteResults(FEMdata, RESdata, output_vtk, PRINT_DEBUG_INFO);
-
+    exit(-1);
   }
+
   DEVICE_NAME deviceType = CUDA;
   if (deviceType == CUDA)
     CUDA_Matrix::_initCUDA();
-  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json";
-  std::string task_name = "test_rect_pcg";
+  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config_dyn_test.json";
+  std::string task_name = "quasi1Dwave_taller_M10_2";//"test_rect_pcg"; small_test bulk_pressure test_bulk
   dataKeeper dk(config_path, task_name);
-  gpuCalculateFEM_EbE_vec2(dk, deviceType, true);
 
+  if (dk.getTaskType() == "static")
+    gpuCalculateFEM_EbE_vec2(deviceType, dk, true);
+  else
+    gpuCalculateFEM_DYN2(deviceType, dk, true);
+
+  ResultsDataKeeper RESdata2(false, false, false,
+                            dk.get_nodesCount());
+
+  WriteResults(dk, RESdata2);
 
   return 0;
 }

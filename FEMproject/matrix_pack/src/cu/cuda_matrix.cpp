@@ -64,7 +64,7 @@ void CUDA_Matrix::divideElementwise(Matrix &v, Axis ax) {
 void CUDA_Matrix::divideElementwise(Matrix &vec, Matrix &tgt) {
   CheckAssert(_numElements > 0);
   CheckAssert(_numElements == vec.get_numElements());
-  CheckAssert( _numElements == tgt.get_numElements());
+  CheckAssert(_numElements == tgt.get_numElements());
   thrust_divideElementwise_Ker(_data, vec.get_data(), tgt.get_data(), _numElements);
 }
 
@@ -129,13 +129,36 @@ void CUDA_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {
 }
 
 void CUDA_Matrix::add(Matrix &src) {
-  CheckAssert(_numElements > 0 && _numElements == src.get_numElements());
-  this->addWeighted(src, 1.f, 1.f);
+  addWeighted(src, 1.f, 1.f);
+}
+
+void CUDA_Matrix::add(Matrix &src, Matrix &tgt) {
+  addWeighted(src, 1.f, 1.f, tgt);
+}
+
+void CUDA_Matrix::subtract(Matrix &src) {
+  addWeighted(src, 1.f, -1.f);
+}
+
+void CUDA_Matrix::subtract(Matrix &src, Matrix &tgt) {
+  addWeighted(src, 1.f, -1.f, tgt);
 }
 
 void CUDA_Matrix::addWeighted(Matrix &b, float alpha, float beta) {
-  CheckAssert(_numRows == b.get_numRows() && _numCols == b.get_numCols());
-  addWeighted_Ker(_numElements, _data, b.get_data(), alpha, beta);
+  addWeighted(b, alpha, beta, *this);
+}
+
+void CUDA_Matrix::addWeighted(Matrix &b, float alpha, float beta, Matrix &target) {
+  CheckAssert(_numElements > 0 && _numElements == b.get_numElements());
+  CheckAssert(this->isSameAs(b));
+  if (!this->isSameAs(target))
+    target.resize(*this);
+
+  cublasSgeam(_handle, CUBLAS_OP_N, CUBLAS_OP_N,
+              _numRows, _numCols,
+              &alpha, _data, _numRows,
+              &beta, b.get_data(), _numRows,
+              target.get_data(), _numRows);
 }
 
 void CUDA_Matrix::divideElementwise(float value) {
@@ -183,6 +206,15 @@ float CUDA_Matrix::det() {
   return 0.f;
 }
 
+float CUDA_Matrix::l2norm() {
+  CheckAssert(_numElements > 0);
+  float l2norm_result = 0.0f;
+  cublasSnrm2(_handle,
+              _numElements, _data, 1,
+              &l2norm_result);
+  return l2norm_result;
+}
+
 //void CUDA_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, bool b_tr) {
 //  CheckAssert(false);
 //}
@@ -203,7 +235,7 @@ void CUDA_Matrix::product(Matrix &src, Matrix &tgt, bool a_trans, float scaleA,
 void CUDA_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
                       const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha) {
   CheckAssert(a.get_numElements() > 0 && b.get_numElements() > 0 && batchCount > 0);
-  resize(batchCount, subRowsA * subColsB);
+//  resize(batchCount, subRowsA * subColsB);
   const float beta = 0.f;
   int strideA = subRowsA * subColsA == a.get_numElements() ? 0 : subRowsA * subColsA;
   int strideB = subColsA * subColsB == b.get_numElements() ? 0 : subColsA * subColsB;
@@ -218,10 +250,6 @@ void CUDA_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool tr
                             &beta,
                             _data, subRowsA, strideC,
                             batchCount);
-}
-
-void CUDA_Matrix::transpose() {
-  std::swap(_numRows, _numCols);
 }
 
 void CUDA_Matrix::resize(const Matrix &like) {
@@ -250,4 +278,14 @@ void CUDA_Matrix::resize(size_t numRows, size_t numCols) {
 
 void CUDA_Matrix::flatten() {
   resize(1, _numElements);
+}
+
+void CUDA_Matrix::uniformRandomize(float v1, float v2) {
+  CheckAssert(_numElements > 0);
+  uniformRandomize_Ker(_data, _numElements, v1, v2);
+}
+
+void CUDA_Matrix::fillSequence(float startValue) {
+  CheckAssert(_numElements > 0);
+  fillSequence_ker(_data, _numElements, startValue);
 }

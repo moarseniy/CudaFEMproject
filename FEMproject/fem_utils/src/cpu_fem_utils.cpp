@@ -34,16 +34,10 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   D = Matrix::setMatrix(*dk.get_D());
   CPU_Matrix::copy(*dk.get_D(), *D);
 
-//  elements = Matrix::setMatrix(*dk.get_elementsIds());
-//  dk.get_elementsIds().copy(*elements);
-//  constraints = Matrix::setMatrix(*dk.get_constraintsIds());
-//  dk.get_constraintsIds().copy(*constraints);
-//  D = Matrix::setMatrix(*dk.get_D());
-//  dk.get_D().copy(*D);
-
   Blocals = Matrix::setMatrix(_device,
                         _elementsCount,
                         3 * (_DIM - 1) * 6 * (_DIM - 1));
+  Blocals->setTo(0.f);
 
   tBlocals = Matrix::setMatrix(_device,
                         _elementsCount,
@@ -52,8 +46,9 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   Klocals = Matrix::setMatrix(_device,
                               _elementsCount,
                               6 * (_DIM - 1) * 6 * (_DIM - 1));
+  Klocals->setTo(0.f);
 
-  Clocals = Matrix::setMatrix(_device,
+  Ccoords = Matrix::setMatrix(_device,
                               _elementsCount,
                               (_DIM + 1) * (_DIM + 1));
 
@@ -83,49 +78,78 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   elementsAreas = Matrix::setVector(_device, dk.get_elementsCount());
   bEdgesLengths = Matrix::setVector(_device, dk.get_boundaryEdgesCount());
 
-  diag = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  r = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  m = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  z = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  s = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  p = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  u = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  x = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+  diagK = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+
+//  if (dk.getTaskType() == "dynamic") {
+    Mlocals = Matrix::setMatrix(_device,
+                                _elementsCount,
+                                6 * (_DIM - 1));
+
+    diagM = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+
+    Clocals = Matrix::setMatrix(_device,
+                                _elementsCount,
+                                6 * (_DIM - 1) * 6 * (_DIM - 1));
+
+//  }
 }
 
 CPU_ElementsData::~CPU_ElementsData() {
-  delete nodes;
-  delete elements;
-  delete constraintsIds;
-  delete constraintsTypes;
-  delete boundaryAdjElems;
-  delete boundaryNodes;
-  delete boundaryNormals;
-  delete boundaryPressures;
-  delete D;
+  if (nodes)
+    delete nodes;
+  if (elements)
+    delete elements;
+  if (constraintsIds)
+    delete constraintsIds;
+  if (constraintsTypes)
+    delete constraintsTypes;
+  if (boundaryAdjElems)
+    delete boundaryAdjElems;
+  if (boundaryNodes)
+    delete boundaryNodes;
+  if (boundaryNormals)
+    delete boundaryNormals;
+  if (boundaryPressures)
+    delete boundaryPressures;
+  if (D)
+    delete D;
 
-  delete Blocals;
-  delete tBlocals;
-  delete Klocals;
-  delete Clocals;
-  delete Flocals;
-  delete mask;
-  delete mask_sorted;
-  delete adjElements;
-  delete elementsAreas;
-  delete bEdgesLengths;
+  if (Blocals)
+    delete Blocals;
+  if (tBlocals)
+    delete tBlocals;
+  if (Klocals)
+    delete Klocals;
+  if (Ccoords)
+    delete Ccoords;
+  if (Flocals)
+    delete Flocals;
+  if (mask)
+    delete mask;
+  if (mask_sorted)
+    delete mask_sorted;
+  if (adjElements)
+    delete adjElements;
 
-  delete coordinates;
-  delete fcoordinates;
+  if (coordinates)
+    delete coordinates;
+  if (fcoordinates)
+    delete fcoordinates;
 
-  delete diag;
-  delete r;
-  delete m;
-  delete z;
-  delete s;
-  delete p;
-  delete u;
-  delete x;
+  if (elementsAreas)
+    delete elementsAreas;
+  if (bEdgesLengths)
+    delete bEdgesLengths;
+
+  if (diagK)
+    delete diagK;
+
+  if (Mlocals != nullptr)
+    delete Mlocals;
+  if (diagM != nullptr)
+    delete diagM;
+  if (Clocals != nullptr)
+    delete Clocals;
 }
 
 void CPU_ElementsData::genMask() {
@@ -177,12 +201,6 @@ void CPU_ElementsData::genCoordinates() {
       }
     }
   }
-//  for (size_t i = 0 ; i < _DIM + 1; ++i) {
-//    for (size_t j = 0; j < _DIM; ++j) {
-//      (*coords)[k] = (*nodes)(int((*elements)(el, i)), j);
-//      k++;
-//    }
-//  }
 }
 
 // should be depricated
@@ -192,9 +210,30 @@ void CPU_ElementsData::genFCoordinates() {
     coords->resize(_DIM, _DIM);
     for (size_t i = 0 ; i < _DIM; ++i) {
       for (size_t j = 0; j < _DIM; ++j) {
-        (*coords)(i, j) = (*nodes)(int((*boundaryNodes)(bEdge, i)), j);
+        (*coords)(i, j) = (*nodes)(static_cast<int>((*boundaryNodes)(bEdge, i)), j);
+//        std::cout << (*nodes)(static_cast<int>((*boundaryNodes)(bEdge, i)), j) << "\n";
       }
     }
+  }
+}
+
+void CPU_ElementsData::calculateLength3D() {
+  for (size_t bEdge = 0; bEdge < _boundaryEdgesCount; ++bEdge) {
+    std::unique_ptr<Matrix> coords = fcoordinates->getRow(bEdge);
+    coords->resize(_DIM, _DIM); // x0, y0, z0, x1, y1, z1, x2, y2, z2
+    float ax = (*coords)[3] - (*coords)[0];
+    float ay = (*coords)[4] - (*coords)[1];
+    float az = (*coords)[5] - (*coords)[2];
+
+    float bx = (*coords)[6] - (*coords)[0];
+    float by = (*coords)[7] - (*coords)[1];
+    float bz = (*coords)[8] - (*coords)[2];
+
+    float a1 = (ay * bz - az * by);
+    float a2 = (az * bx - ax * bz);
+    float a3 = (ax * by - ay * bx);
+
+    (*bEdgesLengths)[bEdge] = 0.5f * (a1 * a1 + a2 * a2 + a3 * a3);
   }
 }
 
@@ -207,7 +246,7 @@ void CPU_ElementsData::calculateLength() {
 
 void CPU_ElementsData::calculateArea() {
   for (size_t el = 0; el < _elementsCount; ++el) {
-    std::unique_ptr<Matrix> C = Clocals->getRow(el);
+    std::unique_ptr<Matrix> C = Ccoords->getRow(el);
     std::unique_ptr<Matrix> coords = coordinates->getRow(el);
     coords->resize(_DIM, _DIM + 1);
     C->resize(_DIM + 1, _DIM + 1);
@@ -217,11 +256,120 @@ void CPU_ElementsData::calculateArea() {
             j == 0 ? 1.f : (*coords)(j - 1, i);//[(j - 1) + i * (_DIM)];
       }
     }
-  //  C->Show();
     (*elementsAreas)[el] = std::abs(C->det());
   }
 }
 
+float det3_cpu(float a0, float a1, float a2,
+             float a3, float a4, float a5,
+             float a6, float a7, float a8) {
+  return a0 * a4 * a8 +
+      a1 * a6 * a5 +
+      a2 * a3 * a7 -
+      a6 * a4 * a2 -
+      a0 * a5 * a7 -
+      a1 * a3 * a8;
+}
+
+void CPU_ElementsData::genGradientMatrix2D() {
+  size_t el = 0;
+//  for (size_t el = 0; el < _elementsCount; ++el) {
+  //  std::cout << "Element #" << el << ": area = " << area << "\n";
+
+    std::unique_ptr<Matrix> coords = coordinates->getRow(el);
+    std::unique_ptr<Matrix> B = Blocals->getRow(el);
+    coords->resize(_DIM, _DIM + 1);
+    B->resize(3 * (_DIM - 1), 6 * (_DIM - 1));
+    std::vector<std::string> coo(6);
+    coo[0] = "x1"; coo[1] = "x2"; coo[2] = "x3";
+    coo[3] = "y1"; coo[4] = "y2"; coo[5] = "y3";
+
+
+    for (size_t i = 0; i < _DIM + 1; ++i) {
+      size_t start_id = i * _DIM;
+
+      // x
+      std::cout << "B(" << start_id << "," << 1 <<  ") = ";
+      std::cout << coo[(i + 2) % (_DIM + 1) + 0 * (_DIM + 1)] << " - " << coo[(i + 1) % (_DIM + 1) + 0 * (_DIM + 1)] << "\n";
+      std::cout << "B(" << start_id + 1 << "," << 2 <<  ") = ";
+      std::cout << coo[(i + 2) % (_DIM + 1) + 0 * (_DIM + 1)] << " - " << coo[(i + 1) % (_DIM + 1) + 0 * (_DIM + 1)] << "\n";
+
+      // y
+      std::cout << "B(" << start_id << "," << 0 << ") = ";
+      std::cout << coo[(i + 1) % (_DIM + 1) + 1 * (_DIM + 1)] << " - " << coo[(i + 2) % (_DIM + 1) + 1 * (_DIM + 1)] << "\n";
+      std::cout << "B(" << start_id + 1 << "," << 2 << ") = ";
+      std::cout << coo[(i + 1) % (_DIM + 1) + 1 * (_DIM + 1)] << " - " << coo[(i + 2) % (_DIM + 1) + 1 * (_DIM + 1)] << "\n";
+      std::cout << "\n";
+    }
+//  }
+}
+
+size_t get_id(size_t start, size_t id, size_t dim) {
+  return (start + id) % (dim + 1);
+}
+
+void CPU_ElementsData::genGradientMatrix3D() {
+  for (size_t el = 0; el < _elementsCount; ++el) {
+
+    std::unique_ptr<Matrix> coords = coordinates->getRow(el);
+    std::unique_ptr<Matrix> B = Blocals->getRow(el);
+    coords->resize(_DIM, _DIM + 1);
+    B->resize(3 * (_DIM - 1), 6 * (_DIM - 1));
+
+//    std::vector<std::string> coo(12);
+//    coo[0] = "x1"; coo[1] = "x2"; coo[2] = "x3"; coo[3] = "x4";
+//    coo[4] = "y1"; coo[5] = "y2"; coo[6] = "y3"; coo[7] = "y4";
+//    coo[8] = "z1"; coo[9] = "z2"; coo[10] = "z3"; coo[11] = "z4";
+
+    for (size_t i = 0; i < _DIM + 1; ++i) {
+      size_t start_id = i * _DIM;
+
+//      std::cout << (i + 1) % (_DIM + 1) << "\n";
+      float b = std::pow(-1.f, i) * det3_cpu(1.f, (*coords)[get_id(i, 3, _DIM) + 1 * (_DIM + 1)], (*coords)[get_id(i, 3, _DIM) + 2 * (_DIM + 1)],
+                                             1.f, (*coords)[get_id(i, 2, _DIM) + 1 * (_DIM + 1)], (*coords)[get_id(i, 2, _DIM) + 2 * (_DIM + 1)],
+                                             1.f, (*coords)[get_id(i, 1, _DIM) + 1 * (_DIM + 1)], (*coords)[get_id(i, 1, _DIM) + 2 * (_DIM + 1)]);
+
+      float c = std::pow(-1.f, i) * det3_cpu((*coords)[get_id(i, 3, _DIM) + 0 * (_DIM + 1)], 1.f, (*coords)[get_id(i, 3, _DIM) + 2 * (_DIM + 1)],
+                                             (*coords)[get_id(i, 2, _DIM) + 0 * (_DIM + 1)], 1.f, (*coords)[get_id(i, 2, _DIM) + 2 * (_DIM + 1)],
+                                             (*coords)[get_id(i, 1, _DIM) + 0 * (_DIM + 1)], 1.f, (*coords)[get_id(i, 1, _DIM) + 2 * (_DIM + 1)]);
+
+      float d = std::pow(-1.f, i) * det3_cpu((*coords)[get_id(i, 3, _DIM) + 0 * (_DIM + 1)], (*coords)[get_id(i, 3, _DIM) + 1 * (_DIM + 1)], 1.f,
+                                             (*coords)[get_id(i, 2, _DIM) + 0 * (_DIM + 1)], (*coords)[get_id(i, 2, _DIM) + 1 * (_DIM + 1)], 1.f,
+                                             (*coords)[get_id(i, 1, _DIM) + 0 * (_DIM + 1)], (*coords)[get_id(i, 1, _DIM) + 1 * (_DIM + 1)], 1.f);
+
+      // x
+//      std::cout << "B(" << start_id + 0 << "," << 0 << ") = b_" << i << "\n";
+//      std::cout << "B(" << start_id + 1 << "," << 3 << ") = b_" << i << "\n";
+//      std::cout << "B(" << start_id + 2 << "," << 5 << ") = b_" << i << "\n";
+      (*B)(0, start_id + 0) = b;
+      (*B)(3, start_id + 1) = b;
+      (*B)(5, start_id + 2) = b;
+
+      // y
+//      std::cout << "B(" << start_id + 0 << "," << 3 << ") = c_" << i << "\n";
+//      std::cout << "B(" << start_id + 1 << "," << 1 << ") = c_" << i << "\n";
+//      std::cout << "B(" << start_id + 2 << "," << 4 << ") = c_" << i << "\n";
+      (*B)(3, start_id + 0) = c;
+      (*B)(1, start_id + 1) = c;
+      (*B)(4, start_id + 2) = c;
+
+      // z
+//      std::cout << "B(" << start_id + 0 << "," << 5 << ") = d_" << i << "\n";
+//      std::cout << "B(" << start_id + 1 << "," << 4 << ") = d_" << i << "\n";
+//      std::cout << "B(" << start_id + 2 << "," << 2 << ") = d_" << i << "\n";
+      (*B)(5, start_id + 0) = d;
+      (*B)(4, start_id + 1) = d;
+      (*B)(2, start_id + 2) = d;
+
+//      std::cout << "\n";
+//      std::cout << d / (*elementsAreas)[el] << " ";
+    }
+//    std::cout << "\n";
+  }
+  Blocals->divideElementwise(*elementsAreas, X);
+}
+
+// TODO: Calculate it using determinants based formulas
 void CPU_ElementsData::genGradientMatrix() {
   for (size_t el = 0; el < _elementsCount; ++el) {
   //  std::cout << "Element #" << el << ": area = " << area << "\n";
@@ -254,8 +402,9 @@ void CPU_ElementsData::genGradientMatrix() {
     (*B)(2, 4) = (*coords)(0, 1) - (*coords)(0, 0);
     (*B)(2, 5) = (*coords)(1, 0) - (*coords)(1, 1);
 
-    B->divideElementwise(std::abs((*elementsAreas)[el]));
+    //B->divideElementwise((*elementsAreas)[el]); // TODO: divide all matrix after this function
   }
+  Blocals->divideElementwise(*elementsAreas, X);
 }
 
 void CPU_ElementsData::reductionWithMask(Matrix &src, Matrix &dest) {
@@ -299,51 +448,47 @@ void CPU_ElementsData::applyConstraints() {
   }
 }
 
-void CPU_ElementsData::getDiagonalElements() {
+void CPU_ElementsData::getDiagonalElements(Matrix &Locals, Matrix &tgt) {
   for (size_t el = 0; el < _elementsCount; ++el) {
-    std::unique_ptr<Matrix> diagonal = diag->getRow(el);
-    std::unique_ptr<Matrix> K = Klocals->getRow(el);
-    for (size_t i = 0; i < K->get_numRows(); ++i) {
-      (*diagonal)[i] = (*K)(i, i);
+    std::unique_ptr<Matrix> diagonal = tgt.getRow(el);
+    std::unique_ptr<Matrix> loc = Locals.getRow(el);
+    loc->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
+    for (size_t i = 0; i < loc->get_numRows(); ++i) {
+      (*diagonal)[i] = (*loc)(i, i);
     }
   }
 }
 
 void CPU_ElementsData::calculateKlocal() {
-  genCoordinates();
-  calculateArea();
-  genGradientMatrix();
 
-  // K = B^T * D * B
+  // K = B^T * D * B * Area * Coeff
+
+  float coeff = _DIM == 2 ? 0.5 : (1.f / 6.f);
 
   tBlocals->bmm(*D, 3 * (_DIM - 1), 3 * (_DIM - 1), false,
                *Blocals, 6 * (_DIM - 1), true, _elementsCount);
 
   Klocals->bmm(*Blocals, 6 * (_DIM - 1), 3 * (_DIM - 1), false,
-               *tBlocals, 6 * (_DIM - 1), false, _elementsCount, 0.5f);
+               *tBlocals, 6 * (_DIM - 1), false, _elementsCount, coeff);
 
   Klocals->scale(*elementsAreas, X);
-  getDiagonalElements();
-
-//  Klocals->Show();
-
-//  std::unique_ptr<Matrix> B = Blocals->getRow(el);
-//  std::unique_ptr<Matrix> temp = tBlocals->getRow(el);
-//  std::unique_ptr<Matrix> K = Klocals->getRow(el);
-//  B->resize(3 * (_DIM - 1), 6 * (_DIM - 1));
-//  temp->resize(6 * (_DIM - 1), 3 * (_DIM - 1));
-//  K->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
-
-//  B->product(*D, *temp, true);
-//  temp->product(*B, *K);
-//  K->scale(std::abs((*elementsAreas)[el]) * 0.5f);
 }
 
 void CPU_ElementsData::calculateKlocals() {
+  genCoordinates();
+  calculateArea();
+
+  if (_DIM == 3) {
+    genGradientMatrix3D();
+  } else if (_DIM == 2) {
+    genGradientMatrix();
+  } else {
+    throw std::runtime_error("wrong dimension");
+  }
+
   calculateKlocal();
+
   applyConstraints();
-//  Klocals->Show();
-//  exit(-1);
 }
 
 int CPU_ElementsData::getLocalId(size_t elementId, size_t nodeId) {
@@ -354,28 +499,116 @@ int CPU_ElementsData::getLocalId(size_t elementId, size_t nodeId) {
   return -1;
 }
 
-void CPU_ElementsData::calculateFlocal() {
-  genFCoordinates();
-  calculateLength();
-  boundaryAdjElems->Show();
+void CPU_ElementsData::calculateFlocal(float t, const WaveletParams &waveParams) {
+  updateWavelet(t, waveParams);
+  float coeff = _DIM == 2 ? -0.5f : (-1.f / 12.f);
   for (size_t bEdge = 0; bEdge < _boundaryEdgesCount; ++bEdge) {
     size_t elementId = (*boundaryAdjElems)[bEdge];
-//    printf("%d:%d ", bEdge, elementId);
-  //  std::cout << "len = " << edge_length << "\n";
     for (size_t i = 0; i < _DIM; ++i) {
       size_t nodeId = (*boundaryNodes)(bEdge, i);
       int localId = getLocalId(elementId, nodeId);
-      std::cout << localId << "\n";
       for (size_t j = 0; j < _DIM; ++j) {
-        (*Flocals)(elementId, _DIM * localId + j) = int((*constraintsTypes)[nodeId]) & static_cast<Constraint::Type>(j) ?
-              0.f : -0.5f * (*boundaryPressures)[bEdge] * (*bEdgesLengths)[bEdge] * (*boundaryNormals)(bEdge, j);
+        (*Flocals)(elementId, _DIM * localId + j) = static_cast<int>((*constraintsTypes)[nodeId]) & static_cast<Constraint::Type>(j) ?
+              0.f : coeff * (*boundaryPressures)[bEdge] * (*bEdgesLengths)[bEdge] * (*boundaryNormals)(bEdge, j);
       }
     }
   }
 }
 
-void CPU_ElementsData::calculateFlocals() {
-  calculateFlocal();
-  Flocals->Show();
-  exit(-1);
+void CPU_ElementsData::calculateFlocals(float t, const WaveletParams &waveParams) {
+  genFCoordinates();
+  if (_DIM == 3) {
+    calculateLength3D();
+  } else if (_DIM == 2){
+    calculateLength();
+  } else {
+    throw std::runtime_error("wrong dimension");
+  }
+
+  calculateFlocal(t, waveParams);
+}
+
+void CPU_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &mechParams) {
+  // TODO: add implicit scheme
+  for (size_t el = 0; el < _elementsCount; ++el) {
+    std::unique_ptr<Matrix> M = Mlocals->getRow(el);
+//    M->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
+
+    std::unique_ptr<Matrix> coords = coordinates->getRow(el);
+    coords->resize(_DIM, _DIM + 1);
+    float area = std::abs(((*coords)[0] - (*coords)[2]) *
+                          ((*coords)[4] - (*coords)[5]) -
+                          ((*coords)[1] - (*coords)[2]) *
+                          ((*coords)[3] - (*coords)[5]));
+//    if (area != (*elementsAreas)[el])
+//      std::cout << "AAAAAAAAAAA\n";
+//    std::cout << area << " " << (*elementsAreas)[el] << "\n";
+    float mass = mechParams.rho * (*elementsAreas)[el];
+
+    if (isLumped) {
+      (*M)[0] = mass / 3;
+      (*M)[1] = mass / 3;
+      (*M)[2] = mass / 3;
+      (*M)[3] = mass / 3;
+      (*M)[4] = mass / 3;
+      (*M)[5] = mass / 3;
+    } else {
+      (*M)(0, 0) = mass / 6;
+      (*M)(1, 1) = mass / 6;
+      (*M)(2, 2) = mass / 6;
+      (*M)(3, 3) = mass / 6;
+      (*M)(4, 4) = mass / 6;
+      (*M)(5, 5) = mass / 6;
+
+      (*M)(2, 0) = mass / 12;
+      (*M)(3, 1) = mass / 12;
+      (*M)(4, 0) = mass / 12;
+      (*M)(5, 1) = mass / 12;
+      (*M)(4, 2) = mass / 12;
+      (*M)(5, 3) = mass / 12;
+      (*M)(0, 2) = mass / 12;
+      (*M)(1, 3) = mass / 12;
+      (*M)(0, 4) = mass / 12;
+      (*M)(1, 5) = mass / 12;
+      (*M)(2, 4) = mass / 12;
+      (*M)(3, 5) = mass / 12;
+    }
+  }
+}
+
+void CPU_ElementsData::solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) {
+  CPU_Matrix diagonal_assemblied(dynamic_cast<CPU_Matrix&>(*adjElements));
+  CPU_Matrix v_assemblied(dynamic_cast<CPU_Matrix&>(*adjElements));
+
+  reductionWithMask(diagonal, diagonal_assemblied);
+  reductionWithMask(v, v_assemblied);
+
+  if (transformRes) {
+    v_assemblied.divideElementwise(diagonal_assemblied, tgt);
+  } else {
+    CPU_Matrix temp(dynamic_cast<CPU_Matrix&>(*adjElements));
+    v_assemblied.divideElementwise(diagonal_assemblied, temp);
+    transformWithMask(temp, tgt);
+  }
+}
+
+void CPU_ElementsData::calculateDiag(Matrix &diag, float cM, float cK, float cC, float dampAlpha, float dampBeta) {
+  for (size_t el = 0; el < _elementsCount; ++el) {
+    std::unique_ptr<Matrix> diagonal = diag.getRow(el);
+    std::unique_ptr<Matrix> K = Klocals->getRow(el);
+    K->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
+
+    std::unique_ptr<Matrix> M;
+    if (cM != 0.f) {
+      M = Mlocals->getRow(el);
+//      M->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
+    }
+
+    for (size_t i = 0; i < K->get_numRows(); ++i) {
+      (*diagonal)[i] = cK * (*K)(i, i);
+      if (cM != 0.f) {
+        (*diagonal)[i] += cM * (*M)[i] + cC * (dampAlpha * (*M)[i] + dampBeta * (*K)(i, i));
+      }
+    }
+  }
 }

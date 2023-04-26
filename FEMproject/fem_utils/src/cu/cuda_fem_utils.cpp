@@ -36,6 +36,7 @@ CUDA_ElementsData::CUDA_ElementsData(const dataKeeper &dk) :
   Blocals = Matrix::setMatrix(_device,
                         _elementsCount,
                         3 * (_DIM - 1) * 6 * (_DIM - 1));
+  Blocals->setTo(0.f);
 
   tBlocals = Matrix::setMatrix(_device,
                         _elementsCount,
@@ -44,8 +45,9 @@ CUDA_ElementsData::CUDA_ElementsData(const dataKeeper &dk) :
   Klocals = Matrix::setMatrix(_device,
                               _elementsCount,
                               6 * (_DIM - 1) * 6 * (_DIM - 1));
+  Klocals->setTo(0.f);
 
-  Clocals = Matrix::setMatrix(_device,
+  Ccoords = Matrix::setMatrix(_device,
                               _elementsCount,
                               (_DIM + 1) * (_DIM + 1));
 
@@ -67,7 +69,7 @@ CUDA_ElementsData::CUDA_ElementsData(const dataKeeper &dk) :
                                   dk.get_nodesCount());
   coordinates = Matrix::setMatrix(_device,
                                   _elementsCount,
-                                  6 * (_DIM - 1));
+                                  _DIM * (_DIM + 1));
   fcoordinates = Matrix::setMatrix(_device,
                                   dk.get_boundaryEdgesCount(),
                                   _DIM * _DIM);
@@ -75,51 +77,77 @@ CUDA_ElementsData::CUDA_ElementsData(const dataKeeper &dk) :
   elementsAreas = Matrix::setVector(_device, dk.get_elementsCount());
   bEdgesLengths = Matrix::setVector(_device, dk.get_boundaryEdgesCount());
 
-  diag = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  r = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  m = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  z = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  s = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  p = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  u = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
-  x = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+  diagK = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+
+//  if (dk.getTaskType() == "dynamic") {
+    Mlocals = Matrix::setMatrix(_device,
+                                _elementsCount,
+                                6 * (_DIM - 1));
+
+    diagM = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+
+    Clocals = Matrix::setMatrix(_device,
+                                _elementsCount,
+                                6 * (_DIM - 1) * 6 * (_DIM - 1));
+//  }
 }
 
 CUDA_ElementsData::~CUDA_ElementsData() {
-  // TODO: ADD If and check all deletess
-  delete nodes;
-  delete elements;
-  delete constraintsIds;
-  delete constraintsTypes;
-  delete boundaryAdjElems;
-  delete boundaryNodes;
-  delete boundaryNormals;
-  delete boundaryPressures;
-  delete D;
+  if (nodes)
+    delete nodes;
+  if (elements)
+    delete elements;
+  if (constraintsIds)
+    delete constraintsIds;
+  if (constraintsTypes)
+    delete constraintsTypes;
+  if (boundaryAdjElems)
+    delete boundaryAdjElems;
+  if (boundaryNodes)
+    delete boundaryNodes;
+  if (boundaryNormals)
+    delete boundaryNormals;
+  if (boundaryPressures)
+    delete boundaryPressures;
+  if (D)
+    delete D;
 
-  delete Blocals;
-  delete tBlocals;
-  delete Klocals;
-  delete Clocals;
-  delete Flocals;
-  delete mask;
-  delete mask_sorted;
-  delete adjElements;
+  if (Blocals)
+    delete Blocals;
+  if (tBlocals)
+    delete tBlocals;
+  if (Klocals)
+    delete Klocals;
+  if (Ccoords)
+    delete Ccoords;
+  if (Flocals)
+    delete Flocals;
+  if (mask)
+    delete mask;
+  if (mask_sorted)
+    delete mask_sorted;
+  if (adjElements)
+    delete adjElements;
 
-  delete coordinates;
-  delete fcoordinates;
+  if (coordinates)
+    delete coordinates;
+  if (fcoordinates)
+    delete fcoordinates;
 
-  delete elementsAreas;
-  delete bEdgesLengths;
+  if (elementsAreas)
+    delete elementsAreas;
+  if (bEdgesLengths)
+    delete bEdgesLengths;
 
-  delete diag;
-  delete r;
-  delete m;
-  delete z;
-  delete s;
-  delete p;
-  delete u;
-  delete x;
+  if (diagK)
+    delete diagK;
+
+  if (Mlocals)
+    delete Mlocals;
+  if (diagM)
+    delete diagM;
+  if (Clocals)
+    delete Clocals;
 }
 
 void CUDA_ElementsData::genMask() {
@@ -136,8 +164,8 @@ void CUDA_ElementsData::genAdjElements() {
   ones.reduce_by_key(*mask_sorted, *adjElements);
 }
 
-void CUDA_ElementsData::getDiagonalElements() {
-  getDiagonalElements_Ker(_elementsCount, diag->get_data(), Klocals->get_data(), _DIM);
+void CUDA_ElementsData::getDiagonalElements(Matrix &Locals, Matrix &tgt) {
+  getDiagonalElements_Ker(_elementsCount, tgt.get_data(), Locals.get_data(), _DIM);
 }
 
 void CUDA_ElementsData::transformWithMask(Matrix &src, Matrix &dest) {
@@ -167,11 +195,20 @@ void CUDA_ElementsData::applyConstraints() {
 }
 
 void CUDA_ElementsData::calculateArea() {
-  calculateArea_Ker(_elementsCount, coordinates->get_data(), Clocals->get_data(), elementsAreas->get_data(), _DIM);
+  calculateArea_Ker(_elementsCount, coordinates->get_data(), Ccoords->get_data(), elementsAreas->get_data(), _DIM);
+}
+
+void CUDA_ElementsData::calculateLength3D() {
+  calculateLength3D_Ker(_boundaryEdgesCount, fcoordinates->get_data(), bEdgesLengths->get_data(), _DIM);
 }
 
 void CUDA_ElementsData::calculateLength() {
   calculateLength_Ker(_boundaryEdgesCount, fcoordinates->get_data(), bEdgesLengths->get_data(), _DIM);
+}
+
+void CUDA_ElementsData::genGradientMatrix3D() {
+  genGradientMatrix3D_Ker(_elementsCount, Blocals->get_data(), coordinates->get_data(), _DIM);
+  Blocals->divideElementwise(*elementsAreas, X);
 }
 
 void CUDA_ElementsData::genGradientMatrix() {
@@ -189,13 +226,15 @@ void CUDA_ElementsData::genFCoordinates() {
 
 void CUDA_ElementsData::calculateKlocal() {
 
-  // K = B^T * D * B
+  // K = B^T * D * B * Area * coeff
+
+  float coeff = _DIM == 2 ? 0.5f : (1.f / 6.f);
 
   tBlocals->bmm(*D, 3 * (_DIM - 1), 3 * (_DIM - 1), false,
                *Blocals, 6 * (_DIM - 1), true, _elementsCount);
 
   Klocals->bmm(*Blocals, 6 * (_DIM - 1), 3 * (_DIM - 1), false,
-               *tBlocals, 6 * (_DIM - 1), false, _elementsCount, 0.5f);
+               *tBlocals, 6 * (_DIM - 1), false, _elementsCount, coeff);
 
   Klocals->scale(*elementsAreas, X);
 }
@@ -203,16 +242,23 @@ void CUDA_ElementsData::calculateKlocal() {
 void CUDA_ElementsData::calculateKlocals() {
   genCoordinates();
   calculateArea();
-  genGradientMatrix();
+
+  if (_DIM == 3) {
+    genGradientMatrix3D();
+  } else if (_DIM == 2) {
+    genGradientMatrix();
+  } else {
+    throw std::runtime_error("wrong dimension");
+  }
 
   calculateKlocal();
 
   applyConstraints();
-  getDiagonalElements();
 }
 
 // TODO: MAKE THIS LIGHT!!!
-void CUDA_ElementsData::calculateFlocal() {
+void CUDA_ElementsData::calculateFlocal(float t, const WaveletParams &waveParams) {
+  updateWavelet(t, waveParams);
   calculateFlocal_Ker(_boundaryEdgesCount, Flocals->get_data(),
                       boundaryAdjElems->get_data(),
                       boundaryNodes->get_data(),
@@ -225,13 +271,42 @@ void CUDA_ElementsData::calculateFlocal() {
                       _nodesCount, _elementsCount);
 }
 
-void CUDA_ElementsData::calculateFlocals() {
+void CUDA_ElementsData::calculateFlocals(float t, const WaveletParams &waveParams) {
   genFCoordinates();
-  calculateLength();
-  calculateFlocal();
-  CPU_Matrix tmp;
-  Flocals->copy(tmp);
-  tmp.Show();
-  exit(-1);
+
+  if (_DIM == 3) {
+    calculateLength3D();
+  } else if (_DIM == 2){
+    calculateLength();
+  } else {
+    throw std::runtime_error("wrong dimension");
+  }
+
+  calculateFlocal(t, waveParams);
 }
 
+void CUDA_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &mechParams) {
+  calculateMlocals_Ker(_elementsCount, isLumped, Mlocals->get_data(), _DIM, mechParams.rho, elementsAreas->get_data());
+}
+
+void CUDA_ElementsData::solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) {
+  CUDA_Matrix diagonal_assemblied(dynamic_cast<CUDA_Matrix&>(*adjElements));
+  diagonal_assemblied.setTo(0.f);
+  CUDA_Matrix v_assemblied(dynamic_cast<CUDA_Matrix&>(*adjElements));
+  v_assemblied.setTo(0.f);
+
+  reductionWithMask(diagonal, diagonal_assemblied);
+  reductionWithMask(v, v_assemblied);
+
+  if (transformRes) {
+    v_assemblied.divideElementwise(diagonal_assemblied, tgt);
+  } else {
+    CUDA_Matrix temp(dynamic_cast<CUDA_Matrix&>(*adjElements));
+    v_assemblied.divideElementwise(diagonal_assemblied, temp);
+    transformWithMask(temp, tgt);
+  }
+}
+
+void CUDA_ElementsData::calculateDiag(Matrix &diag, float cM, float cK, float cC, float dampAlpha, float dampBeta) {
+  calculateDiag_Ker(_elementsCount, diag.get_data(), Mlocals->get_data(), Klocals->get_data(), _DIM, cM, cK, cC, dampAlpha, dampBeta);
+}

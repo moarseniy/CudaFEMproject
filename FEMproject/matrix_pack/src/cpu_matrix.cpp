@@ -24,13 +24,14 @@ CPU_Matrix::~CPU_Matrix() {
     delete[] _data;
 }
 
+// TODO: Deprecate this
 void CPU_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, float scaleA,
                                                    bool b_tr, float scaleB) {
   CheckAssert(_numElements > 0 && src.get_numElements() > 0);
-  if (a_tr)
-    this->transpose();
-  if (b_tr)
-    src.transpose();
+//  if (a_tr)
+//    this->transpose();
+//  if (b_tr)
+//    src.transpose();
 
   float a, b;
   if (_numCols == src.get_numRows()) {
@@ -50,16 +51,30 @@ void CPU_Matrix::product(Matrix &src, Matrix &tgt, bool a_tr, float scaleA,
     throw std::runtime_error("CPU_Matrix::product: numCols1 != numRows2\n");
   }
 
-  if (a_tr)
-    this->transpose();
-  if (b_tr)
-    src.transpose();
+//  if (a_tr)
+//    this->transpose();
+//  if (b_tr)
+//    src.transpose();
+}
+
+void CPU_Matrix::uniformRandomize(float v1, float v2) {
+  CheckAssert(_numElements > 0);
+  for (size_t i = 0; i < _numRows; ++i) {
+    for (size_t j = 0; j < _numCols; ++j) {
+      _data[j + i * _numCols] = v1 + rand() / (float) RAND_MAX * (v2 - v1);
+    }
+  }
+}
+
+void CPU_Matrix::fillSequence(float startValue) {
+  CheckAssert(_numElements > 0);
+  std::iota(_data, _data + _numElements, startValue);
 }
 
 void CPU_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool trans_a,
                      const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha) {
   CheckAssert(a.get_numElements() > 0 && b.get_numElements() > 0 && batchCount > 0);
-  resize(batchCount, subRowsA * subColsB);
+//  resize(batchCount, subRowsA * subColsB);
   for (size_t p = 0; p < batchCount; ++p) {
     size_t strideA = subRowsA * subColsA == a.get_numElements() ? 0 : p * subRowsA * subColsA;
     size_t strideB = subColsA * subColsB == b.get_numElements() ? 0 : p * subColsA * subColsB;
@@ -77,10 +92,6 @@ void CPU_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool tra
       }
     }
   }
-}
-
-void CPU_Matrix::transpose() {
-  std::swap(_numRows, _numCols);
 }
 
 float CPU_Matrix::dotProduct(Matrix &vec) {
@@ -172,12 +183,7 @@ void CPU_Matrix::resize(size_t numRows, size_t numCols) {
 }
 
 void CPU_Matrix::flatten() {
-  this->resize(1, _numElements);
-}
-
-void CPU_Matrix::add(Matrix &src) {
-  CheckAssert(_numElements > 0 && _numElements == src.get_numElements());
-  this->addWeighted(src, 1.f, 1.f);
+  resize(1, _numElements);
 }
 
 void CPU_Matrix::sort_by_key(Matrix &keys) {
@@ -218,14 +224,14 @@ void CPU_Matrix::reduce_by_key(Matrix &keys, Matrix &target) {
 
 void CPU_Matrix::sort(Matrix &target) {
   CheckAssert(_numElements > 0);
-  Matrix::copy(target);
-  std::stable_sort(target.get_data(),
-                   target.get_data() + target.get_numElements());
+  copy(target);
+  std::sort(target.get_data(),
+            target.get_data() + target.get_numElements());
 }
 
 void CPU_Matrix::sort() {
   CheckAssert(_numElements > 0);
-  std::stable_sort(_data, _data + _numElements);
+  std::sort(_data, _data + _numElements);
 }
 
 float det3(float a0, float a1, float a2,
@@ -271,6 +277,15 @@ float CPU_Matrix::det() {
   }
 }
 
+float CPU_Matrix::l2norm() {
+  CheckAssert(_numElements > 0);
+  float l2norm_res = 0.f;
+  for (size_t i = 0; i < _numElements; ++i) {
+    l2norm_res += _data[i] * _data[i];
+  }
+  return std::sqrt(l2norm_res);
+}
+
 void CPU_Matrix::setTo(float value) {
   CheckAssert(_numElements > 0);
   for (size_t i = 0; i < _numElements; ++i) {
@@ -297,11 +312,36 @@ void CPU_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {
   }
 }
 
+void CPU_Matrix::add(Matrix &src) {
+  addWeighted(src, 1.f, 1.f);
+}
+
+void CPU_Matrix::add(Matrix &src, Matrix &tgt) {
+  addWeighted(src, 1.f, 1.f, tgt);
+}
+
+void CPU_Matrix::subtract(Matrix &src) {
+  addWeighted(src, 1.f, -1.f);
+}
+
+void CPU_Matrix::subtract(Matrix &src, Matrix &tgt) {
+  addWeighted(src, 1.f, -1.f, tgt);
+}
+
 void CPU_Matrix::addWeighted(Matrix &b, float alpha, float beta) {
-  CheckAssert(_numRows == b.get_numRows() && _numCols == b.get_numCols());
+  addWeighted(b, alpha, beta, *this);
+}
+
+// TODO: Add Transpose cases
+void CPU_Matrix::addWeighted(Matrix &b, float alpha, float beta, Matrix &target) {
+  CheckAssert(_numElements > 0 && _numElements == b.get_numElements());
+  CheckAssert(this->isSameAs(b));
+  if (!this->isSameAs(target))
+    target.resize(*this);
+
   for (size_t i = 0; i < _numRows; ++i) {
     for (size_t j = 0; j < _numCols; ++j) {
-      _data[j + i * _numCols] = alpha * _data[j + i * _numCols] + beta * b(i, j);
+      target(i, j) = alpha * _data[j + i * _numCols] + beta * b(i, j);
     }
   }
 }

@@ -14,9 +14,11 @@ void genFCoordinates_Ker(size_t bEdgesCount, float *fcoordinates, float *nodes, 
 void applyConstraints_Ker(size_t elementsCount, const float *elements, size_t constraintsCount, const float *constraints, float *Klocals, size_t dim, size_t elemSize);
 
 void calculateLength_Ker(size_t bEdgeCount, const float *fcoordinates, float *bEdgesLengths, size_t dim);
-void calculateArea_Ker(size_t size, const float *coordinates, float *Clocals, float *areas, size_t dim);
+void calculateLength3D_Ker(size_t bEdgeCount, const float *fcoordinates, float *bEdgesLengths, size_t dim);
+void calculateArea_Ker(size_t size, const float *coordinates, float *Ccoords, float *areas, size_t dim);
 
 void genGradientMatrix_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim);
+void genGradientMatrix3D_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim);
 void getDiagonalElements_Ker(size_t elementsCount, float *diag, const float *Klocals, size_t dim);
 
 void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
@@ -30,4 +32,7 @@ void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
                          size_t elemSize, size_t dim,
                          size_t nodesCount, size_t elementsCount);
 
+void calculateMlocals_Ker(size_t elementsCount, bool isLumped, float *Mlocals, size_t dim, float rho, const float *elementsAreas);
+void calculateDiag_Ker(size_t elementsCount, float *diag, const float *Mlocals, const float *Klocals,
+                       size_t dim, float cM, float cK, float cC, float dampAlpha, float dampBeta);
 #endif /* FEM_UTILS_KERNELS_H_ */

@@ -29,6 +29,13 @@ struct MechanicalParams {
   float beta1, beta2;
 };
 
+struct WaveletParams {
+  std::string waveletType;
+  float timeshift;
+  float freq;
+  float ampl;
+};
+
 struct dataPaths {
   // CudaFemProject path
   std::string proj_dir;
@@ -53,7 +60,11 @@ public:
 
   void ShowInfo();
   std::string getTaskName() const { return taskName; }
+  std::string getTaskType() const { return taskType; }
+  WaveletParams getWaveletParams() const { return waveParams; }
   dataPaths getDataPaths() const { return paths; }
+  MechanicalParams getMechParams() const { return mechParams; }
+
   size_t get_dim() const { return this->DIM; }
   size_t get_elementsCount() const { return elementsCount; }
   size_t get_nodesCount() const { return nodesCount; }
@@ -115,6 +126,7 @@ protected:
 
   MechanicalParams mechParams;
   dataPaths paths;
+  WaveletParams waveParams;
 
   std::fstream nodes_file, elements_file, loads_file, constraints_file, stress_file;
 };

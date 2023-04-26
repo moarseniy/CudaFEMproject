@@ -31,6 +31,18 @@ void dataKeeper::parseJsonConfig(std::string configPath) {
     mechParams.dt = config.value("dt", 1e-3f);
     mechParams.endtime = config.value("endtime", 0.1f);
   }
+
+  if (config.contains("wavelet")) {
+    auto waveNode = config.at("wavelet");
+    waveParams.waveletType = waveNode.value("WaveletType", "default");
+    waveParams.freq = waveNode.value("freq", 15.f);
+    waveParams.timeshift = waveNode.value("timeshift", 0.f);
+    waveParams.ampl = waveNode.value("ampl", 1.f);
+  } else {
+    waveParams.freq = 15.f;
+    waveParams.timeshift = 0.f;
+    waveParams.ampl = 1.f;
+  }
 }
 
 void dataKeeper::parseCounters() {
@@ -67,7 +79,7 @@ void dataKeeper::allocateMemory() {
   boundaryNodes = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM + 1);
   boundaryPressureValues = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
 
-  displacements = Matrix::setMatrix(CPU, DIM, nodesCount);
+  displacements = Matrix::setMatrix(CPU, nodesCount, DIM);
 //  pressure = Matrix::setVector(CPU, boundaryEdgesCount);
 }
 
@@ -98,15 +110,16 @@ void dataKeeper::CreateMatrixD() {
   float poissonRatio = mechParams.poissonRatio;
   float youngModulus = mechParams.youngModulus;
   if (DIM == 2) {
-    (*D)(0, 0) = 1.0;          (*D)(0, 1) = poissonRatio; (*D)(0, 2) = 0.0;
-    (*D)(1, 0) = poissonRatio; (*D)(1, 1) = 1.0;          (*D)(1, 2) = 0.0;
-    (*D)(2, 0) = 0.0;          (*D)(2, 1) = 0.0;          (*D)(2, 2) = (1.0 - poissonRatio) / 2.0;
-    D->scale(youngModulus / (1.0 - pow(poissonRatio, 2.0)));
+    (*D)(0, 0) = 1.f;          (*D)(0, 1) = poissonRatio; (*D)(0, 2) = 0.f;
+    (*D)(1, 0) = poissonRatio; (*D)(1, 1) = 1.f;          (*D)(1, 2) = 0.f;
+    (*D)(2, 0) = 0.f;          (*D)(2, 1) = 0.f;          (*D)(2, 2) = (1.f - poissonRatio) / 2.f;
+    D->scale(youngModulus / (1.f - pow(poissonRatio, 2)));
   } else if (DIM == 3) {
-    (*D)(0, 0) = (*D)(1, 1) = (*D)(2, 2) = 1.0;
-    (*D)(0, 1) = (*D)(1, 0) = (*D)(0, 2) = (*D)(2, 0) = (*D)(2, 1) = (*D)(1, 2) = poissonRatio / (1.0 - poissonRatio);
-    (*D)(3, 3) = (*D)(4, 4) = (*D)(5, 5) = (1.0 - 2.0 * poissonRatio) / (2.0 * (1.0 - poissonRatio));
-    D->scale((youngModulus * (1.0 - poissonRatio)) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio)));
+    D->setTo(0.f);
+    (*D)(0, 0) = (*D)(1, 1) = (*D)(2, 2) = 1.f;
+    (*D)(0, 1) = (*D)(1, 0) = (*D)(0, 2) = (*D)(2, 0) = (*D)(2, 1) = (*D)(1, 2) = poissonRatio / (1.f - poissonRatio);
+    (*D)(3, 3) = (*D)(4, 4) = (*D)(5, 5) = (1.f - 2.f * poissonRatio) / (2.f * (1.f - poissonRatio));
+    D->scale((youngModulus * (1.f - poissonRatio)) / ((1.f + poissonRatio) * (1.f - 2.f * poissonRatio)));
   } else {
     throw std::runtime_error("Error in FEMdataKeeper::CreateMatrixD()");
   }
@@ -150,8 +163,10 @@ void dataKeeper::ParseConstraints() {
     if (constraintType & Constraint::UY) {
       temp.push_back(DIM * node + 1);
     }
-    if (constraintType & Constraint::UZ) {
-      temp.push_back(DIM * node + 2);
+    if (DIM == 3) {
+      if (constraintType & Constraint::UZ) {
+        temp.push_back(DIM * node + 2);
+      }
     }
   }
 
@@ -159,7 +174,7 @@ void dataKeeper::ParseConstraints() {
     constraintsIds = new CPU_Matrix(temp.size(), 1);
     std::copy(temp.data(), temp.data() + temp.size(), constraintsIds->get_data());
   }
-  std::cout << "Constraints ID's (" << temp.size() << ") found\n";
+//  std::cout << "Constraints ID's (" << temp.size() << ") found\n";
 }
 
 void dataKeeper::ParseLoads() {
@@ -456,7 +471,7 @@ void FEMdataKeeper::ParseBoundaryEdges() {
       this->stress_file >> edge.node[j];
     }
     int temp;
-    stress_file >> temp;
+    stress_file >> temp; // TODO: CHECK
 
     this->stress_file >> edge.adj_elem1;
     for (int j = 0; j < this->DIM; ++j) {
@@ -501,6 +516,7 @@ void FEMdataKeeper::CreateMatrixD() {
     D(2, 0) = 0.0;          D(2, 1) = 0.0;          D(2, 2) = (1.0 - poissonRatio) / 2.0;
     D.scale(youngModulus / (1.0 - pow(poissonRatio, 2.0)));
   } else if (DIM == 3) {
+    D.setTo(0.f);
     D(0, 0) = D(1, 1) = D(2, 2) = 1.0;
     D(0, 1) = D(1, 0) = D(0, 2) = D(2, 0) = D(2, 1) = D(1, 2) = poissonRatio / (1.0 - poissonRatio);
     D(3, 3) = D(4, 4) = D(5, 5) = (1.0 - 2.0 * poissonRatio) / (2.0 * (1.0 - poissonRatio));

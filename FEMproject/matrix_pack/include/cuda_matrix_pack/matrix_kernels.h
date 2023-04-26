@@ -9,6 +9,9 @@
 #include <curand_kernel.h>
 
 #include <thrust/transform.h>
+#include <thrust/random.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/functional.h>
 #include <thrust/reduce.h>
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
@@ -26,6 +29,8 @@ void thrust_sortByKey_Ker(float *keys, float *src, size_t size);
 void thrust_reduceByKey_Ker(float *keys, float *src, float *tgt, size_t size);
 void thrust_sort_Ker(float *src, size_t size);
 void thrust_setTo_Ker(float *src, size_t size, float v);
+void uniformRandomize_Ker(float *data, const size_t size, float v1, float v2);
+void fillSequence_ker(float *a, const size_t ne, const size_t start);
 
 void multiplyByVec_Ker(const size_t numMatr, const float *data,
                        const float *vec_data, const size_t vecSize,
@@ -35,9 +40,5 @@ void setTo_Ker(const size_t size, float *data, const float value);
 void addWeighted_Ker(const size_t size, float *data, const float *src,
                      const float alpha, const float beta);
 void scale_Ker(const size_t size, float *data, const float value);
-void runTest();
-void runTest(float *a, float *b, float *c);
-void runTest2();
-void runTest3();
-void runTest4();
+
 #endif /* MATRIX_KERNELS_H_ */

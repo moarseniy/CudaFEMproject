@@ -14,97 +14,339 @@
 
 #define EPS 1e-4
 
-TEST(MatrixFuncs, sort) {
-  CPU_Matrix m(4, 4);
-  m.fillRandValues(0.f, 1.f);
-  m.Show();
-  CUDA_Matrix m_d;
-  m.copy(m_d);
+TEST(MathVectorOperations, reduce_by_key) {
+  size_t rsz(2);
+  size_t csz(4);
+  {
+    CUDA_Matrix values(rsz, csz), keys(rsz, csz), tgt(rsz, csz);
 
-  m_d.sort();
-  exit(-1);
+    values.uniformRandomize(0.f, 1.f);
+    keys.fillSequence(0);
+
+    // GPU reduction by key
+    values.reduce_by_key(keys, tgt);
+
+    CPU_Matrix hv, hk, hres(rsz, csz), res;
+    values.copy(hv);
+    keys.copy(hk);
+    tgt.copy(res);
+
+    // CPU reduction by key
+    hv.reduce_by_key(hk, hres);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = hres.get_data();
+
+    for (size_t i(0); i < res.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
 }
 
-TEST(MatrixFuncs, Sdgmm) {
-  CPU_Matrix A(2, 4), v(4, 1);
-  CUDA_Matrix A_d, v_d;
+TEST(MatrixBinaryOperations, bmm) {
+  size_t batchCount(10);
+  size_t rsz(20);
+  size_t csz(40);
+  size_t msz(30);
+  {
+    CUDA_Matrix a(batchCount, csz * rsz), b(batchCount, csz * msz), c(batchCount, rsz * msz);
 
-  A.fillRandValues(0.f, 5.f);
-  A.copy(A_d);
-  v.fillRandValues(0.f, 5.f);
-  v.copy(v_d);
-  A.Show();
-   std::cout << "\n";
-  v.Show();
-   std::cout << "\n";
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
 
-  A.scale(v, Y);
-  A.Show();
-  std::cout << "\n";
+    // GPU Batched Matrix Multiplication (Row-major format)
+    c.bmm(b, msz, csz, false, a, rsz, true, batchCount);
 
-  A_d.scale(v_d, Y);
-  CPU_Matrix tmp;
-  A_d.copy(tmp);
-  tmp.Show();
-  exit(-1);
+    CPU_Matrix ha, hb, hc, cpu_res(batchCount, rsz * msz);
+    a.copy(ha);
+    b.copy(hb);
+    c.copy(hc);
+
+    // CPU Batched Matrix Multiplication (Row-major format)
+    cpu_res.bmm(hb, msz, csz, false, ha, rsz, true, batchCount);
+
+    float *cdata = hc.get_data();
+    float *cpu_data = cpu_res.get_data();
+
+    for (size_t i(0); i < cpu_res.get_numElements(); ++i) {
+      ASSERT_NEAR(cdata[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(batchCount, csz * rsz), b(batchCount, csz * msz), c(batchCount, rsz * msz);
+
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    // GPU Batched Matrix Multiplication (Column-major format)
+    c.bmm(a, rsz, csz, true, b, msz, false, batchCount);
+
+    CPU_Matrix ha, hb, hc, cpu_res(batchCount, rsz * msz);
+    a.copy(ha);
+    b.copy(hb);
+    c.copy(hc);
+
+    // CPU Batched Matrix Multiplication (Column-major format)
+    cpu_res.bmm(ha, rsz, csz, true, hb, msz, false, batchCount);
+
+    float *cdata = hc.get_data();
+    float *cpu_data = cpu_res.get_data();
+
+    for (size_t i(0); i < cpu_res.get_numElements(); ++i) {
+      ASSERT_NEAR(cdata[i], cpu_data[i], EPS);
+    }
+  }
 }
 
-TEST(MatrixFuncs, Sgemm) {
-  Matrix *A = Matrix::setMatrix(CPU, 1, 3 * 6);
-  for (size_t i = 0; i < A->get_numElements(); ++i)
-    (*A)[i] =i;
-  std::cout << "A\n";
-  A->Show();
-  Matrix *B = Matrix::setMatrix(CPU, 1, 3 * 3);
-  for (size_t i = 0; i < B->get_numElements(); ++i)
-    (*B)[i] =i;
-  std::cout << "B\n";
-  B->Show();
+TEST(MatrixBinaryOperations, addWeighted) {
+  size_t rsz(200);
+  size_t csz(400);
+  {
+    CUDA_Matrix a(rsz, csz), b(rsz, csz), c(rsz, csz);
 
-  Matrix *C = Matrix::setMatrix(CPU, 1, 3 * 6);
-  A->multiplyByVec(*B, *C);
-  std::cout << "C\n";
-  C->Show();
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
 
-  Matrix *A_d = Matrix::setMatrix(CUDA, A->get_numRows(), A->get_numCols());
-  Matrix *B_d = Matrix::setMatrix(CUDA, B->get_numRows(), B->get_numCols());
-  Matrix *C_d = Matrix::setMatrix(CUDA, C->get_numRows(), C->get_numCols());
+    // GPU Weighted Addition
+    a.addWeighted(b, 0.5f, 0.1f, c);
 
-  C_d->setTo(0.f);
-  A->copy(*A_d);
-  B->copy(*B_d);
+    CPU_Matrix ha, hb, hc, cpu_res;
+    a.copy(ha);
+    b.copy(hb);
+    c.copy(hc);
 
+    // CPU Weighted Addition
+    ha.addWeighted(hb, 0.5f, 0.1f, cpu_res);
 
+    float *cdata = hc.get_data();
+    float *cpu_data = cpu_res.get_data();
 
-  C->setTo(0.f);
-//  B->flatten();
-//  C->bmm(*B, 2, 2, false, *A, 3, true, 1); // (A(2x3))^T * B(2x2) = C(3x2)
-  C->bmm(*B, 3, 3, false, *A, 6, true, 1); // A(3x2) * B(2x3) = C(3x3)
-  std::cout << "C\n";
-  C->Show();
-
-  C_d->bmm(*B_d, 3, 3, false, *A_d, 6, true, 1);
-  CPU_Matrix tmp;
-  C_d->copy(tmp);
-//////  tmp.copy(*C_d);
-  std::cout << "C\n";
-  tmp.Show();
-  exit(-1);
+    for (size_t i(0); i < cpu_res.get_numElements(); ++i) {
+      ASSERT_NEAR(cdata[i], cpu_data[i], EPS);
+    }
+  }
 }
 
-TEST(MatrixFuncs, reduce) {
-  const int N = 7;
-  int A[N] = {1, 1, 3, 3, 3, 2, 2}; // input keys
-  int B[N] = {9, 3, 8, 7, 6, 5, 4}; // input values
-  int C[N];                         // output keys
-  int D[N];                         // output values
-//  thrust::reduce_by_key(thrust::host, A, A + N, B, C, D);
-//  for (int i = 0; i < N; ++i) {
-//    std::cout << D[i] << " ";
-//  }
-//  for (int i = 0; i < N; ++i) {
-//    std::cout << C[i] << " ";
-//  }
+TEST(MathVectorOperations, l2norm_diff) {
+  size_t sz(200);
+  {
+    CUDA_Matrix a(1, sz), b(1, sz), c(1, sz);
+
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    // GPU L2 Euclidean norm of difference
+    a.subtract(b, c);
+    float gpu_res = c.l2norm();
+
+    CPU_Matrix ha, hb, hc;
+    a.copy(ha);
+    b.copy(hb);
+
+    // CPU L2 Euclidean norm of difference
+    ha.subtract(hb, hc);
+    float cpu_res = c.l2norm();
+
+    ASSERT_NEAR(cpu_res, gpu_res, EPS);
+  }
+}
+
+TEST(MatrixOperations, sort) {
+  size_t rsz(4);
+  size_t csz(3);
+  {
+    CUDA_Matrix a(rsz, csz), b;
+    a.uniformRandomize(0.f, 1.f);
+
+    a.sort(b);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(res);
+
+    ha.sort(hb);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = hb.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_EQ(gpu_data[i], cpu_data[i]);
+    }
+  }
+}
+
+TEST(MatrixBinaryOperations, scale) {
+  size_t rsz(40);
+  size_t csz(30);
+  {
+    CUDA_Matrix a(rsz, csz), b(1, rsz);
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(hb);
+
+    a.scale(b, X);
+    a.copy(res);
+
+    ha.scale(hb, X);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(rsz, csz), b(1, csz);
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(hb);
+
+    a.scale(b, Y);
+    a.copy(res);
+
+    ha.scale(hb, Y);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(rsz, csz), b(rsz, csz);
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(hb);
+
+    a.scale(b, ALL);
+    a.copy(res);
+
+    ha.scale(hb, ALL);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(rsz, csz);
+    a.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, res;
+    a.copy(ha);
+
+    a.scale(0.66f);
+    a.copy(res);
+
+    ha.scale(0.66f);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < ha.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+}
+
+TEST(MatrixBinaryOperations, divide) {
+  size_t rsz(40);
+  size_t csz(30);
+  {
+    CUDA_Matrix a(rsz, csz), b(1, rsz);
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(hb);
+
+    a.divideElementwise(b, X);
+    a.copy(res);
+
+    ha.divideElementwise(hb, X);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(rsz, csz), b(1, csz);
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(hb);
+
+    a.divideElementwise(b, Y);
+    a.copy(res);
+
+    ha.divideElementwise(hb, Y);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(rsz, csz), b(rsz, csz);
+    a.uniformRandomize(0.f, 1.f);
+    b.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, hb, res;
+    a.copy(ha);
+    b.copy(hb);
+
+    a.divideElementwise(b, ALL);
+    a.copy(res);
+
+    ha.divideElementwise(hb, ALL);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < hb.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
+  {
+    CUDA_Matrix a(rsz, csz);
+    a.uniformRandomize(0.f, 1.f);
+
+    CPU_Matrix ha, res;
+    a.copy(ha);
+
+    a.divideElementwise(0.66f);
+    a.copy(res);
+
+    ha.divideElementwise(0.66f);
+
+    float *gpu_data = res.get_data();
+    float *cpu_data = ha.get_data();
+
+    for (size_t i(0); i < ha.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS);
+    }
+  }
 }
 
 TEST(MatrixFuncs, smth) {
@@ -122,13 +364,13 @@ TEST(MatrixFuncs, smth) {
     keys.insert(A[i]);
   }
 
-  std::cout << "\nRes\n";
-  for (auto &key : keys) {
-    auto range = mymap.equal_range(key);
-    std::cout << std::accumulate(range.first, range.second,
-        0.0f,
-        [](int a, std::pair<int, int> b) { return a + b.second; }) << " ";
-  }
+//  std::cout << "\nRes\n";
+//  for (auto &key : keys) {
+//    auto range = mymap.equal_range(key);
+//    std::cout << std::accumulate(range.first, range.second,
+//        0.0f,
+//        [](int a, std::pair<int, int> b) { return a + b.second; }) << " ";
+//  }
 
   CPU_Matrix test1(1, 5), k(1, 5);
   test1.get_data()[0] = 1;
@@ -148,43 +390,10 @@ TEST(MatrixFuncs, smth) {
   EXPECT_EQ(true, true);
 }
 
-TEST(MatrixFuncs, copy) {
-  CPU_Matrix m1(4, 4);
-
-  m1.fillRandValues(0.f, 1.f);
-  m1.Show();
-  std::cout << "getRows\n";
-  std::unique_ptr<Matrix> m3 = m1.getRows(1, 3);
-  m3->setTo(1.f);
-  m1.Show();
-}
-
-TEST(MatrixFuncs, mult) {
-  std::cout << "product\n";
-
-  CPU_Matrix m1(2, 3);
-  m1.fillRandValues(0.f, 1.f);
-  m1.Show();
-
-  CPU_Matrix m2(2, 2);
-  m2.fillRandValues(0.f, 1.f);
-  m2.Show();
-
-  CPU_Matrix m3(3, 2);
-  m1.product(m2, m3, true);
-  m3.Show();
-}
-
 int main(int argc, char *argv[]) {
-  CPU_Matrix A(7, 10);
+  std::srand(time(0));
+  CUDA_Matrix::_initCUDA();
 
-//  GPU_Matrix c(5, 2);
-  Matrix *c = new CUDA_Matrix(7, 10);
-  CUDA_Matrix d(7, 10);
-
-//  A.Show();
-  delete c;
-//  delete B;
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

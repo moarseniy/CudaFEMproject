@@ -1,29 +1,5 @@
 #include "fem_utils_kernels.h"
 
-// nxm * kxp
-__device__
-void mult(float *a, float *b, float *tgt,
-          size_t n, size_t m,
-          size_t k, size_t p,
-          bool a_tr, size_t thread_id) {
-  float a1;
-  if (a_tr) {
-    size_t temp = n;
-    n = m;
-    m = temp;
-  }
-  for (size_t i = 0; i < n; i++) {
-    for (size_t j = 0; j < p; j++) {
-      tgt[j + i * p + n * p * thread_id] = 0.f;
-      for (size_t t = 0; t < n; t++) {
-        a1 = a_tr ? a[i + t * m + n * m * thread_id] :
-                    a[t + i * m + n * m * thread_id];
-        tgt[j + i * p + n * p * thread_id] += a1 * b[j + t * p];
-      }
-    }
-  }
-}
-
 __global__
 void kernelGenerateMask(float *elements, float *mask, size_t dim, size_t n) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -61,7 +37,7 @@ __global__
 void kernelTransformWithMask(size_t n, const float *mask, const float *src, float *dest) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < n) {
-    dest[id] = src[int(mask[id])];
+    dest[id] = src[static_cast<int>(mask[id])];
   }
 }
 
@@ -72,8 +48,9 @@ void transformWithMask_Ker(size_t size, float *dest, const float *src, const flo
 __global__
 void kernelGenCoordinates(size_t n, float *coordinates, float *nodes, float *elements, size_t dim) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
-  size_t s = dim * (dim + 1);
+
   if (id < n) {
+    size_t s = dim * (dim + 1);
     for (size_t i = 0 ; i < dim; ++i) {
       for (size_t j = 0; j < dim + 1; ++j) {
         coordinates[j + i * (dim + 1) + id * s] = nodes[i + static_cast<int>(elements[j + id * (dim + 1)]) * dim];
@@ -89,11 +66,13 @@ void genCoordinates_Ker(size_t elementsCount, float *coordinates, float *nodes, 
 __global__
 void kernelGenFCoordinates(size_t n, float *fcoordinates, float *nodes, float *boundaryNodes, size_t dim) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
-  size_t s = dim * dim;
+
   if (id < n) {
+    size_t s = dim * dim;
+    float *fcoords = fcoordinates + id * s;
     for (size_t i = 0 ; i < dim; ++i) {
       for (size_t j = 0; j < dim; ++j) {
-        fcoordinates[j + i * dim + id * s] = nodes[j + static_cast<int>(boundaryNodes[i + id * dim]) * dim];
+        fcoords[j + i * dim] = nodes[j + static_cast<int>(boundaryNodes[i + id * (dim + 1)]) * dim];
       }
     }
   }
@@ -139,10 +118,10 @@ float kernel_det4x4(const float *m) {
 }
 
 __global__
-void kernelCalculateArea(size_t n, const float *coords, float *Clocals, float *areas, size_t dim) {
+void kernelCalculateArea(size_t n, const float *coords, float *Ccoords, float *areas, size_t dim) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < n) {
-    float *C = Clocals + id * (dim + 1) * (dim + 1);
+    float *C = Ccoords + id * (dim + 1) * (dim + 1);
     for (size_t i = 0; i < dim + 1; ++i) {
       for (size_t j = 0; j < dim + 1; ++j) {
         C[j + i * (dim + 1)] =
@@ -158,8 +137,8 @@ void kernelCalculateArea(size_t n, const float *coords, float *Clocals, float *a
   }
 }
 
-void calculateArea_Ker(size_t size, const float *coordinates, float *Clocals, float *areas, size_t dim) {
-  kernelCalculateArea<<<(size + 255) / 256, 256>>>(size, coordinates, Clocals, areas, dim);
+void calculateArea_Ker(size_t size, const float *coordinates, float *Ccoords, float *areas, size_t dim) {
+  kernelCalculateArea<<<(size + 255) / 256, 256>>>(size, coordinates, Ccoords, areas, dim);
 }
 
 __global__
@@ -169,8 +148,6 @@ void kernelGenGradientMatrix(size_t n, float *Blocals, const float *coordinates,
     const float *coords = coordinates + dim * (dim + 1) * id;
     float *B = Blocals + 3 * (dim - 1) * 6 * (dim - 1) * id;
     size_t col = 6 * (dim - 1);
-
-    //TODO: WORKS FOR 2D ONLY!!!
 
     B[0 + col * 0] = coords[1 + (dim + 1) * 1] - coords[2 + (dim + 1) * 1];
     B[1 + col * 0] = 0.f;
@@ -197,6 +174,57 @@ void kernelGenGradientMatrix(size_t n, float *Blocals, const float *coordinates,
 
 void genGradientMatrix_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim) {
   kernelGenGradientMatrix<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Blocals, coordinates, dim);
+}
+
+__device__
+size_t kernelGetId(size_t start, size_t id, size_t dim) {
+  return (start + id) % (dim + 1);
+}
+
+__global__
+void kernelGenGradientMatrix3D(size_t n, float *Blocals, const float *coordinates, size_t dim) {
+  size_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < n) {
+    const float *coords = coordinates + dim * (dim + 1) * id;
+    float *B = Blocals + 3 * (dim - 1) * 6 * (dim - 1) * id;
+    size_t col = 6 * (dim - 1);
+
+
+    for (size_t i = 0; i < dim + 1; ++i) {
+      size_t start_id = i * dim;
+
+      float b = pow(-1.f, i) * kernel_det3(1.f, coords[kernelGetId(i, 3, dim) + 1 * (dim + 1)], coords[kernelGetId(i, 3, dim) + 2 * (dim + 1)],
+                                           1.f, coords[kernelGetId(i, 2, dim) + 1 * (dim + 1)], coords[kernelGetId(i, 2, dim) + 2 * (dim + 1)],
+                                           1.f, coords[kernelGetId(i, 1, dim) + 1 * (dim + 1)], coords[kernelGetId(i, 1, dim) + 2 * (dim + 1)]);
+
+      float c = pow(-1.f, i) * kernel_det3(coords[kernelGetId(i, 3, dim) + 0 * (dim + 1)], 1.f, coords[kernelGetId(i, 3, dim) + 2 * (dim + 1)],
+                                           coords[kernelGetId(i, 2, dim) + 0 * (dim + 1)], 1.f, coords[kernelGetId(i, 2, dim) + 2 * (dim + 1)],
+                                           coords[kernelGetId(i, 1, dim) + 0 * (dim + 1)], 1.f, coords[kernelGetId(i, 1, dim) + 2 * (dim + 1)]);
+
+      float d = pow(-1.f, i) * kernel_det3(coords[kernelGetId(i, 3, dim) + 0 * (dim + 1)], coords[kernelGetId(i, 3, dim) + 1 * (dim + 1)], 1.f,
+                                           coords[kernelGetId(i, 2, dim) + 0 * (dim + 1)], coords[kernelGetId(i, 2, dim) + 1 * (dim + 1)], 1.f,
+                                           coords[kernelGetId(i, 1, dim) + 0 * (dim + 1)], coords[kernelGetId(i, 1, dim) + 1 * (dim + 1)], 1.f);
+
+      // x
+      B[start_id + 0 + 0 * col] = b;
+      B[start_id + 1 + 3 * col] = b;
+      B[start_id + 2 + 5 * col] = b;
+
+      // y
+      B[start_id + 0 + 3 * col] = c;
+      B[start_id + 1 + 1 * col] = c;
+      B[start_id + 2 + 4 * col] = c;
+
+      // z
+      B[start_id + 0 + 5 * col] = d;
+      B[start_id + 1 + 4 * col] = d;
+      B[start_id + 2 + 2 * col] = d;
+    }
+  }
+}
+
+void genGradientMatrix3D_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim) {
+  kernelGenGradientMatrix3D<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Blocals, coordinates, dim);
 }
 
 __global__
@@ -246,13 +274,38 @@ void kernelCalculateLength(size_t n, const float *fcoordinates, float *bEdgesLen
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < n) {
     const float *fcoords = fcoordinates + id * dim * dim;
-    bEdgesLengths[id] = std::sqrt((fcoords[2] - fcoords[0]) * (fcoords[2] - fcoords[0]) +
-                                  (fcoords[3] - fcoords[1]) * (fcoords[3] - fcoords[1]));
+    bEdgesLengths[id] = sqrt((fcoords[2] - fcoords[0]) * (fcoords[2] - fcoords[0]) +
+                             (fcoords[3] - fcoords[1]) * (fcoords[3] - fcoords[1]));
   }
 }
 
 void calculateLength_Ker(size_t bEdgeCount, const float *fcoordinates, float *bEdgesLengths, size_t dim) {
   kernelCalculateLength<<<(bEdgeCount + 255) / 256, 256>>>(bEdgeCount, fcoordinates, bEdgesLengths, dim);
+}
+
+__global__
+void kernelCalculateLength3D(size_t n, const float *fcoordinates, float *bEdgesLengths, size_t dim) {
+  size_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < n) {
+    const float *fcoords = fcoordinates + id * dim * dim;
+    float ax = fcoords[3] - fcoords[0];
+    float ay = fcoords[4] - fcoords[1];
+    float az = fcoords[5] - fcoords[2];
+
+    float bx = fcoords[6] - fcoords[0];
+    float by = fcoords[7] - fcoords[1];
+    float bz = fcoords[8] - fcoords[2];
+
+    float a1 = (ay * bz - az * by);
+    float a2 = (az * bx - ax * bz);
+    float a3 = (ax * by - ay * bx);
+
+    bEdgesLengths[id] = 0.5f * (a1 * a1 + a2 * a2 + a3 * a3);
+  }
+}
+
+void calculateLength3D_Ker(size_t bEdgeCount, const float *fcoordinates, float *bEdgesLengths, size_t dim) {
+  kernelCalculateLength3D<<<(bEdgeCount + 255) / 256, 256>>>(bEdgeCount, fcoordinates, bEdgesLengths, dim);
 }
 
 __device__
@@ -279,13 +332,14 @@ void kernelCalculateFlocal(size_t n, float *Flocals,
                     size_t nodesCount, size_t elementsCount) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < n) {
+    float coeff = dim == 2 ? -0.5f : (-1.f / 12.f);
     size_t elementId = boundaryAdjElems[id];
     for (size_t i = 0; i < dim; ++i) {
       size_t nodeId = boundaryNodes[i + id * (dim + 1)];
       int localId = kernelGetLocalId(elements, elementsCount, elementId, nodeId, elemSize);
       for (size_t j = 0; j < dim; ++j) {
         Flocals[(dim * localId + j) + elementId * 6 * (dim - 1)] = static_cast<size_t>(constraintsTypes[nodeId]) & j ?
-              0.f : -0.5f * boundaryPressures[id] * bEdgesLengths[id] * boundaryNormals[j + dim * id];
+              0.f : coeff * boundaryPressures[id] * bEdgesLengths[id] * boundaryNormals[j + dim * id];
       }
     }
   }
@@ -311,4 +365,71 @@ void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
                                                            constraintsTypes,
                                                            elemSize, dim,
                                                            nodesCount, elementsCount);
+}
+
+__global__
+void kernelCalculateMlocals(size_t elementsCount, bool isLumped,
+                            float *Mlocals, size_t dim,
+                            float rho, const float *elementsAreas) {
+  size_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < elementsCount) {
+    float mass = rho * elementsAreas[id];
+    // TODO: add implicit scheme
+    float *M = Mlocals + id * 6 * (dim - 1);
+    if (isLumped) {
+      M[0] = mass / 3;
+      M[1] = mass / 3;
+      M[2] = mass / 3;
+      M[3] = mass / 3;
+      M[4] = mass / 3;
+      M[5] = mass / 3;
+    } else {
+      M[0 + 0 * 6] = mass / 6;
+      M[1 + 1 * 6] = mass / 6;
+      M[2 + 2 * 6] = mass / 6;
+      M[3 + 3 * 6] = mass / 6;
+      M[4 + 4 * 6] = mass / 6;
+      M[5 + 5 * 6] = mass / 6;
+
+      M[0 + 2 * 6] = mass / 12;
+      M[1 + 3 * 6] = mass / 12;
+      M[0 + 4 * 6] = mass / 12;
+      M[1 + 5 * 6] = mass / 12;
+      M[2 + 4 * 6] = mass / 12;
+      M[3 + 5 * 6] = mass / 12;
+      M[2 + 0 * 6] = mass / 12;
+      M[3 + 1 * 6] = mass / 12;
+      M[4 + 0 * 6] = mass / 12;
+      M[5 + 1 * 6] = mass / 12;
+      M[4 + 2 * 6] = mass / 12;
+      M[5 + 3 * 6] = mass / 12;
+    }
+  }
+}
+
+void calculateMlocals_Ker(size_t elementsCount, bool isLumped, float *Mlocals, size_t dim, float rho, const float *elementsAreas) {
+  kernelCalculateMlocals<<<(elementsCount + 255) / 256, 256>>>(elementsCount, isLumped, Mlocals, dim, rho, elementsAreas);
+}
+
+__global__
+void kernelCalculateDiag(size_t elementsCount, float *diag, const float *Mlocals, const float *Klocals,
+                         size_t dim, float cM, float cK, float cC, float dampAlpha, float dampBeta) {
+  size_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < elementsCount) {
+    size_t s = 6 * (dim - 1);
+    for (size_t j = 0; j < s; ++j) {
+      diag[j + id * s] = cK * Klocals[j + j * s + id * s * s];
+      if (cM != 0.f) {
+        diag[j + id * s] += cM * Mlocals[j + j * s + id * s * s] +
+                            cC * (dampAlpha * Mlocals[j + j * s + id * s * s] + dampBeta * Klocals[j + j * s + id * s * s]);
+
+      }
+    }
+  }
+}
+
+void calculateDiag_Ker(size_t elementsCount, float *diag, const float *Mlocals, const float *Klocals,
+                   size_t dim, float cM, float cK, float cC, float dampAlpha, float dampBeta) {
+  kernelCalculateDiag<<<(elementsCount + 255) / 256, 256>>>(elementsCount, diag, Mlocals, Klocals,
+                                                            dim, cM, cK, cC, dampAlpha, dampBeta);
 }

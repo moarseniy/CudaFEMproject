@@ -18,22 +18,33 @@ public:
   ElementsData(size_t DIM, size_t elementsCount, size_t nodesCount, size_t boundaryEdgesCount, DEVICE_NAME device);
   virtual ~ElementsData() {};
 
-  virtual void getDiagonalElements() = 0;
+  void updateWavelet(float t, const WaveletParams &waveParams);
+  void Ricker(float t, float ampl, float freq);
+  void Berlage(float t, float ampl, float freq);
+
+  virtual void getDiagonalElements(Matrix &Locals, Matrix &tgt) = 0;
   virtual void transformWithMask(Matrix &src, Matrix &dest) = 0;
   virtual void reductionWithMask(Matrix &src, Matrix &dest) = 0;
   virtual void reductionWithMaskAndTransform(Matrix &src, Matrix &dest, size_t size) = 0;
   virtual void applyConstraints() = 0;
   virtual void calculateKlocal() = 0;
   virtual void calculateKlocals() = 0;
-  virtual void calculateFlocal() = 0;
-  virtual void calculateFlocals() = 0;
+  virtual void calculateFlocal(float t, const WaveletParams &waveParams) = 0;
+  virtual void calculateFlocals(float t, const WaveletParams &waveParams) = 0;
   virtual void calculateLength() = 0;
+  virtual void calculateLength3D() = 0;
   virtual void calculateArea() = 0;
   virtual void genMask() = 0;
   virtual void genAdjElements() = 0;
   virtual void genCoordinates() = 0;
   virtual void genFCoordinates() = 0;
   virtual void genGradientMatrix() = 0;
+  virtual void genGradientMatrix3D() = 0;
+
+  virtual void calculateDiag(Matrix &diag, float cM = 0.f, float cK = 0.f, float cC = 0.f, float dampAlpha = 0.f, float dampBeta = 0.f) = 0;
+  // TODO: take it to another new class
+  virtual void solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) = 0;
+  virtual void calculateMlocals(bool isLumped, const MechanicalParams &mechParams) = 0;
 
   DEVICE_NAME get_device() const;
   size_t get_dim() const;
@@ -43,17 +54,17 @@ public:
   Matrix* get_Flocals() const;
   Matrix* get_Blocals() const;
   Matrix* get_coordinates() const;
+  Matrix* get_fcoordinates() const;
   Matrix* get_mask() const;
   Matrix* get_adjElements() const;
+  Matrix* get_bEdgesLengths() const;
+  Matrix* get_Ccoords() const;
 
-  Matrix* get_diag() const;
-  Matrix* get_r() const;
-  Matrix* get_m() const;
-  Matrix* get_z() const;
-  Matrix* get_s() const;
-  Matrix* get_p() const;
-  Matrix* get_u() const;
-  Matrix* get_x() const;
+  Matrix* get_diagK() const;
+
+  Matrix* get_diagM() const;
+  Matrix* get_Mlocals() const;
+  Matrix* get_Clocals() const;
 
   static ElementsData* setElementsData(DEVICE_NAME device, const dataKeeper &dk);
 
@@ -74,11 +85,12 @@ protected:
   Matrix *boundaryPressures;
   Matrix *D;
 
-  Matrix *Flocals; // Right part of SLAE
-  Matrix *Klocals; // Stiffness Matrix
-  Matrix *Blocals; // Gradient Matrix
-  Matrix *tBlocals; // Transposed Gradient Matrix
-  Matrix *Clocals;
+  Matrix *Flocals; // Local Right parts of SLAE
+  Matrix *Klocals; // Local Stiffness Matrices
+  Matrix *diagK; // main diagonals of Stiffness Matrices
+  Matrix *Blocals; // Gradient Matrices
+  Matrix *tBlocals; // Temporary Gradient Matrices
+  Matrix *Ccoords;
   Matrix *mask;
   Matrix *mask_sorted;
   Matrix *adjElements;
@@ -88,8 +100,9 @@ protected:
   Matrix *coordinates;
   Matrix *fcoordinates;
 
-  //TODO: check how to rewrite
-  Matrix *diag, *r, *m, *z, *s, *p, *u, *x;
+  Matrix *Mlocals;
+  Matrix *diagM;
+  Matrix *Clocals;
 };
 
 class CPU_ElementsData : public ElementsData {
@@ -98,7 +111,7 @@ public:
   CPU_ElementsData(const dataKeeper &dk);
   ~CPU_ElementsData();
 
-  void getDiagonalElements() override;
+  void getDiagonalElements(Matrix &Locals, Matrix &tgt) override;
   void transformWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMaskAndTransform(Matrix &src, Matrix &dest, size_t size) override;
@@ -106,15 +119,24 @@ public:
   void calculateKlocal() override;
   void calculateKlocals() override;
   int getLocalId(size_t elementId, size_t nodeId);
-  void calculateFlocal() override;
-  void calculateFlocals() override;
+  void calculateFlocal(float t, const WaveletParams &waveParams) override;
+  void calculateFlocals(float t, const WaveletParams &waveParams) override;
   void calculateArea() override;
   void calculateLength() override;
+  void calculateLength3D() override;
   void genMask() override;
   void genAdjElements() override;
   void genCoordinates() override;
   void genFCoordinates() override;
   void genGradientMatrix() override;
+  void genGradientMatrix2();
+  void genGradientMatrix2D();
+  void genGradientMatrix3D() override;
+
+  void calculateDiag(Matrix &diag, float cM = 0.f, float cK = 0.f, float cC = 0.f, float dampAlpha = 0.f, float dampBeta = 0.f) override;
+
+  void solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) override;
+  void calculateMlocals(bool isLumped, const MechanicalParams &mechParams) override;
 };
 
 #endif // FEM_UTILS_H

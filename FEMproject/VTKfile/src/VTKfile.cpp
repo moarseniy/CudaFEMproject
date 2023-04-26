@@ -80,6 +80,114 @@ void MakeVTKfile2D(std::string output_vtk,
 //  }
 }
 
+void MakeVTKfile2D(std::string output_vtk,
+                   Matrix &nodes,
+                   Matrix &elements,
+                   Matrix &displacements) {
+  CheckRunTime(__func__)
+  std::fstream outvtk;
+  outvtk.open(output_vtk, std::fstream::out);
+
+  size_t dim = nodes.get_numCols();
+
+  outvtk << "# vtk DataFile Version 1.0\nresults.vtk  2D Unstructured Grid of Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "
+           << nodes.get_numRows() << " float\n";
+  for (size_t i = 0; i < nodes.get_numRows(); ++i) {
+    for (size_t j = 0; j < nodes.get_numCols(); ++j) {
+      outvtk << nodes(i, j) << " ";
+    }
+    outvtk << "0.0\n";
+  }
+
+  outvtk << "\nCELLS " << elements.get_numRows() << " " << elements.get_numRows() * 4 << "\n";
+  for (size_t i = 0; i < elements.get_numRows(); ++i) {
+    outvtk << dim + 1 << " ";
+    for (size_t j = 0; j < elements.get_numCols(); ++j) {
+      outvtk << elements(i, j) << " ";
+    }
+    outvtk << "\n";
+  }
+
+  outvtk << "\nCELL_TYPES " << elements.get_numRows() << "\n";
+  for (size_t i = 0; i < elements.get_numRows(); ++i) {
+    outvtk << 5 << "\n";
+  }
+
+  outvtk << "\nPOINT_DATA " << nodes.get_numRows() << "\n";
+
+  std::cout << displacements.get_numRows() << " " << displacements.get_numCols() << "\n";
+  outvtk << "\nVECTORS displacements float\n";
+  for (size_t i = 0; i < displacements.get_numRows(); ++i) {
+    for (size_t j = 0; j < displacements.get_numCols(); ++j) {
+      outvtk << displacements(i, j) << " ";
+    }
+    outvtk << "0.0\n";
+  }
+
+  outvtk << "\nSCALARS summary float\nLOOKUP_TABLE default\n";
+  for (size_t i = 0; i < displacements.get_numRows(); ++i) {
+    float s = 0.f;
+    for (size_t j = 0; j < displacements.get_numCols(); ++j) {
+      s += displacements(i, j) * displacements(i, j);
+    }
+    outvtk << std::sqrt(s) << "\n";
+  }
+}
+
+void MakeVTKfile3D(std::string output_vtk,
+                   Matrix &nodes,
+                   Matrix &elements,
+                   Matrix &displacements) {
+  CheckRunTime(__func__)
+  std::fstream outvtk;
+  outvtk.open(output_vtk, std::fstream::out);
+
+  size_t dim = nodes.get_numCols();
+
+  outvtk << "# vtk DataFile Version 1.0\nresults.vtk  3D Unstructured Grid of Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "
+           << nodes.get_numRows() << " float\n";
+  for (size_t i = 0; i < nodes.get_numRows(); ++i) {
+    for (size_t j = 0; j < nodes.get_numCols(); ++j) {
+      outvtk << nodes(i, j) << " ";
+    }
+    outvtk << "\n";
+  }
+
+  outvtk << "CELLS " << elements.get_numRows() << " " << elements.get_numRows() * 5 << "\n";
+  for (size_t i = 0; i < elements.get_numRows(); ++i) {
+    outvtk << dim + 1 << " ";
+    for (size_t j = 0; j < elements.get_numCols(); ++j) {
+      outvtk << elements(i, j) << " ";
+    }
+    outvtk << "\n";
+  }
+
+  outvtk << "CELL_TYPES " << elements.get_numRows() << "\n";
+  for (size_t i = 0; i < elements.get_numRows(); ++i) {
+    outvtk << 10 << "\n";
+  }
+
+  outvtk << "\nPOINT_DATA " << nodes.get_numRows() << "\n";
+
+  std::cout << displacements.get_numRows() << " " << displacements.get_numCols() << "\n";
+  outvtk << "\nVECTORS displacements float\n";
+  for (size_t i = 0; i < displacements.get_numRows(); ++i) {
+    for (size_t j = 0; j < displacements.get_numCols(); ++j) {
+      outvtk << displacements(i, j) << " ";
+    }
+    outvtk << "\n";
+  }
+
+  outvtk << "\nSCALARS summary float\nLOOKUP_TABLE default\n";
+  for (size_t i = 0; i < displacements.get_numRows(); ++i) {
+    float s = 0.f;
+    for (size_t j = 0; j < displacements.get_numCols(); ++j) {
+      s += displacements(i, j) * displacements(i, j);
+    }
+    outvtk << std::sqrt(s) << "\n";
+  }
+}
+
 void MakeVTKfile3D(std::string output_vtk,
                    std::vector<CPU_Matrix> &nodes,
                    std::vector<Element> &elements,

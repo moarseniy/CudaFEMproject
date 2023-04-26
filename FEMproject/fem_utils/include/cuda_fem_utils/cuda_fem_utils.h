@@ -32,23 +32,28 @@ public:
   CUDA_ElementsData(const dataKeeper &dk);
   ~CUDA_ElementsData();
 
-  void getDiagonalElements() override;
+  void getDiagonalElements(Matrix &Locals, Matrix &tgt) override;
   void transformWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMask(Matrix &src, Matrix &dest) override;
   void reductionWithMaskAndTransform(Matrix &src, Matrix &dest, size_t size) override;
   void applyConstraints() override;
   void calculateKlocal() override;
   void calculateKlocals() override;
-  void calculateFlocal() override;
-  void calculateFlocals() override;
+  void calculateFlocal(float t, const WaveletParams &waveParams) override;
+  void calculateFlocals(float t, const WaveletParams &waveParams) override;
   void calculateArea() override;
   void calculateLength() override;
+  void calculateLength3D() override;
   void genMask() override;
   void genAdjElements() override;
   void genCoordinates() override;
   void genFCoordinates() override;
   void genGradientMatrix() override;
+  void genGradientMatrix3D() override;
 
+  void calculateDiag(Matrix &diag, float cM = 0.f, float cK = 0.f, float cC = 0.f, float dampAlpha = 0.f, float dampBeta = 0.f) override;
+  void solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) override;
+  void calculateMlocals(bool isLumped, const MechanicalParams &mechParams) override;
 };
 
 
