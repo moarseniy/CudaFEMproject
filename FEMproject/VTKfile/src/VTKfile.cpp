@@ -2,6 +2,21 @@
 #include <VTKfile.h>
 
 
+void writeSEGY(std::string path, Matrix &v) {
+  CSegyOut out(path);
+  out.open();
+
+//  out.setSegyFormat();
+//  out.setSegyID();
+//  out.setSegyTrace();
+//  out.setTraceNumber();
+//  out.setSampleInterval();
+//  out.setSampleNumber();
+
+  out.write();
+  out.close();
+}
+
 void MakeVTKfile2D(std::string output_vtk,
                    std::vector<CPU_Matrix> &nodes,
                    std::vector<Element> &elements,
@@ -114,8 +129,6 @@ void MakeVTKfile2D(std::string output_vtk,
   }
 
   outvtk << "\nPOINT_DATA " << nodes.get_numRows() << "\n";
-
-  std::cout << displacements.get_numRows() << " " << displacements.get_numCols() << "\n";
   outvtk << "\nVECTORS displacements float\n";
   for (size_t i = 0; i < displacements.get_numRows(); ++i) {
     for (size_t j = 0; j < displacements.get_numCols(); ++j) {
@@ -169,7 +182,6 @@ void MakeVTKfile3D(std::string output_vtk,
 
   outvtk << "\nPOINT_DATA " << nodes.get_numRows() << "\n";
 
-  std::cout << displacements.get_numRows() << " " << displacements.get_numCols() << "\n";
   outvtk << "\nVECTORS displacements float\n";
   for (size_t i = 0; i < displacements.get_numRows(); ++i) {
     for (size_t j = 0; j < displacements.get_numCols(); ++j) {

@@ -4,13 +4,18 @@
 #include <matrix_pack/matrix_pack.h>
 #include <cuda_matrix_pack/cuda_matrix.h>
 
-#include "femfunc.h"
-#include "Tools.h"
+#include <SegyIO.h>
+#include <SegyIn.h>
+#include <SegyOut.h>
+#include <femfunc.h>
+#include <Tools.h>
 
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
+
+void writeSEGY(Matrix &displacements);
 
 void MakeVTKfile2D(std::string output_vtk,
                    std::vector<CPU_Matrix> &nodes,

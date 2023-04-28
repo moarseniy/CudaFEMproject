@@ -60,27 +60,7 @@ void dataKeeper::parseCounters() {
 }
 
 void dataKeeper::allocateMemory() {
-//  nodes->resize(nodesCount, DIM);
-//  elementsIds.resize(elementsCount, DIM + 1);
-//  D.resize(3 * (DIM - 1), 3 * (DIM - 1));
-//  constraintsIds.resize(1, constraintsCount);
-  nodes = Matrix::setMatrix(CPU, nodesCount, DIM);
-  elementsIds = Matrix::setMatrix(CPU, elementsCount, DIM + 1);
-  D = Matrix::setMatrix(CPU, 3 * (DIM - 1), 3 * (DIM - 1));
-
-//  constraintsIds = Matrix::setMatrix(CPU, nodesCount, DIM);
-//  constraintsIds->setTo(0);
-//  constraintsIds = Matrix::setMatrix(CPU);
-  constraintsTypes = Matrix::setVector(CPU, nodesCount);
-  constraintsTypes->setTo(0);
-
-  boundaryNormals = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM);
-  boundaryAdjElems = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
-  boundaryNodes = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM + 1);
-  boundaryPressureValues = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
-
   displacements = Matrix::setMatrix(CPU, nodesCount, DIM);
-//  pressure = Matrix::setVector(CPU, boundaryEdgesCount);
 }
 
 dataKeeper::~dataKeeper() {
@@ -90,23 +70,29 @@ dataKeeper::~dataKeeper() {
     delete elementsIds;
   if (D)
     delete D;
-  if (constraintsIds)
-    delete constraintsIds;
-  if (constraintsTypes)
-    delete constraintsTypes;
 
-  if (boundaryNormals)
+  if (constraintsCount > 0) {
+    delete constraintsIds;
+    delete constraintsTypes;
+  }
+
+  if (loadsCount > 0) {
+    delete loadsNodes;
+    delete loadsVectors;
+  }
+
+  if (boundaryEdgesCount > 0) {
     delete boundaryNormals;
-  if (boundaryAdjElems)
     delete boundaryAdjElems;
-  if (boundaryNodes)
     delete boundaryNodes;
-  if (boundaryPressureValues)
     delete boundaryPressureValues;
+  }
+
   if (displacements)
     delete displacements;
 }
 void dataKeeper::CreateMatrixD() {
+  D = Matrix::setMatrix(CPU, 3 * (DIM - 1), 3 * (DIM - 1));
   float poissonRatio = mechParams.poissonRatio;
   float youngModulus = mechParams.youngModulus;
   if (DIM == 2) {
@@ -127,6 +113,7 @@ void dataKeeper::CreateMatrixD() {
 
 void dataKeeper::ParseNodes() {
   CheckRunTime(__func__)
+  nodes = Matrix::setMatrix(CPU, nodesCount, DIM);
   for (size_t i = 0; i < nodes->get_numElements(); ++i) {
       nodes_file >> (*nodes)[i];
   }
@@ -134,6 +121,7 @@ void dataKeeper::ParseNodes() {
 
 void dataKeeper::ParseElements() {
   CheckRunTime(__func__)
+  elementsIds = Matrix::setMatrix(CPU, elementsCount, DIM + 1);
   for (size_t i = 0; i < elementsIds->get_numElements(); ++i) {
     this->elements_file >> (*elementsIds)[i];
   }
@@ -148,6 +136,9 @@ void dataKeeper::ParseElements() {
 
 void dataKeeper::ParseConstraints() {
   CheckRunTime(__func__)
+
+  constraintsTypes = Matrix::setVector(CPU, nodesCount);
+  constraintsTypes->setTo(0);
 
   int node, type;
   Constraint::Type constraintType;
@@ -179,55 +170,26 @@ void dataKeeper::ParseConstraints() {
 
 void dataKeeper::ParseLoads() {
   CheckRunTime(__func__)
-  for (int i = 0; i < this->loadsCount; ++i) {
-    int node;
-    std::string xstr, ystr, str;
-    std::string zstr; // if 3D
 
-    this->loads_file >> node;
-    std::getline(this->loads_file, str);
-    // https://stackoverflow.com/a/39080627
-    std::regex wavelet_expression("(\\w+(\\((.*?)\\))|[+-]?(\\d+([.]\\d*)?([eE][+-]?\\d+)?|[.]\\d+([eE][+-]?\\d+)?))");
-    std::smatch res;
+  loadsNodes = Matrix::setVector(CPU, loadsCount);
+  loadsVectors = Matrix::setMatrix(CPU, loadsCount, DIM);
 
-    int loop_it = 0;
-    while (std::regex_search(str, res, wavelet_expression)) {
-      ++loop_it;
-      if (loop_it == 1)      xstr = res[0];
-      else if (loop_it == 2) ystr = res[0];
-      else if (this->DIM == 3 && loop_it == 3) zstr = res[0];
-      str = res.suffix();
+  for (size_t i = 0; i < loadsCount; ++i) {
+    loads_file >> (*loadsNodes)[i];
+    for (size_t j = 0; j < DIM; ++j) {
+      loads_file >> (*loadsVectors)(i, j);
     }
-    // X
-    Load loadX;
-    loadX.parseString(xstr);
-    if (!(loadX.ampl == 0.0f)) {
-      loadX.dof = node * this->DIM + 0;
-      this->loads.push_back(loadX);
-    }
-    // Y
-    Load loadY;
-    loadY.parseString(ystr);
-    if (!(loadY.ampl == 0.0f)) {
-      loadY.dof = DIM == node * this->DIM + 1;
-      this->loads.push_back(loadY);
-    }
-
-    // Z
-    if (this->DIM == 3) {
-      Load loadZ;
-      loadZ.parseString(zstr);
-      if (!(loadZ.ampl == 0.0f)) {
-        loadZ.dof = node * DIM + 2;
-        this->loads.push_back(loadZ);
-      }
-    }
-
   }
 }
 
 void dataKeeper::ParseBoundaryEdges() {
   CheckRunTime(__func__)
+
+  boundaryNormals = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM);
+  boundaryAdjElems = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
+  boundaryNodes = Matrix::setMatrix(CPU, boundaryEdgesCount, DIM + 1);
+  boundaryPressureValues = Matrix::setMatrix(CPU, 1, boundaryEdgesCount);
+
   for (size_t i = 0; i < boundaryEdgesCount; ++i) {
     for (size_t j = 0; j < DIM + 1; ++j) {
       stress_file >> (*boundaryNodes)(i, j);
@@ -238,7 +200,6 @@ void dataKeeper::ParseBoundaryEdges() {
     float normal_length = 0.f;
     for (size_t j = 0; j < DIM; ++j) {
       stress_file >> normal_vec[j];
-//      std::cout << normal_vec[j] << " ";
       normal_length += normal_vec[j] * normal_vec[j];
     }
     for (size_t j = 0; j < DIM; ++j) {
@@ -247,60 +208,26 @@ void dataKeeper::ParseBoundaryEdges() {
 
     stress_file >> (*boundaryPressureValues)[i];
   }
-//  boundaryNormals->Show();
-
-
-  /*
-  for (size_t i = 0; i < boundaryEdgesCount; ++i) {
-    BoundaryEdge edge(DIM);
-    std::vector<float> normal_vec(DIM);
-
-    for (size_t j = 0; j < DIM; ++j) {
-      stress_file >> edge.node[j];
-    }
-    stress_file >> edge.adj_elem1;
-    for (size_t j = 0; j < DIM; ++j) {
-      stress_file >> normal_vec[j];
-    }
-    for (size_t j = 0; j < constraintsCount; ++j) {
-      for (size_t k = 0; k < DIM; ++k) {
-        if (constraints[j].node == edge.node[k]) {
-          edge.type[k] = constraints[j].type;
-        }
-      }
-    }
-
-    std::string str;
-    std::getline(stress_file, str);
-    // https://stackoverflow.com/a/39080627
-    std::regex wavelet_expression("(\\w+(\\((.*?)\\))|[+-]?(\\d+([.]\\d*)?([eE][+-]?\\d+)?|[.]\\d+([eE][+-]?\\d+)?))");
-    std::smatch res;
-    std::regex_search(str, res, wavelet_expression);
-    str = res[0];
-    edge.parseString(str);
-
-    float normal_length = 0.f;
-    for (int j = 0; j < DIM; ++j) {
-      normal_length += normal_vec[j] * normal_vec[j];
-    }
-    for (int j = 0; j < DIM; ++j) {
-      edge.normal[j] = normal_vec[j] / std::sqrt(normal_length);
-    }
-
-    if (!(edge.ampl == 0.0f))
-      this->boundary.push_back(edge);
-  }
-  */
 }
 
 void dataKeeper::parseFiles() {
 CheckRunTime(__func__)
   CreateMatrixD();
+
+  CheckAssert(nodesCount > 0);
   ParseNodes();
+
+  CheckAssert(elementsCount > 0);
   ParseElements();
-  ParseConstraints();
-  ParseLoads();
-  ParseBoundaryEdges();
+
+  if (constraintsCount > 0)
+    ParseConstraints();
+
+  if (loadsCount > 0)
+    ParseLoads();
+
+  if (boundaryEdgesCount > 0)
+    ParseBoundaryEdges();
 }
 
 void dataKeeper::ShowInfo() {

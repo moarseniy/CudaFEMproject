@@ -2,13 +2,14 @@
 
 
 CUDA_ElementsData::CUDA_ElementsData() :
-  ElementsData(0, 0, 0, 0, CUDA) {}
+  ElementsData(0, 0, 0, 0, 0, CUDA) {}
 
 CUDA_ElementsData::CUDA_ElementsData(const dataKeeper &dk) :
   ElementsData(dk.get_dim(),
                dk.get_elementsCount(),
                dk.get_nodesCount(),
                dk.get_boundaryEdgesCount(),
+               dk.get_loadsCount(),
                CUDA) {
   nodes = Matrix::setMatrix(_device);
   dk.get_nodes()->copy(*nodes);
@@ -16,19 +17,32 @@ CUDA_ElementsData::CUDA_ElementsData(const dataKeeper &dk) :
   elements = Matrix::setMatrix(_device);
   dk.get_elementsIds()->copy(*elements);
 
-  constraintsIds = Matrix::setMatrix(_device);
-  dk.get_constraintsIds()->copy(*constraintsIds);
-  constraintsTypes = Matrix::setMatrix(_device);
-  dk.get_constraintsTypes()->copy(*constraintsTypes);
+  if (dk.get_constraintsIds()->get_numElements() > 0) {
+    constraintsIds = Matrix::setMatrix(_device);
+    dk.get_constraintsIds()->copy(*constraintsIds);
+    constraintsTypes = Matrix::setMatrix(_device);
+    dk.get_constraintsTypes()->copy(*constraintsTypes);
+  }
 
-  boundaryNodes = Matrix::setMatrix(_device);
-  dk.get_boundaryNodes()->copy(*boundaryNodes);
-  boundaryAdjElems = Matrix::setMatrix(_device);
-  dk.get_boundaryAdjElems()->copy(*boundaryAdjElems);
-  boundaryNormals = Matrix::setMatrix(_device);
-  dk.get_boundaryNormals()->copy(*boundaryNormals);
-  boundaryPressures = Matrix::setMatrix(_device);
-  dk.get_boundaryPressures()->copy(*boundaryPressures);
+  if (_boundaryEdgesCount > 0) {
+    boundaryNodes = Matrix::setMatrix(_device);
+    dk.get_boundaryNodes()->copy(*boundaryNodes);
+    boundaryAdjElems = Matrix::setMatrix(_device);
+    dk.get_boundaryAdjElems()->copy(*boundaryAdjElems);
+    boundaryNormals = Matrix::setMatrix(_device);
+    dk.get_boundaryNormals()->copy(*boundaryNormals);
+    boundaryPressures = Matrix::setMatrix(_device);
+    dk.get_boundaryPressures()->copy(*boundaryPressures);
+  }
+
+  if (_loadsCount > 0) {
+    loads = Matrix::setMatrix(_device, _nodesCount, _DIM);
+    loads->setTo(0.f);
+    loadsNodes = Matrix::setVector(_device);
+    dk.get_loadsNodes()->copy(*loadsNodes);
+    loadsVectors = Matrix::setMatrix(_device);
+    dk.get_loadsVectors()->copy(*loadsVectors);
+  }
 
   D = Matrix::setMatrix(_device);
   dk.get_D()->copy(*D);
@@ -97,18 +111,25 @@ CUDA_ElementsData::~CUDA_ElementsData() {
     delete nodes;
   if (elements)
     delete elements;
+
   if (constraintsIds)
     delete constraintsIds;
   if (constraintsTypes)
     delete constraintsTypes;
-  if (boundaryAdjElems)
+
+  if (_boundaryEdgesCount > 0) {
     delete boundaryAdjElems;
-  if (boundaryNodes)
     delete boundaryNodes;
-  if (boundaryNormals)
     delete boundaryNormals;
-  if (boundaryPressures)
     delete boundaryPressures;
+  }
+
+  if (_loadsCount > 0) {
+    delete loads;
+    delete loadsNodes;
+    delete loadsVectors;
+  }
+
   if (D)
     delete D;
 
@@ -229,6 +250,7 @@ void CUDA_ElementsData::calculateKlocal() {
   // K = B^T * D * B * Area * coeff
 
   float coeff = _DIM == 2 ? 0.5f : (1.f / 6.f);
+//  elementsAreas->scale(coeff); // TODO: Add it to calculateArea function
 
   tBlocals->bmm(*D, 3 * (_DIM - 1), 3 * (_DIM - 1), false,
                *Blocals, 6 * (_DIM - 1), true, _elementsCount);
@@ -256,10 +278,49 @@ void CUDA_ElementsData::calculateKlocals() {
   applyConstraints();
 }
 
+void CUDA_ElementsData::initFlocals(float t, const WaveletParams &waveParams) {
+  if (_boundaryEdgesCount > 0) {
+    initPressures(t, waveParams);
+  }
+
+//  if (_loadsCount > 0) {
+//    initLoads(t, waveParams);
+//  }
+}
+
+void CUDA_ElementsData::calcFlocals(float t, const WaveletParams &waveParams) {
+  if (_boundaryEdgesCount > 0) {
+    calcPressures(t, waveParams);
+  }
+
+//  if (_loadsCount > 0) {
+//    calcLoads(t, waveParams);
+//  }
+}
+
+void CUDA_ElementsData::initPressures(float t, const WaveletParams &waveParams) {
+  genFCoordinates();
+
+  if (_DIM == 3) {
+    calculateLength3D();
+  } else if (_DIM == 2){
+    calculateLength();
+  } else {
+    throw std::runtime_error("wrong dimension");
+  }
+
+  calcPressures(t, waveParams);
+}
+
 // TODO: MAKE THIS LIGHT!!!
-void CUDA_ElementsData::calculateFlocal(float t, const WaveletParams &waveParams) {
-  updateWavelet(t, waveParams);
-  calculateFlocal_Ker(_boundaryEdgesCount, Flocals->get_data(),
+void CUDA_ElementsData::calcPressures(float t, const WaveletParams &waveParams) {
+  float v = updateWavelet(t, waveParams);
+  if (v != 0.f) {
+    //TODO: add for each bEdge
+    boundaryPressures->setTo(v);
+  }
+
+  calcPressures_Ker(_boundaryEdgesCount, Flocals->get_data(),
                       boundaryAdjElems->get_data(),
                       boundaryNodes->get_data(),
                       boundaryPressures->get_data(),
@@ -271,22 +332,18 @@ void CUDA_ElementsData::calculateFlocal(float t, const WaveletParams &waveParams
                       _nodesCount, _elementsCount);
 }
 
-void CUDA_ElementsData::calculateFlocals(float t, const WaveletParams &waveParams) {
-  genFCoordinates();
+void CUDA_ElementsData::initLoads(float t, const WaveletParams &waveParams) {
+  calcLoads(t, waveParams);
+}
 
-  if (_DIM == 3) {
-    calculateLength3D();
-  } else if (_DIM == 2){
-    calculateLength();
-  } else {
-    throw std::runtime_error("wrong dimension");
-  }
-
-  calculateFlocal(t, waveParams);
+void CUDA_ElementsData::calcLoads(float t, const WaveletParams &waveParams) {
+  float v = updateWavelet(t, waveParams);
+  calcLoads_Ker(_loadsCount, loads->get_data(), loadsNodes->get_data(), loadsVectors->get_data(), _DIM);
+  transformWithMask(*loads, *Flocals);
 }
 
 void CUDA_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &mechParams) {
-  calculateMlocals_Ker(_elementsCount, isLumped, Mlocals->get_data(), _DIM, mechParams.rho, elementsAreas->get_data());
+  calculateMlocals_Ker(_elementsCount, isLumped, Mlocals->get_data(), _DIM, mechParams.rho, elementsAreas->get_data(), coordinates->get_data());
 }
 
 void CUDA_ElementsData::solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) {

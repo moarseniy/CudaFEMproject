@@ -84,4 +84,6 @@ add_subdirectory(femstruct)
 #add_subdirectory(testing)
 add_subdirectory(matrix_pack)
 add_subdirectory(fem_utils)
+
 add_subdirectory(thirdparty/json)
+add_subdirectory(thirdparty/segyio)

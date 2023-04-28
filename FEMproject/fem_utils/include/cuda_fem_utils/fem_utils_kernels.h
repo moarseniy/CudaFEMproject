@@ -21,7 +21,7 @@ void genGradientMatrix_Ker(size_t elementsCount, float *Blocals, const float *co
 void genGradientMatrix3D_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim);
 void getDiagonalElements_Ker(size_t elementsCount, float *diag, const float *Klocals, size_t dim);
 
-void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
+void calcPressures_Ker(size_t bEdgeCount, float *Flocals,
                          const float *boundaryAdjElems,
                          const float *boundaryNodes,
                          const float *boundaryPressures,
@@ -32,7 +32,10 @@ void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
                          size_t elemSize, size_t dim,
                          size_t nodesCount, size_t elementsCount);
 
-void calculateMlocals_Ker(size_t elementsCount, bool isLumped, float *Mlocals, size_t dim, float rho, const float *elementsAreas);
+void calcLoads_Ker(size_t loadsCount, float *loads,
+                   const float *loadsNodes, const float *loadsVectors, size_t dim);
+
+void calculateMlocals_Ker(size_t elementsCount, bool isLumped, float *Mlocals, size_t dim, float rho, const float *elementsAreas, const float *coordinates);
 void calculateDiag_Ker(size_t elementsCount, float *diag, const float *Mlocals, const float *Klocals,
                        size_t dim, float cM, float cK, float cC, float dampAlpha, float dampBeta);
 #endif /* FEM_UTILS_KERNELS_H_ */

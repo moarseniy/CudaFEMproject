@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <numeric>
 #include <map>
@@ -87,6 +88,7 @@ public:
   void getRow(size_t numRow, Matrix &target) const;
 
   void Show();
+  void writeToFile(const std::string path);
   bool isSameAs(Matrix &src) const;
 
   DEVICE_NAME get_device() const;

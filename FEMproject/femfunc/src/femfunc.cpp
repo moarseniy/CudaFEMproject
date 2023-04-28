@@ -419,7 +419,7 @@ void gpuCalculateFEM_EbE_vec2(DEVICE_NAME deviceType, dataKeeper &FEMdata, bool 
   elemsData->getDiagonalElements(*elemsData->get_Klocals(), *elemsData->get_diagK());
 //  elemsData->calculateDiag(*elemsData->get_diagK(), 0.f, 1.f);
 
-  elemsData->calculateFlocals(0.f, FEMdata.getWaveletParams());
+  elemsData->initFlocals(0.f, FEMdata.getWaveletParams());
 
   gpuPCG_EbE_vec2(deviceType, FEMdata, *elemsData, true, 1e-8f, PRINT_DEBUG_INFO);
 
@@ -470,11 +470,9 @@ void gpuPCG_EbE_vec2(DEVICE_NAME devType, dataKeeper &FEMdata, ElementsData &ele
     }
 
     // (1a)
-//    elemsData.get_Klocals()->multiplyByVec(*elemsData.get_p(), *elemsData.get_u());
     u->bmm(*p, 1, 6 * (DIM - 1), true,
            *elemsData.get_Klocals(), 6 * (DIM - 1), false, n_elems);
 
-//    gpuMultiplyKlocalByVec2(elemsData.get_Klocals()->get_data(), u->get_data(), p->get_data(), DIM, n_elems);
     // (1b)
     float sumElem = p->dotProduct(*u);
     // (1c,d)
@@ -727,10 +725,13 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
   elemsData->genMask();
   elemsData->calculateKlocals();
   elemsData->calculateMlocals(isLumped, dk.getMechParams());
-  elemsData->calculateFlocals(0.f, dk.getWaveletParams());
+//  elemsData->get_Mlocals()->scale(0.5f);
+  elemsData->initFlocals(0.f, dk.getWaveletParams());
 
+//  elemsData->get_Mlocals()->writeToFile("C:/Users/mokin/Desktop/fem_stuff_test/out.txt");
 //  elemsData->getDiagonalElements(*elemsData->get_Klocals(), *elemsData->get_diagK());
-//  elemsData->calculateDiag(*elemsData->get_diagK(), cM, cK, cC, damping_alpha, damping_beta);
+//  elemsData->get_diagM()->setTo(0.f);
+//  elemsData->calculateDiag(*elemsData->get_diagM(), cM, cK, cC, damping_alpha, damping_beta);
 
   int endnt;
   is_relax = (endtime < 0.0f);
@@ -745,92 +746,92 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
   int nt = 1;
   float cnorm_acc, cnorm_vel;
   do {
-      float t = nt * dt;
-      if (PRINT_DEBUG_INFO) {
-        std::cout << "======= Time iteration #" << nt;
-        if (!is_relax) std::cout << "/" << endnt << " =======";
-        std::cout << " =======";
-        std::cout << "\n=========== Time " << t << " ===========\n\n";
-      }
+    float t = nt * dt;
+    if (PRINT_DEBUG_INFO) {
+      std::cout << "======= Time iteration #" << nt;
+      if (!is_relax) std::cout << "/" << endnt << " =======";
+      std::cout << " =======";
+      std::cout << "\n=========== Time " << t << " ===========\n\n";
+    }
 
-      displ->addWeighted(*vel, 1.f, dt);
-      displ->addWeighted(*x, 1.f, 0.5f * (1.f - beta2) *  dt * dt);
-      vel->addWeighted(*x, 1.f, (1.f - beta1) * dt);
-      x->setTo(0.f);
+    displ->addWeighted(*vel, 1.f, dt);
+    displ->addWeighted(*x, 1.f, 0.5f * (1.f - beta2) *  dt * dt);
+    vel->addWeighted(*x, 1.f, (1.f - beta1) * dt);
+    x->setTo(0.f);
 
-      r->bmm(*displ, 1, 6 * (DIM - 1), false,
-             *elemsData->get_Klocals(), 6 * (DIM - 1), false, n_elems);
+    r->bmm(*displ, 1, 6 * (DIM - 1), false,
+           *elemsData->get_Klocals(), 6 * (DIM - 1), false, n_elems);
 
-      if (isDamping) {
-        elemsData->get_Mlocals()->addWeighted(*elemsData->get_Klocals(),
-                                              damping_alpha, damping_beta,
-                                              *elemsData->get_Clocals());
+    if (isDamping) {
+      elemsData->get_Mlocals()->addWeighted(*elemsData->get_Klocals(),
+                                            damping_alpha, damping_beta,
+                                            *elemsData->get_Clocals());
 
-        dampTemp->bmm(*vel, 1, 6 * (DIM - 1), true,
-                      *elemsData->get_Clocals(), 6 * (DIM - 1), false, n_elems);
-        r->add(*dampTemp);
-      }
+      dampTemp->bmm(*vel, 1, 6 * (DIM - 1), true,
+                    *elemsData->get_Clocals(), 6 * (DIM - 1), false, n_elems);
+      r->add(*dampTemp);
+    }
 
 
-      elemsData->calculateFlocal(t, dk.getWaveletParams());
+    elemsData->calcFlocals(t, dk.getWaveletParams());
 
-      r->addWeighted(*elemsData->get_Flocals(), -1.f, 1.f);
+    r->addWeighted(*elemsData->get_Flocals(), -1.f, 1.f);
 
-      // TODO: Think how not to use loadVectors! Too dificult!
-      /*
-      std::unordered_map <int, CPU_Matrix> loadVectors;
-      loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
-                              // instead of assigned. See if-statement in for-loop in the function's body
-      GetMapElement2Loadvector(FEMdata, loadVectors, t);
-      copyLoads(gpu_data, loadVectors, FEMdata.DIM, n_elems);
+    // TODO: Think how not to use loadVectors! Too dificult!
+    /*
+    std::unordered_map <int, CPU_Matrix> loadVectors;
+    loadVectors.clear();    // in order to GetMapElement2Loadvector, because if not cleared the values are added
+                            // instead of assigned. See if-statement in for-loop in the function's body
+    GetMapElement2Loadvector(FEMdata, loadVectors, t);
+    copyLoads(gpu_data, loadVectors, FEMdata.DIM, n_elems);
 
-      gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), grid_size);
-      */
+    gpuAdd(gpu_data.get_r(), gpu_data.get_loads(), grid_size);
+    */
 
-      if (isDamping) {
-        if (isExplicit) {
-          elemsData->solveDiagSystem(*elemsData->get_diagK(), *r, *x, doAssemblyRes);
-        } else {
+    if (isDamping) {
+      if (isExplicit) {
+        elemsData->solveDiagSystem(*elemsData->get_diagK(), *r, *x, doAssemblyRes);
+      } else {
 //          gpuPCG_EbE_vec_DYN_DAMP(FEMdata, gpu_data, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
-        }
+      }
+    } else {
+      if (isExplicit) {
+        elemsData->solveDiagSystem(*elemsData->get_Mlocals(), *r, *x, doAssemblyRes);
       } else {
-        if (isExplicit) {
-          elemsData->solveDiagSystem(*elemsData->get_Mlocals(), *r, *x, doAssemblyRes);
-        } else {
 //          gpuPCG_EbE_vec_DYN(FEMdata, gpu_data, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
-        }
+      }
+    }
+
+    vel->addWeighted(*x, 1.f, beta1 * dt);
+    if (!isExplicit) {
+      displ->addWeighted(*x, 1.f, 0.5f * beta2 * dt * dt);
+    }
+
+    ++nt;
+
+    if (is_relax) {
+      // TODO: add CNorm !
+      cnorm_acc = 0.f;//gpuCNorm(gpu_data.get_x(), grid_size);
+      cnorm_vel = 0.f;//gpuCNorm(gpu_data.get_vel(), grid_size);
+      if (PRINT_DEBUG_INFO) {
+        std::cout << "C-norm acc = " << cnorm_acc << "\nC-norm vel = " << cnorm_vel << std::endl;
+        std::cout << std::endl;
+      }
+      if ((cnorm_vel < eps_relax)) // && (cnorm_acc < eps_relax)
+        break;
+    } else {
+      if (PRINT_DEBUG_INFO) {
+        std::cout << std::endl;
       }
 
-      vel->addWeighted(*x, 1.f, beta1 * dt);
-      if (!isExplicit) {
-        displ->addWeighted(*x, 1.f, 0.5f * beta2 * dt * dt);
-      }
-
-      ++nt;
-
-      if (is_relax) {
-        // TODO: add CNorm !
-        cnorm_acc = 0.f;//gpuCNorm(gpu_data.get_x(), grid_size);
-        cnorm_vel = 0.f;//gpuCNorm(gpu_data.get_vel(), grid_size);
-        if (PRINT_DEBUG_INFO) {
-          std::cout << "C-norm acc = " << cnorm_acc << "\nC-norm vel = " << cnorm_vel << std::endl;
-          std::cout << std::endl;
-        }
-        if ((cnorm_vel < eps_relax)) // && (cnorm_acc < eps_relax)
-          break;
-      } else {
-        if (PRINT_DEBUG_INFO) {
-          std::cout << std::endl;
-        }
-
-        if (nt > endnt) break;
-      }
+      if (nt > endnt) break;
+    }
 
   } while (true);
 
   // Prepare final displacements
   Matrix *temp = Matrix::setMatrix(elemsData->get_device(), dk.get_nodesCount(), DIM);
-  elemsData->reductionWithMask(*x, *temp);
+  elemsData->reductionWithMask(*displ, *temp);
   temp->divideElementwise(*elemsData->get_adjElements(), *temp);
   temp->copy(*dk.get_displacements());
   delete temp;

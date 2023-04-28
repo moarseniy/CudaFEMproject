@@ -69,15 +69,22 @@ public:
   size_t get_elementsCount() const { return elementsCount; }
   size_t get_nodesCount() const { return nodesCount; }
   size_t get_boundaryEdgesCount() const { return boundaryEdgesCount; }
+  size_t get_loadsCount() const { return loadsCount; }
 
   Matrix* get_nodes() const { return nodes; }
   Matrix* get_elementsIds() const { return elementsIds; }
+
   Matrix* get_constraintsIds() const { return constraintsIds; }
   Matrix* get_constraintsTypes() const { return constraintsTypes; }
+
   Matrix* get_boundaryAdjElems() const { return boundaryAdjElems; }
   Matrix* get_boundaryNodes() const { return boundaryNodes; }
   Matrix* get_boundaryNormals() const { return boundaryNormals; }
   Matrix* get_boundaryPressures() const { return boundaryPressureValues; }
+
+  Matrix* get_loadsNodes() const { return loadsNodes; }
+  Matrix* get_loadsVectors() const { return loadsVectors; }
+
   Matrix* get_D() const { return D; }
   Matrix* get_displacements() const { return displacements; }
 
@@ -112,15 +119,13 @@ protected:
   Matrix *constraintsTypes;
   Matrix *D;
 
+  Matrix *loadsNodes;
+  Matrix *loadsVectors;
+
   Matrix *boundaryNormals;
   Matrix *boundaryAdjElems;
   Matrix *boundaryNodes;
   Matrix *boundaryPressureValues;
-
-  std::vector<Element>        elements;
-  std::vector<Constraint>     constraints;
-  std::vector<Load>           loads;
-  std::vector<BoundaryEdge>	  boundary;  // stores only boundary edges with nonzero b.c.
 
   Matrix *displacements;
 

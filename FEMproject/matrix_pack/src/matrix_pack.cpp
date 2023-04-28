@@ -67,6 +67,24 @@ void Matrix::Show() {
   }
 }
 
+void Matrix::writeToFile(const std::string path) {
+  assert(_numElements > 0);
+//  assert(_device == CPU);
+
+  std::fstream out;
+  out.open(path, std::fstream::out);
+
+  CPU_Matrix tmp;
+  this->copy(tmp);
+
+  for (size_t i = 0; i < _numRows; ++i) {
+    for (size_t j = 0; j < _numCols; ++j) {
+      out << tmp.get_data()[j + i * _numCols] << " ";
+    }
+    out << "\n";
+  }
+}
+
 bool Matrix::isSameAs(Matrix &src) const {
   return _numRows == src.get_numRows() && _numCols == src.get_numCols();
 }

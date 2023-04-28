@@ -16,7 +16,7 @@
 
 #define EPS 1e-4
 
-TEST(UtilsFuncs, test_rect_pcg) {
+TEST(staticTask, test_rect_pcg) {
   std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json";
   std::string task_name = "test_rect_pcg";
   dataKeeper dk(config_path, task_name);
@@ -37,7 +37,7 @@ TEST(UtilsFuncs, test_rect_pcg) {
   }
 }
 
-TEST(UtilsFuncs, test_bulk) {
+TEST(staticTask, test_bulk) {
   std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config3D.json";
   std::string task_name = "test_bulk";
   dataKeeper dk(config_path, task_name);
@@ -57,6 +57,28 @@ TEST(UtilsFuncs, test_bulk) {
     ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: test_bulk failed!";
   }
 }
+
+//TEST(dynamicTask, quasi1Dwave_taller) {
+//  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config_dyn_test.json";
+//  std::string task_name = "quasi1Dwave_taller";
+//  dataKeeper dk(config_path, task_name);
+
+//  gpuCalculateFEM_DYN2(CUDA, dk, false);
+
+//  CPU_Matrix cuda_res;
+//  dk.get_displacements()->copy(cuda_res);
+//  dk.get_displacements()->setTo(0.f);
+
+//  gpuCalculateFEM_DYN2(CPU, dk, false);
+
+//  float *cpu_data = dk.get_displacements()->get_data();
+//  float *gpu_data = cuda_res.get_data();
+
+//  for (size_t i(0); i < cuda_res.get_numElements(); ++i) {
+//    ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: test_rect_pcg failed!";
+//  }
+//}
+
 // TODO: think how to check Klocals
 TEST(UtilsFuncs, CalculateKlocals) {
   std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config3D.json";
@@ -121,10 +143,10 @@ TEST(UtilsFuncs, CalculateFlocals) {
   dataKeeper dk(config_path, task_name);
 
   ElementsData *elemsData_cuda = ElementsData::setElementsData(CUDA, dk);
-  elemsData_cuda->calculateFlocals(0.f, dk.getWaveletParams());
+  elemsData_cuda->initFlocals(0.f, dk.getWaveletParams());
 
   ElementsData *elemsData_cpu = ElementsData::setElementsData(CPU, dk);
-  elemsData_cpu->calculateFlocals(0.f, dk.getWaveletParams());
+  elemsData_cpu->initFlocals(0.f, dk.getWaveletParams());
 
   {
     // genFCoordinates test

@@ -1,5 +1,7 @@
 #include "fem_utils_kernels.h"
 
+#define THREADS_NUM 256
+
 __global__
 void kernelGenerateMask(float *elements, float *mask, size_t dim, size_t n) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -30,7 +32,7 @@ void kernelGenerateMask(float *elements, float *mask, size_t dim, size_t n) {
 }
 
 void genMask_Ker(float *mask, float *elements, size_t dim, size_t elementsCount) {
-  kernelGenerateMask<<<(elementsCount + 255) / 256, 256>>>(elements, mask, dim, elementsCount);
+  kernelGenerateMask<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elements, mask, dim, elementsCount);
 }
 
 __global__
@@ -42,7 +44,7 @@ void kernelTransformWithMask(size_t n, const float *mask, const float *src, floa
 }
 
 void transformWithMask_Ker(size_t size, float *dest, const float *src, const float *mask) {
-  kernelTransformWithMask<<<(size + 255) / 256, 256>>>(size, mask, src, dest);
+  kernelTransformWithMask<<<(size + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(size, mask, src, dest);
 }
 
 __global__
@@ -60,7 +62,7 @@ void kernelGenCoordinates(size_t n, float *coordinates, float *nodes, float *ele
 }
 
 void genCoordinates_Ker(size_t elementsCount, float *coordinates, float *nodes, float *elements, size_t dim) {
-  kernelGenCoordinates<<<(elementsCount + 255) / 256, 256>>>(elementsCount, coordinates, nodes, elements, dim);
+  kernelGenCoordinates<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, coordinates, nodes, elements, dim);
 }
 
 __global__
@@ -79,7 +81,7 @@ void kernelGenFCoordinates(size_t n, float *fcoordinates, float *nodes, float *b
 }
 
 void genFCoordinates_Ker(size_t bEdgesCount, float *fcoordinates, float *nodes, float *boundaryNodes, size_t dim) {
-  kernelGenFCoordinates<<<(bEdgesCount + 255) / 256, 256>>>(bEdgesCount, fcoordinates, nodes, boundaryNodes, dim);
+  kernelGenFCoordinates<<<(bEdgesCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(bEdgesCount, fcoordinates, nodes, boundaryNodes, dim);
 }
 
 __device__
@@ -138,7 +140,7 @@ void kernelCalculateArea(size_t n, const float *coords, float *Ccoords, float *a
 }
 
 void calculateArea_Ker(size_t size, const float *coordinates, float *Ccoords, float *areas, size_t dim) {
-  kernelCalculateArea<<<(size + 255) / 256, 256>>>(size, coordinates, Ccoords, areas, dim);
+  kernelCalculateArea<<<(size + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(size, coordinates, Ccoords, areas, dim);
 }
 
 __global__
@@ -173,7 +175,7 @@ void kernelGenGradientMatrix(size_t n, float *Blocals, const float *coordinates,
 }
 
 void genGradientMatrix_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim) {
-  kernelGenGradientMatrix<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Blocals, coordinates, dim);
+  kernelGenGradientMatrix<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, Blocals, coordinates, dim);
 }
 
 __device__
@@ -224,7 +226,7 @@ void kernelGenGradientMatrix3D(size_t n, float *Blocals, const float *coordinate
 }
 
 void genGradientMatrix3D_Ker(size_t elementsCount, float *Blocals, const float *coordinates, size_t dim) {
-  kernelGenGradientMatrix3D<<<(elementsCount + 255) / 256, 256>>>(elementsCount, Blocals, coordinates, dim);
+  kernelGenGradientMatrix3D<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, Blocals, coordinates, dim);
 }
 
 __global__
@@ -249,7 +251,7 @@ void kernelApplyConstraints(size_t n, const float *elements,
 }
 
 void applyConstraints_Ker(size_t elementsCount, const float *elements, size_t constraintsCount, const float *constraints, float *Klocals, size_t dim, size_t elemSize) {
-  kernelApplyConstraints<<<(elementsCount + 255) / 256, 256>>>(elementsCount, elements, constraintsCount, constraints, Klocals, dim, elemSize);
+  kernelApplyConstraints<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, elements, constraintsCount, constraints, Klocals, dim, elemSize);
 }
 
 __global__
@@ -266,7 +268,7 @@ void kernelGetDiagonalElements(size_t n, float *diag, const float *Klocals, size
 }
 
 void getDiagonalElements_Ker(size_t elementsCount, float *diag, const float *Klocals, size_t dim) {
-  kernelGetDiagonalElements<<<(elementsCount + 255) / 256, 256>>>(elementsCount, diag, Klocals, dim);
+  kernelGetDiagonalElements<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, diag, Klocals, dim);
 }
 
 __global__
@@ -280,7 +282,7 @@ void kernelCalculateLength(size_t n, const float *fcoordinates, float *bEdgesLen
 }
 
 void calculateLength_Ker(size_t bEdgeCount, const float *fcoordinates, float *bEdgesLengths, size_t dim) {
-  kernelCalculateLength<<<(bEdgeCount + 255) / 256, 256>>>(bEdgeCount, fcoordinates, bEdgesLengths, dim);
+  kernelCalculateLength<<<(bEdgeCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(bEdgeCount, fcoordinates, bEdgesLengths, dim);
 }
 
 __global__
@@ -305,7 +307,7 @@ void kernelCalculateLength3D(size_t n, const float *fcoordinates, float *bEdgesL
 }
 
 void calculateLength3D_Ker(size_t bEdgeCount, const float *fcoordinates, float *bEdgesLengths, size_t dim) {
-  kernelCalculateLength3D<<<(bEdgeCount + 255) / 256, 256>>>(bEdgeCount, fcoordinates, bEdgesLengths, dim);
+  kernelCalculateLength3D<<<(bEdgeCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(bEdgeCount, fcoordinates, bEdgesLengths, dim);
 }
 
 __device__
@@ -320,7 +322,7 @@ int kernelGetLocalId(const float *elements, size_t elementsCount,
 }
 
 __global__
-void kernelCalculateFlocal(size_t n, float *Flocals,
+void kernelCalcPressures(size_t n, float *Flocals,
                     const float *boundaryAdjElems,
                     const float *boundaryNodes,
                     const float *boundaryPressures,
@@ -345,7 +347,7 @@ void kernelCalculateFlocal(size_t n, float *Flocals,
   }
 }
 
-void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
+void calcPressures_Ker(size_t bEdgeCount, float *Flocals,
                          const float *boundaryAdjElems,
                          const float *boundaryNodes,
                          const float *boundaryPressures,
@@ -355,7 +357,7 @@ void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
                          const float *constraintsTypes,
                          size_t elemSize, size_t dim,
                          size_t nodesCount, size_t elementsCount) {
-  kernelCalculateFlocal<<<(bEdgeCount + 255) / 256, 256>>>(bEdgeCount, Flocals,
+  kernelCalcPressures<<<(bEdgeCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(bEdgeCount, Flocals,
                                                            boundaryAdjElems,
                                                            boundaryNodes,
                                                            boundaryPressures,
@@ -368,14 +370,38 @@ void calculateFlocal_Ker(size_t bEdgeCount, float *Flocals,
 }
 
 __global__
+void kernelCalcLoads(size_t n, float *loads, const float *loadsNodes, const float *loadsVectors, size_t dim) {
+  size_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < n) {
+    for (size_t d = 0; d < dim; ++d) {
+      loads[d + dim * static_cast<int>(loadsNodes[id])] = loadsVectors[d + id * dim];
+    }
+  }
+}
+
+void calcLoads_Ker(size_t loadsCount, float *loads,
+                   const float *loadsNodes, const float *loadsVectors, size_t dim) {
+  kernelCalcLoads<<<(loadsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(loadsCount, loads, loadsNodes, loadsVectors, dim);
+}
+
+__global__
 void kernelCalculateMlocals(size_t elementsCount, bool isLumped,
                             float *Mlocals, size_t dim,
-                            float rho, const float *elementsAreas) {
+                            float rho, const float *elementsAreas,
+                            const float *coordinates) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < elementsCount) {
-    float mass = rho * elementsAreas[id];
     // TODO: add implicit scheme
+    const float *coords = coordinates + dim * (dim + 1) * id;
     float *M = Mlocals + id * 6 * (dim - 1);
+
+    float area = 0.5f * abs((coords[0] - coords[2]) *
+                          (coords[4] - coords[5]) -
+                          (coords[1] - coords[2]) *
+                          (coords[3] - coords[5]));
+
+    float mass = rho * area;//elementsAreas[id];
+
     if (isLumped) {
       M[0] = mass / 3;
       M[1] = mass / 3;
@@ -407,8 +433,8 @@ void kernelCalculateMlocals(size_t elementsCount, bool isLumped,
   }
 }
 
-void calculateMlocals_Ker(size_t elementsCount, bool isLumped, float *Mlocals, size_t dim, float rho, const float *elementsAreas) {
-  kernelCalculateMlocals<<<(elementsCount + 255) / 256, 256>>>(elementsCount, isLumped, Mlocals, dim, rho, elementsAreas);
+void calculateMlocals_Ker(size_t elementsCount, bool isLumped, float *Mlocals, size_t dim, float rho, const float *elementsAreas, const float *coordinates) {
+  kernelCalculateMlocals<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, isLumped, Mlocals, dim, rho, elementsAreas, coordinates);
 }
 
 __global__
@@ -430,6 +456,6 @@ void kernelCalculateDiag(size_t elementsCount, float *diag, const float *Mlocals
 
 void calculateDiag_Ker(size_t elementsCount, float *diag, const float *Mlocals, const float *Klocals,
                    size_t dim, float cM, float cK, float cC, float dampAlpha, float dampBeta) {
-  kernelCalculateDiag<<<(elementsCount + 255) / 256, 256>>>(elementsCount, diag, Mlocals, Klocals,
+  kernelCalculateDiag<<<(elementsCount + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(elementsCount, diag, Mlocals, Klocals,
                                                             dim, cM, cK, cC, dampAlpha, dampBeta);
 }

@@ -15,12 +15,12 @@
 
 class ElementsData {
 public:
-  ElementsData(size_t DIM, size_t elementsCount, size_t nodesCount, size_t boundaryEdgesCount, DEVICE_NAME device);
+  ElementsData(size_t DIM, size_t elementsCount, size_t nodesCount, size_t boundaryEdgesCount, size_t loadsCount, DEVICE_NAME device);
   virtual ~ElementsData() {};
 
-  void updateWavelet(float t, const WaveletParams &waveParams);
-  void Ricker(float t, float ampl, float freq);
-  void Berlage(float t, float ampl, float freq);
+  float updateWavelet(float t, const WaveletParams &waveParams);
+  float Ricker(float t, float ampl, float freq);
+  float Berlage(float t, float ampl, float freq);
 
   virtual void getDiagonalElements(Matrix &Locals, Matrix &tgt) = 0;
   virtual void transformWithMask(Matrix &src, Matrix &dest) = 0;
@@ -29,8 +29,17 @@ public:
   virtual void applyConstraints() = 0;
   virtual void calculateKlocal() = 0;
   virtual void calculateKlocals() = 0;
-  virtual void calculateFlocal(float t, const WaveletParams &waveParams) = 0;
-  virtual void calculateFlocals(float t, const WaveletParams &waveParams) = 0;
+
+  virtual void initLoads(float t, const WaveletParams &waveParams) = 0;
+  virtual void calcLoads(float t, const WaveletParams &waveParams) = 0;
+
+  virtual void initPressures(float t, const WaveletParams &waveParams) = 0;
+  virtual void calcPressures(float t, const WaveletParams &waveParams) = 0;
+
+  virtual void initFlocals(float t, const WaveletParams &waveParams) = 0;
+  virtual void calcFlocals(float t, const WaveletParams &waveParams) = 0;
+
+
   virtual void calculateLength() = 0;
   virtual void calculateLength3D() = 0;
   virtual void calculateArea() = 0;
@@ -73,16 +82,24 @@ protected:
   size_t _elementsCount;
   size_t _nodesCount;
   size_t _boundaryEdgesCount;
+  size_t _loadsCount;
   DEVICE_NAME _device;
 
   Matrix *elements;
   Matrix *nodes;
+
   Matrix *constraintsIds;
   Matrix *constraintsTypes;
+
   Matrix *boundaryAdjElems;
   Matrix *boundaryNodes;
   Matrix *boundaryNormals;
   Matrix *boundaryPressures;
+
+  Matrix *loads;
+  Matrix *loadsNodes;
+  Matrix *loadsVectors;
+
   Matrix *D;
 
   Matrix *Flocals; // Local Right parts of SLAE
@@ -119,8 +136,16 @@ public:
   void calculateKlocal() override;
   void calculateKlocals() override;
   int getLocalId(size_t elementId, size_t nodeId);
-  void calculateFlocal(float t, const WaveletParams &waveParams) override;
-  void calculateFlocals(float t, const WaveletParams &waveParams) override;
+
+  void initLoads(float t, const WaveletParams &waveParams) override;
+  void calcLoads(float t, const WaveletParams &waveParams) override;
+
+  void initPressures(float t, const WaveletParams &waveParams) override;
+  void calcPressures(float t, const WaveletParams &waveParams) override;
+
+  void initFlocals(float t, const WaveletParams &waveParams) override;
+  void calcFlocals(float t, const WaveletParams &waveParams) override;
+
   void calculateArea() override;
   void calculateLength() override;
   void calculateLength3D() override;

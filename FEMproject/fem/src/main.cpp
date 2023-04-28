@@ -60,11 +60,11 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  DEVICE_NAME deviceType = CUDA;
+  DEVICE_NAME deviceType = CPU;
   if (deviceType == CUDA)
     CUDA_Matrix::_initCUDA();
-  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config_dyn_test.json";
-  std::string task_name = "quasi1Dwave_taller_M10_2";//"test_rect_pcg"; small_test bulk_pressure test_bulk
+  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config_dyn.json";
+  std::string task_name = "test_segy";//"test_rect_pcg"; small_test bulk_pressure test_bulk
   dataKeeper dk(config_path, task_name);
 
   if (dk.getTaskType() == "static")

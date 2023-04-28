@@ -1,5 +1,7 @@
 #include "matrix_kernels.h"
 
+#define THREADS_NUM 256
+
 //cublasSgemmStridedBatched(handle, CUBLAS_OP_T, CUBLAS_OP_N,
 //                          2, 1, 2,
 //                          &alpha,
@@ -81,7 +83,7 @@ void kernelMultiply(const size_t n, const float *data, const float *vec, const s
 void multiplyByVec_Ker(const size_t numMatr, const float *data,
                        const float *vec_data, const size_t vecSize,
                        float *tgt) {
-  kernelMultiply<<<(numMatr + 255) / 256, 256>>>(numMatr, data, vec_data, vecSize, tgt);
+  kernelMultiply<<<(numMatr + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(numMatr, data, vec_data, vecSize, tgt);
 }
 
 __global__
@@ -93,7 +95,7 @@ void kernelSetTo(const size_t size, float *data, const float value) {
 }
 
 void setTo_Ker(const size_t size, float *data, const float value) {
-  kernelSetTo<<<(size + 255) / 256, 256>>>(size, data, value);
+  kernelSetTo<<<(size + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(size, data, value);
 }
 
 __global__
@@ -105,7 +107,7 @@ void kernelScale(const size_t size, float *data, const float value) {
 }
 
 void scale_Ker(const size_t size, float *data, const float value) {
-  kernelScale<<<(size + 255) / 256, 256>>>(size, data, value);
+  kernelScale<<<(size + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(size, data, value);
 }
 
 __global__
@@ -119,7 +121,7 @@ void kernelAddWeighted(const size_t size, float *data, const float *src,
 
 void addWeighted_Ker(const size_t size, float *data, const float *src,
                      const float alpha, const float beta) {
-  kernelAddWeighted<<<(size + 255) / 256, 256>>>(size, data, src, alpha, beta);
+  kernelAddWeighted<<<(size + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(size, data, src, alpha, beta);
 }
 
 struct prg {

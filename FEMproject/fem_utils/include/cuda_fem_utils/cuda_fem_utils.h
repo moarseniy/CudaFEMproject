@@ -39,8 +39,16 @@ public:
   void applyConstraints() override;
   void calculateKlocal() override;
   void calculateKlocals() override;
-  void calculateFlocal(float t, const WaveletParams &waveParams) override;
-  void calculateFlocals(float t, const WaveletParams &waveParams) override;
+
+  void initLoads(float t, const WaveletParams &waveParams) override;
+  void calcLoads(float t, const WaveletParams &waveParams) override;
+
+  void initPressures(float t, const WaveletParams &waveParams) override;
+  void calcPressures(float t, const WaveletParams &waveParams) override;
+
+  void initFlocals(float t, const WaveletParams &waveParams) override;
+  void calcFlocals(float t, const WaveletParams &waveParams) override;
+
   void calculateArea() override;
   void calculateLength() override;
   void calculateLength3D() override;

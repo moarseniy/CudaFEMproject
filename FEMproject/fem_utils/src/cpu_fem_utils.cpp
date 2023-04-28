@@ -1,13 +1,14 @@
 #include <fem_utils/fem_utils.h>
 
 CPU_ElementsData::CPU_ElementsData() :
-  ElementsData(0, 0, 0, 0, CPU) {}
+  ElementsData(0, 0, 0, 0, 0, CPU) {}
 
 CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   ElementsData(dk.get_dim(),
                dk.get_elementsCount(),
                dk.get_nodesCount(),
                dk.get_boundaryEdgesCount(),
+               dk.get_loadsCount(),
                CPU) {
 
 //  dk.get_nodes()->copy(*nodes);
@@ -17,19 +18,32 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   elements = Matrix::setMatrix(*dk.get_elementsIds());
   CPU_Matrix::copy(*dk.get_elementsIds(), *elements);
 
-  constraintsIds = Matrix::setMatrix(*dk.get_constraintsIds());
-  CPU_Matrix::copy(*dk.get_constraintsIds(), *constraintsIds);
-  constraintsTypes = Matrix::setMatrix(*dk.get_constraintsTypes());
-  CPU_Matrix::copy(*dk.get_constraintsTypes(), *constraintsTypes);
+  if (dk.get_constraintsIds()->get_numElements() > 0) {
+    constraintsIds = Matrix::setMatrix(*dk.get_constraintsIds());
+    CPU_Matrix::copy(*dk.get_constraintsIds(), *constraintsIds);
+    constraintsTypes = Matrix::setMatrix(*dk.get_constraintsTypes());
+    CPU_Matrix::copy(*dk.get_constraintsTypes(), *constraintsTypes);
+  }
 
-  boundaryNodes = Matrix::setMatrix(*dk.get_boundaryNodes());
-  CPU_Matrix::copy(*dk.get_boundaryNodes(), *boundaryNodes);
-  boundaryAdjElems = Matrix::setMatrix(*dk.get_boundaryAdjElems());
-  CPU_Matrix::copy(*dk.get_boundaryAdjElems(), *boundaryAdjElems);
-  boundaryNormals = Matrix::setMatrix(*dk.get_boundaryNormals());
-  CPU_Matrix::copy(*dk.get_boundaryNormals(), *boundaryNormals);
-  boundaryPressures = Matrix::setMatrix(*dk.get_boundaryPressures());
-  CPU_Matrix::copy(*dk.get_boundaryPressures(), *boundaryPressures);
+  if (_boundaryEdgesCount > 0) {
+    boundaryNodes = Matrix::setMatrix(*dk.get_boundaryNodes());
+    CPU_Matrix::copy(*dk.get_boundaryNodes(), *boundaryNodes);
+    boundaryAdjElems = Matrix::setMatrix(*dk.get_boundaryAdjElems());
+    CPU_Matrix::copy(*dk.get_boundaryAdjElems(), *boundaryAdjElems);
+    boundaryNormals = Matrix::setMatrix(*dk.get_boundaryNormals());
+    CPU_Matrix::copy(*dk.get_boundaryNormals(), *boundaryNormals);
+    boundaryPressures = Matrix::setMatrix(*dk.get_boundaryPressures());
+    CPU_Matrix::copy(*dk.get_boundaryPressures(), *boundaryPressures);
+  }
+
+  if (_loadsCount > 0) {
+    loads = Matrix::setMatrix(_device, _nodesCount, _DIM);
+    loads->setTo(0.f);
+    loadsNodes = Matrix::setVector(_device);
+    dk.get_loadsNodes()->copy(*loadsNodes);
+    loadsVectors = Matrix::setMatrix(_device);
+    dk.get_loadsVectors()->copy(*loadsVectors);
+  }
 
   D = Matrix::setMatrix(*dk.get_D());
   CPU_Matrix::copy(*dk.get_D(), *D);
@@ -99,18 +113,25 @@ CPU_ElementsData::~CPU_ElementsData() {
     delete nodes;
   if (elements)
     delete elements;
+
   if (constraintsIds)
     delete constraintsIds;
   if (constraintsTypes)
     delete constraintsTypes;
-  if (boundaryAdjElems)
+
+  if (_boundaryEdgesCount > 0) {
     delete boundaryAdjElems;
-  if (boundaryNodes)
     delete boundaryNodes;
-  if (boundaryNormals)
     delete boundaryNormals;
-  if (boundaryPressures)
     delete boundaryPressures;
+  }
+
+  if (_loadsCount > 0) {
+    delete loads;
+    delete loadsNodes;
+    delete loadsVectors;
+  }
+
   if (D)
     delete D;
 
@@ -464,6 +485,7 @@ void CPU_ElementsData::calculateKlocal() {
   // K = B^T * D * B * Area * Coeff
 
   float coeff = _DIM == 2 ? 0.5 : (1.f / 6.f);
+//  elementsAreas->scale(coeff); // TODO: Add it to calculateArea function
 
   tBlocals->bmm(*D, 3 * (_DIM - 1), 3 * (_DIM - 1), false,
                *Blocals, 6 * (_DIM - 1), true, _elementsCount);
@@ -491,16 +513,54 @@ void CPU_ElementsData::calculateKlocals() {
   applyConstraints();
 }
 
+void CPU_ElementsData::initFlocals(float t, const WaveletParams &waveParams) {
+  if (_boundaryEdgesCount > 0) {
+    initPressures(t, waveParams);
+  }
+
+  if (_loadsCount > 0) {
+    initLoads(t, waveParams);
+  }
+}
+
+void CPU_ElementsData::calcFlocals(float t, const WaveletParams &waveParams) {
+  if (_boundaryEdgesCount > 0) {
+    calcPressures(t, waveParams);
+  }
+
+  if (_loadsCount > 0) {
+    calcLoads(t, waveParams);
+  }
+}
+
+void CPU_ElementsData::initPressures(float t, const WaveletParams &waveParams) {
+  genFCoordinates();
+  if (_DIM == 3) {
+    calculateLength3D();
+  } else if (_DIM == 2){
+    calculateLength();
+  } else {
+    throw std::runtime_error("wrong dimension");
+  }
+
+  calcPressures(t, waveParams);
+}
+
 int CPU_ElementsData::getLocalId(size_t elementId, size_t nodeId) {
   for (size_t i = 0; i < _DIM + 1; ++i) {
     if ((*elements)(elementId, i) == nodeId)
       return i;
   }
+  std::cout << "Wrong index: " << nodeId << "\n";
   return -1;
 }
 
-void CPU_ElementsData::calculateFlocal(float t, const WaveletParams &waveParams) {
-  updateWavelet(t, waveParams);
+void CPU_ElementsData::calcPressures(float t, const WaveletParams &waveParams) {
+  float v = updateWavelet(t, waveParams);
+  if (v != 0.f) {
+    //TODO: add for each bEdge
+    boundaryPressures->setTo(v);
+  }
   float coeff = _DIM == 2 ? -0.5f : (-1.f / 12.f);
   for (size_t bEdge = 0; bEdge < _boundaryEdgesCount; ++bEdge) {
     size_t elementId = (*boundaryAdjElems)[bEdge];
@@ -515,17 +575,18 @@ void CPU_ElementsData::calculateFlocal(float t, const WaveletParams &waveParams)
   }
 }
 
-void CPU_ElementsData::calculateFlocals(float t, const WaveletParams &waveParams) {
-  genFCoordinates();
-  if (_DIM == 3) {
-    calculateLength3D();
-  } else if (_DIM == 2){
-    calculateLength();
-  } else {
-    throw std::runtime_error("wrong dimension");
-  }
+void CPU_ElementsData::initLoads(float t, const WaveletParams &waveParams) {
+  calcLoads(t, waveParams);
+}
 
-  calculateFlocal(t, waveParams);
+void CPU_ElementsData::calcLoads(float t, const WaveletParams &waveParams) {
+  float v = updateWavelet(t, waveParams); //TODO: add for each load
+  for (size_t l = 0; l < _loadsCount; ++l) {
+    for (size_t d = 0; d < _DIM; ++d) {
+      (*loads)[_DIM * static_cast<int>((*loadsNodes)[l]) + d] = (*loadsVectors)(l, d);
+    }
+  }
+  transformWithMask(*loads, *Flocals);
 }
 
 void CPU_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &mechParams) {
@@ -536,14 +597,13 @@ void CPU_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &m
 
     std::unique_ptr<Matrix> coords = coordinates->getRow(el);
     coords->resize(_DIM, _DIM + 1);
-    float area = std::abs(((*coords)[0] - (*coords)[2]) *
+    float area = 0.5f * std::abs(((*coords)[0] - (*coords)[2]) *
                           ((*coords)[4] - (*coords)[5]) -
                           ((*coords)[1] - (*coords)[2]) *
                           ((*coords)[3] - (*coords)[5]));
-//    if (area != (*elementsAreas)[el])
-//      std::cout << "AAAAAAAAAAA\n";
-//    std::cout << area << " " << (*elementsAreas)[el] << "\n";
-    float mass = mechParams.rho * (*elementsAreas)[el];
+
+    // TODO: THINK WHY elementsAreas have a little different values
+    float mass = mechParams.rho * area;//0.5 * (*elementsAreas)[el];
 
     if (isLumped) {
       (*M)[0] = mass / 3;
