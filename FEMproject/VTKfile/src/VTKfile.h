@@ -15,7 +15,8 @@
 #include <vector>
 #include <string>
 
-void writeSEGY(Matrix &displacements);
+void writeDisplForSEGY(std::string out_path, ElementsData &elemsData, Matrix &displ, std::vector<int> receivers, int axis);
+void convertToSEGY(std::string src_path, std::string SEGY_path, std::vector<int> receivers, float sampleInterval, int sampleNumber);
 
 void MakeVTKfile2D(std::string output_vtk,
                    std::vector<CPU_Matrix> &nodes,

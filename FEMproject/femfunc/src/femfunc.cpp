@@ -743,6 +743,11 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
       std::cout << "eps_relax = " << eps_relax << "\n";
   }
 
+  std::string out_path = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/test_segy/test.txt";
+  size_t segy_step = 5;
+  int axis = 0;
+  std::vector<int> receivers = {130, 78, 146};
+
   int nt = 1;
   float cnorm_acc, cnorm_vel;
   do {
@@ -827,7 +832,14 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
       if (nt > endnt) break;
     }
 
+    if (nt % segy_step == 0)
+      writeDisplForSEGY(out_path, *elemsData, *displ, receivers, axis);
+
   } while (true);
+
+  std::string SEGYpath = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/test_segy/test.sgy";
+  convertToSEGY(out_path, SEGYpath, receivers, dt, static_cast<int>(endnt / segy_step));
+
 
   // Prepare final displacements
   Matrix *temp = Matrix::setMatrix(elemsData->get_device(), dk.get_nodesCount(), DIM);

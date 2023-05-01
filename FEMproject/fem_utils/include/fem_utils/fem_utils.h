@@ -58,6 +58,7 @@ public:
   DEVICE_NAME get_device() const;
   size_t get_dim() const;
   size_t get_elementsCount() const;
+  size_t get_nodesCount() const;
 
   Matrix* get_Klocals() const;
   Matrix* get_Flocals() const;

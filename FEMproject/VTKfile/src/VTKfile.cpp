@@ -1,20 +1,84 @@
 
 #include <VTKfile.h>
 
+void writeDisplForSEGY(std::string out_path, ElementsData &elemsData, Matrix &displ, std::vector<int> receivers, int axis) {
+  std::fstream output;
+  output.open(out_path, std::ios::app);
 
-void writeSEGY(std::string path, Matrix &v) {
-  CSegyOut out(path);
-  out.open();
+  Matrix *src = Matrix::setMatrix(elemsData.get_device(), elemsData.get_nodesCount(), elemsData.get_dim());
+  elemsData.reductionWithMask(displ, *src);
 
-//  out.setSegyFormat();
-//  out.setSegyID();
-//  out.setSegyTrace();
-//  out.setTraceNumber();
-//  out.setSampleInterval();
-//  out.setSampleNumber();
+  for (size_t i = 0; i < receivers.size(); ++i) {
+    int n = receivers[i];
+    std::unique_ptr<Matrix> v = src->getRow(n);
+    if (axis == 0)
+      output << (*v)[0] << " "; // x
+    else if (axis == 1)
+      output << (*v)[1] << " "; // y
+  }
+  output << "\n";
 
-  out.write();
+  delete src;
+  output.close();
+}
+
+void convertToSEGY(std::string src_path, std::string SEGY_path, std::vector<int> receivers, float sampleInterval, int sampleNumber) {
+
+//  CSegyIn in(path);
+//  if (in.open()) {
+//    std::cout << "SUCCESS\n";
+//  }
+//  if (in.read()) {
+//    std::cout << "SUCCESS\n";
+//  }
+//  int format = in.getSegyFormat();
+//  int id = in.getSegyID();
+//  float interval = in.getSampleInterval();
+//  int trNum = in.getTraceNumber();
+//  int sampNum = in.getSampleNumber();
+
+//  std::cout << format << "\n" << id << "\n" << interval << "\n" << trNum << "\n" << sampNum << "\n";
+
+
+  int traceNumber = receivers.size();
+
+  float *segy_data = new float[traceNumber * sampleNumber];
+
+  std::fstream f;
+  f.open(src_path, std::ios::in);
+  if (f) {
+    for (size_t samp_n = 0; samp_n < sampleNumber; ++samp_n) {
+      for (size_t trace_n = 0; trace_n < traceNumber; ++trace_n) {
+        f >> segy_data[samp_n + trace_n * samp_n];
+        std::cout << segy_data[samp_n + trace_n * samp_n] << " ";
+      }
+      std::cout << "\n";
+    }
+  } else {
+    std::cout << "FILE ERROR\n";
+  }
+
+  CSegyOut out(SEGY_path);
+
+  if (!out.open())
+    std::cout << "Problem with open\n";
+
+
+  if (!out.setSegyTrace(segy_data, traceNumber * sampleNumber))
+    std::cout << "Problem with setSegyTrace\n";
+  out.setSegyFormat(5);
+  out.setSegyID(0);
+  out.setTraceNumber(traceNumber);
+  out.setSampleInterval(sampleInterval);
+  out.setSampleNumber(sampleNumber);
+
+  if (!out.write())
+    std::cout << "Problem with write\n";
+
   out.close();
+
+  f.close();
+  delete [] segy_data;
 }
 
 void MakeVTKfile2D(std::string output_vtk,

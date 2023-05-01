@@ -67,6 +67,10 @@ size_t ElementsData::get_elementsCount() const {
   return _elementsCount;
 }
 
+size_t ElementsData::get_nodesCount() const {
+  return _nodesCount;
+}
+
 Matrix* ElementsData::get_Klocals() const {
   return Klocals;
 }
