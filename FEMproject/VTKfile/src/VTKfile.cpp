@@ -1,16 +1,81 @@
 
 #include <VTKfile.h>
 
-void writeDisplForSEGY(std::string out_path, ElementsData &elemsData, Matrix &displ, std::vector<int> receivers, int axis) {
+void testSEGY(std::string path1, std::string path2) {
+
+  CSegyIn input(path1);
+
+  if (input.open()) {
+      std::cout << "SUCCESS OPEN\n";
+  }
+  if (input.read()) {
+      std::cout << "SUCCESS READ\n";
+  }
+
+  int format = input.getSegyFormat();
+  int id = input.getSegyID();
+  float interval = input.getSampleInterval();
+  int trNum = input.getTraceNumber();
+  int sampNum = input.getSampleNumber();
+  float *data = new float[trNum * sampNum];
+  input.getSegyTrace(data);
+//  std::cout << data[0] << " " << data[1] << " " << data[2] << "\n";
+
+  std::cout << "FORMAT: " << format << "\nID: " << id << "\nSampleInterval: " << interval << "\nTraceNumber: " << trNum << "\nSampleNumber: " << sampNum << "\n";
+
+  CSegyOut output(path2, input.getTraceNumber());
+  if (output.open())
+      std::cout << "SUCCESS OPEN\n";
+
+  output.setSegyTrace(data, trNum * sampNum);
+  output.setSampleNumber(input.getSampleNumber());
+  output.setTraceNumber(input.getTraceNumber());
+  output.setSegyFormat(5); // TODO: add IBM_32 format
+  output.setSegyID(0);
+  output.setSampleInterval(input.getSampleInterval());
+
+  if (output.write())
+      std::cout << "SUCCESS WRITE\n";
+  output.close();
+}
+
+void getSEGYinfo(std::string path) {
+  CSegyIn in(path);
+  if (!in.open()) {
+    std::cout << "Problem with open\n";
+  }
+  if (!in.read()) {
+    std::cout << "Problem with read\n";
+  }
+
+  int format = in.getSegyFormat();
+  int id = in.getSegyID();
+  float interval = in.getSampleInterval();
+  int trNum = in.getTraceNumber();
+  int sampNum = in.getSampleNumber();
+
+  float *data = new float[trNum * sampNum];
+  in.getSegyTrace(data);
+
+  for (size_t trace_n = 0; trace_n < trNum; ++trace_n) {
+    for (size_t samp_n = 0; samp_n < sampNum; ++samp_n) {
+      std::cout << data[samp_n + trace_n * sampNum] << " ";
+    }
+    std::cout << "\n";
+  }
+  delete [] data;
+
+  std::cout << "FORMAT: " << format << "\nID: " << id << "\nSampleInterval: " << interval << "\nTraceNumber: " << trNum << "\nSampleNumber: " << sampNum << "\n";
+  in.close();
+}
+
+void writeDisplForSEGY(std::string out_path, Matrix &src, std::vector<int> receivers, int axis, float timestep) {
   std::fstream output;
   output.open(out_path, std::ios::app);
-
-  Matrix *src = Matrix::setMatrix(elemsData.get_device(), elemsData.get_nodesCount(), elemsData.get_dim());
-  elemsData.reductionWithMask(displ, *src);
-
+  output << timestep << " ";
   for (size_t i = 0; i < receivers.size(); ++i) {
     int n = receivers[i];
-    std::unique_ptr<Matrix> v = src->getRow(n);
+    std::unique_ptr<Matrix> v = src.getRow(n);
     if (axis == 0)
       output << (*v)[0] << " "; // x
     else if (axis == 1)
@@ -18,27 +83,10 @@ void writeDisplForSEGY(std::string out_path, ElementsData &elemsData, Matrix &di
   }
   output << "\n";
 
-  delete src;
   output.close();
 }
 
 void convertToSEGY(std::string src_path, std::string SEGY_path, std::vector<int> receivers, float sampleInterval, int sampleNumber) {
-
-//  CSegyIn in(path);
-//  if (in.open()) {
-//    std::cout << "SUCCESS\n";
-//  }
-//  if (in.read()) {
-//    std::cout << "SUCCESS\n";
-//  }
-//  int format = in.getSegyFormat();
-//  int id = in.getSegyID();
-//  float interval = in.getSampleInterval();
-//  int trNum = in.getTraceNumber();
-//  int sampNum = in.getSampleNumber();
-
-//  std::cout << format << "\n" << id << "\n" << interval << "\n" << trNum << "\n" << sampNum << "\n";
-
 
   int traceNumber = receivers.size();
 
@@ -49,31 +97,40 @@ void convertToSEGY(std::string src_path, std::string SEGY_path, std::vector<int>
   if (f) {
     for (size_t samp_n = 0; samp_n < sampleNumber; ++samp_n) {
       for (size_t trace_n = 0; trace_n < traceNumber; ++trace_n) {
-        f >> segy_data[samp_n + trace_n * samp_n];
-        std::cout << segy_data[samp_n + trace_n * samp_n] << " ";
+        f >> segy_data[samp_n + trace_n * sampleNumber];
+//        segy_data[samp_n + trace_n * sampleNumber] = 1.f;
+//        std::cout << segy_data[samp_n + trace_n * sampleNumber] << " ";
       }
-      std::cout << "\n";
+//      std::cout << "\n";
     }
   } else {
     std::cout << "FILE ERROR\n";
   }
 
-  CSegyOut out(SEGY_path);
+  for (size_t trace_n = 0; trace_n < traceNumber; ++trace_n) {
+    for (size_t samp_n = 0; samp_n < sampleNumber; ++samp_n) {
+      std::cout << segy_data[samp_n + trace_n * sampleNumber] << " ";
+    }
+    std::cout << "\n";
+  }
+
+  CSegyOut out(SEGY_path, traceNumber);
 
   if (!out.open())
     std::cout << "Problem with open\n";
 
-
   if (!out.setSegyTrace(segy_data, traceNumber * sampleNumber))
     std::cout << "Problem with setSegyTrace\n";
-  out.setSegyFormat(5);
-  out.setSegyID(0);
+  out.setSegyFormat(5); // fidesys: 1
+  out.setSegyID(0); // fidesys: 0
   out.setTraceNumber(traceNumber);
   out.setSampleInterval(sampleInterval);
   out.setSampleNumber(sampleNumber);
 
   if (!out.write())
     std::cout << "Problem with write\n";
+  else
+    std::cout << "SEG-Y converted!\n";
 
   out.close();
 

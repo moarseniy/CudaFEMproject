@@ -87,3 +87,6 @@ add_subdirectory(fem_utils)
 
 add_subdirectory(thirdparty/json)
 add_subdirectory(thirdparty/segyio)
+
+add_subdirectory(thirdparty/segyio2)
+add_subdirectory(segyUtils)

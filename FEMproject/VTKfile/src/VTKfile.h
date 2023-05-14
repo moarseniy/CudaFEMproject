@@ -15,7 +15,9 @@
 #include <vector>
 #include <string>
 
-void writeDisplForSEGY(std::string out_path, ElementsData &elemsData, Matrix &displ, std::vector<int> receivers, int axis);
+void testSEGY(std::string path1, std::string path2);
+void getSEGYinfo(std::string path);
+void writeDisplForSEGY(std::string out_path, Matrix &src, std::vector<int> receivers, int axis, float timestep);
 void convertToSEGY(std::string src_path, std::string SEGY_path, std::vector<int> receivers, float sampleInterval, int sampleNumber);
 
 void MakeVTKfile2D(std::string output_vtk,

@@ -36,6 +36,7 @@ bool CSegyOut::write()
 {
 	if (isWrite)
 		return true;
+
 	int ir(0);
 	if (!isEffectiveValue<int>(traceNumber, "trace number"))
 		return false;
@@ -45,11 +46,11 @@ bool CSegyOut::write()
 //		return false;
 	if (!isEffectiveValue<float>(sampleInterval, "sample rate"))
 		return false;
-	if (format != 5 && format != 2)
-	{
-		setErrorMessage("do not surpport this format of segy file");
-		return false;
-	}
+//	if (format != 5 && format != 2)
+//	{
+//		setErrorMessage("do not surpport this format of segy file");
+//		return false;
+//	}
 	setSEGYFileHeader();
 
 	setSEGYTraceHeaders();
@@ -287,7 +288,7 @@ bool CSegyOut::setSegyTrace(const float* const &p_trace,const int &length)
 		setErrorMessage("failed to allocate memory for trace");
 		return false;
 	}
-	memcpy(trace,p_trace,length*sizeof(float));
+  memcpy(trace,p_trace,length*sizeof(float));
 	return true;
 }
 

@@ -744,9 +744,16 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
   }
 
   std::string out_path = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/test_segy/test.txt";
+
   size_t segy_step = 5;
   int axis = 0;
-  std::vector<int> receivers = {130, 78, 146};
+  std::vector<int> receivers = {0, 1, 2};//{130, 78, 146};
+  size_t sampleNumber = 0;
+
+  std::fstream out;
+  out.open(out_path);
+  out << receivers.size() << "\t" << receivers[0] << "\t" << receivers[1] << "\t" << receivers[2] << "\n";
+  out.close();
 
   int nt = 1;
   float cnorm_acc, cnorm_vel;
@@ -832,14 +839,36 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
       if (nt > endnt) break;
     }
 
-    if (nt % segy_step == 0)
-      writeDisplForSEGY(out_path, *elemsData, *displ, receivers, axis);
+    if (nt % segy_step == 0) {
+      Matrix *src = Matrix::setMatrix(elemsData->get_device(), dk.get_nodesCount(), DIM);
+      src->setTo(0.f);
+      elemsData->reductionWithMask(*displ, *src);
+      src->divideElementwise(*elemsData->get_adjElements(), *src);
 
+      writeDisplForSEGY(out_path, *src, receivers, axis, nt * dt);
+      sampleNumber++;
+
+      delete src;
+    }
   } while (true);
 
-  std::string SEGYpath = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/test_segy/test.sgy";
-  convertToSEGY(out_path, SEGYpath, receivers, dt, static_cast<int>(endnt / segy_step));
+//  std::string path1 = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/SegyTest/fidesys01/fidesys01_Vy.sgy";
+//  std::string path2 = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/SegyTest/fidesys01/fidesys01_Vy_TEST.sgy";
 
+//  testSEGY();
+
+//  std::string fidesys_segy = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/SegyTest/fidesys01/fidesys01_Ax.sgy";
+//  getSEGYinfo(fidesys_segy);
+
+  std::string SEGYpath = "C:/Users/mokin/Documents/CAE-Fidesys-5.2/test_segy/test.sgy";
+  SegY segy1(0);
+
+  segy1.addFilenameTXT(out_path, "");
+  segy1.setParameter(SEGYpath, ReceiversType::DISPLACEMENT, 2, *dk.get_nodes(), n_elems, dk.get_nodesCount(), nt, true);
+  segy1.convert();
+
+//  convertToSEGY(out_path, SEGYpath, receivers, dt, sampleNumber);
+  getSEGYinfo(SEGYpath);
 
   // Prepare final displacements
   Matrix *temp = Matrix::setMatrix(elemsData->get_device(), dk.get_nodesCount(), DIM);

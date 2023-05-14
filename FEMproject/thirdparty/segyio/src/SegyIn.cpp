@@ -31,9 +31,9 @@ bool CSegyIn::read()
 		return false;
 	}
 	/* only read one time */
-	static bool isRead = false;
-	if (isRead)
-		return true;
+  static bool isRead = false;
+  if (isRead)
+    return true;
 	isRead = true;
 	int index;
 	size = getFileSize();   /* file size : total bytes */
@@ -44,7 +44,7 @@ bool CSegyIn::read()
 		if (index != 0)
 			readSEGYTraceHeader();
 		readSEGYTrace();
-	}
+  }
 	return true;
 }
 
