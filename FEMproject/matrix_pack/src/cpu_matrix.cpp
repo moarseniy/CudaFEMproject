@@ -293,6 +293,35 @@ void CPU_Matrix::setTo(float value) {
   }
 }
 
+void CPU_Matrix::getDiagonal(size_t size, Matrix &tgt) {
+  CheckAssert(_numElements > 0);
+  for (size_t i = 0; i < _numRows; ++i) {
+    for (size_t j = 0; j < size; ++j) {
+      tgt.get_data()[j + size * i] = _data[_numCols * i + size * j + j];
+    }
+  }
+}
+
+float CPU_Matrix::min() {
+  CheckAssert(_numElements > 0);
+  float min_value = 1e+10;
+  for (size_t i = 0; i < _numElements; ++i) {
+    if (_data[i] < min_value)
+      min_value = _data[i];
+  }
+  return min_value;
+}
+
+float CPU_Matrix::max() {
+  CheckAssert(_numElements > 0);
+  float max_value = -1e+10;
+  for (size_t i = 0; i < _numElements; ++i) {
+    if (_data[i] > max_value)
+      max_value = _data[i];
+  }
+  return max_value;
+}
+
 void CPU_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {
   CheckAssert(_numElements > 0);
 
@@ -361,6 +390,10 @@ void CPU_Matrix::copy(const Matrix &src, Matrix &tgt) {
   } else {
     src.copy(tgt);
   }
+}
+
+float& CPU_Matrix::operator ()(size_t i, size_t j) {
+  return _data[j + i * _numCols];
 }
 
 //float& CPU_Matrix::operator [](size_t index) {

@@ -13,6 +13,14 @@
 #include <matrix_pack/matrix_pack.h>
 #include <datakeeper.h>
 
+struct CGMData {
+  CGMData(DEVICE_NAME devType, size_t n_elems, size_t DIM);
+  ~CGMData();
+
+  void zeroData();
+  Matrix *r, *m, *z, *s, *p, *u, *x;
+};
+
 class ElementsData {
 public:
   ElementsData(size_t DIM, size_t elementsCount, size_t nodesCount, size_t boundaryEdgesCount, size_t loadsCount, DEVICE_NAME device);
@@ -76,6 +84,18 @@ public:
   Matrix* get_Mlocals() const;
   Matrix* get_Clocals() const;
 
+  Matrix* get_elementsAreas() const;
+
+  void zeroCGMData();
+
+  Matrix* get_r() const;
+  Matrix* get_m() const;
+  Matrix* get_z() const;
+  Matrix* get_s() const;
+  Matrix* get_p() const;
+  Matrix* get_u() const;
+  Matrix* get_x() const;
+
   static ElementsData* setElementsData(DEVICE_NAME device, const dataKeeper &dk);
 
 protected:
@@ -117,6 +137,8 @@ protected:
 
   Matrix *coordinates;
   Matrix *fcoordinates;
+
+  CGMData _cgmData;
 
   Matrix *Mlocals;
   Matrix *diagM;

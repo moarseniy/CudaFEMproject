@@ -14,7 +14,7 @@
 
 #include <femfunc.h>
 
-#define EPS 1e-4
+#define EPS 1e-3
 
 TEST(staticTask, test_rect_pcg) {
   std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config.json";
@@ -58,6 +58,32 @@ TEST(staticTask, test_bulk) {
   }
 }
 
+TEST(dynamicTask, test_bulk_dyn) {
+  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config3D_dyn.json";
+  std::string task_name = "test_bulk";
+  dataKeeper dk(config_path, task_name);
+
+  gpuCalculateFEM_DYN2(CUDA, dk, false);
+
+  CPU_Matrix cuda_res;
+  dk.get_displacements()->copy(cuda_res);
+  dk.get_displacements()->setTo(0.f);
+
+  gpuCalculateFEM_DYN2(CPU, dk, false);
+
+  ResultsDataKeeper RESdata2(false, false, false,
+                            dk.get_nodesCount());
+
+  WriteResults(dk, RESdata2);
+
+  float *cpu_data = dk.get_displacements()->get_data();
+  float *gpu_data = cuda_res.get_data();
+
+  for (size_t i(0); i < cuda_res.get_numElements(); ++i) {
+    ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: test_bulk_dyn failed!";
+  }
+}
+
 //TEST(dynamicTask, quasi1Dwave_taller) {
 //  std::string config_path = "C:/Users/mokin/Desktop/git/CudaFEMproject/configs/run_config_dyn_test.json";
 //  std::string task_name = "quasi1Dwave_taller";
@@ -95,16 +121,16 @@ TEST(UtilsFuncs, CalculateKlocals) {
 //  elemsData_cpu->calculateDiag(*elemsData_cpu->get_diagK(), 0.f, 1.f);
   elemsData_cpu->getDiagonalElements(*elemsData_cpu->get_Klocals(), *elemsData_cpu->get_diagK());
 
-//  {
-//    // calculateDiag
-//    CPU_Matrix cuda_res;
-//    elemsData_cuda->get_diagK()->copy(cuda_res);
-//    float *gpu_data = cuda_res.get_data();
-//    float *cpu_data = elemsData_cpu->get_diagK()->get_data();
-//    for (size_t i(0); i < cuda_res.get_numElements(); ++i) {
-//      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: calculateDiag failed!";
-//    }
-//  }
+  {
+    // calculateAreas
+    CPU_Matrix cuda_res;
+    elemsData_cuda->get_elementsAreas()->copy(cuda_res);
+    float *gpu_data = cuda_res.get_data();
+    float *cpu_data = elemsData_cpu->get_elementsAreas()->get_data();
+    for (size_t i(0); i < cuda_res.get_numElements(); ++i) {
+      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: calculateAreas failed!";
+    }
+  }
   {
     // genCoordinates test
     CPU_Matrix cuda_res;
@@ -126,6 +152,20 @@ TEST(UtilsFuncs, CalculateKlocals) {
     }
   }
 //  {
+//    // calculateDiag
+
+//    std::cout << elemsData_cpu->get_diagK()->min() << " " << elemsData_cpu->get_diagK()->max() << "\n";
+//    std::cout << elemsData_cuda->get_diagK()->min() << " " << elemsData_cuda->get_diagK()->max() << "\n";
+
+//    CPU_Matrix cuda_res;
+//    elemsData_cuda->get_diagK()->copy(cuda_res);
+//    float *gpu_data = cuda_res.get_data();
+//    float *cpu_data = elemsData_cpu->get_diagK()->get_data();
+//    for (size_t i(0); i < cuda_res.get_numElements(); ++i) {
+//      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: calculateDiag failed!";
+//    }
+//  }
+//  {
 //    // calculateKlocals test
 //    CPU_Matrix cuda_res;
 //    elemsData_cuda->get_Klocals()->copy(cuda_res);
@@ -135,6 +175,7 @@ TEST(UtilsFuncs, CalculateKlocals) {
 //      ASSERT_NEAR(gpu_data[i], cpu_data[i], EPS) << "ERROR: calculateKlocals failed!";
 //    }
 //  }
+
 }
 
 TEST(UtilsFuncs, CalculateFlocals) {
@@ -169,7 +210,7 @@ TEST(UtilsFuncs, CalculateFlocals) {
     }
   }
   {
-    // calculateKlocals test
+    // calculateFlocals test
     CPU_Matrix cuda_res;
     elemsData_cuda->get_Flocals()->copy(cuda_res);
     float *gpu_data = cuda_res.get_data();

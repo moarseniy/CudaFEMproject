@@ -51,6 +51,8 @@ public:
   virtual void reduce_by_key(Matrix &keys, Matrix &target) = 0;
   virtual float det() = 0;
   virtual float l2norm() = 0;
+  virtual float min() = 0;
+  virtual float max() = 0;
 
   // Right-vector multiplication
   virtual void multiplyByVec(const Matrix &vec, Matrix &target) const = 0;
@@ -77,7 +79,7 @@ public:
   static Matrix* setVector(Matrix &like);
 
   virtual void setTo(float value) = 0;
-
+  virtual void getDiagonal(size_t size, Matrix &tgt) = 0;
   std::unique_ptr<Matrix> subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol) const;
   void subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol, Matrix &target) const;
 
@@ -161,14 +163,19 @@ public:
   void uniformRandomize(float v1 = 0.f, float v2 = 1.f) override;
   void fillSequence(float startValue) override;
 
+  float min() override;
+  float max() override;
+
   void setTo(float value) override;
+  void getDiagonal(size_t size, Matrix &tgt) override;
+
 //  std::unique_ptr<Matrix> subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol) const;
 //  void subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol, Matrix &target) const;
 
   void multiplyByVec(const Matrix &vec, Matrix &target) const override;
 
 //  float& operator [](size_t index);
-//  float& operator ()(size_t i, size_t j);
+  float& operator ()(size_t i, size_t j);
 };
 
 #endif // MATRIX_PACK_H

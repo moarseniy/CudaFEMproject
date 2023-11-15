@@ -261,6 +261,7 @@ void kernelGetDiagonalElements(size_t n, float *diag, const float *Klocals, size
     size_t s = 6 * (dim - 1);
     const float *K = Klocals + s * s * id;
     float *d = diag + s * id;
+//    printf("%f ", K[0]);
     for (size_t i = 0; i < s; ++i) {
       d[i] = K[i + s * i];
     }
@@ -395,40 +396,57 @@ void kernelCalculateMlocals(size_t elementsCount, bool isLumped,
     const float *coords = coordinates + dim * (dim + 1) * id;
     float *M = Mlocals + id * 6 * (dim - 1);
 
-    float area = 0.5f * abs((coords[0] - coords[2]) *
-                          (coords[4] - coords[5]) -
-                          (coords[1] - coords[2]) *
-                          (coords[3] - coords[5]));
+    if (dim == 2) {
+      float area = 0.5f * abs((coords[0] - coords[2]) *
+                            (coords[4] - coords[5]) -
+                            (coords[1] - coords[2]) *
+                            (coords[3] - coords[5]));
 
-    float mass = rho * area;//elementsAreas[id];
+      float mass = rho * area;//elementsAreas[id];
 
-    if (isLumped) {
-      M[0] = mass / 3;
-      M[1] = mass / 3;
-      M[2] = mass / 3;
-      M[3] = mass / 3;
-      M[4] = mass / 3;
-      M[5] = mass / 3;
-    } else {
-      M[0 + 0 * 6] = mass / 6;
-      M[1 + 1 * 6] = mass / 6;
-      M[2 + 2 * 6] = mass / 6;
-      M[3 + 3 * 6] = mass / 6;
-      M[4 + 4 * 6] = mass / 6;
-      M[5 + 5 * 6] = mass / 6;
+      if (isLumped) {
+        M[0] = mass / 3;
+        M[1] = mass / 3;
+        M[2] = mass / 3;
+        M[3] = mass / 3;
+        M[4] = mass / 3;
+        M[5] = mass / 3;
+      } else {
+        M[0 + 0 * 6] = mass / 6;
+        M[1 + 1 * 6] = mass / 6;
+        M[2 + 2 * 6] = mass / 6;
+        M[3 + 3 * 6] = mass / 6;
+        M[4 + 4 * 6] = mass / 6;
+        M[5 + 5 * 6] = mass / 6;
 
-      M[0 + 2 * 6] = mass / 12;
-      M[1 + 3 * 6] = mass / 12;
-      M[0 + 4 * 6] = mass / 12;
-      M[1 + 5 * 6] = mass / 12;
-      M[2 + 4 * 6] = mass / 12;
-      M[3 + 5 * 6] = mass / 12;
-      M[2 + 0 * 6] = mass / 12;
-      M[3 + 1 * 6] = mass / 12;
-      M[4 + 0 * 6] = mass / 12;
-      M[5 + 1 * 6] = mass / 12;
-      M[4 + 2 * 6] = mass / 12;
-      M[5 + 3 * 6] = mass / 12;
+        M[0 + 2 * 6] = mass / 12;
+        M[1 + 3 * 6] = mass / 12;
+        M[0 + 4 * 6] = mass / 12;
+        M[1 + 5 * 6] = mass / 12;
+        M[2 + 4 * 6] = mass / 12;
+        M[3 + 5 * 6] = mass / 12;
+        M[2 + 0 * 6] = mass / 12;
+        M[3 + 1 * 6] = mass / 12;
+        M[4 + 0 * 6] = mass / 12;
+        M[5 + 1 * 6] = mass / 12;
+        M[4 + 2 * 6] = mass / 12;
+        M[5 + 3 * 6] = mass / 12;
+      }
+    } else if (dim == 3) {
+      float mass = rho * elementsAreas[id] / 6.f;
+      // TODO: Only lumping is available
+      M[0] = mass / 12;
+      M[1] = mass / 12;
+      M[2] = mass / 12;
+      M[3] = mass / 12;
+      M[4] = mass / 12;
+      M[5] = mass / 12;
+      M[6] = mass / 12;
+      M[7] = mass / 12;
+      M[8] = mass / 12;
+      M[9] = mass / 12;
+      M[10] = mass / 12;
+      M[11] = mass / 12;
     }
   }
 }

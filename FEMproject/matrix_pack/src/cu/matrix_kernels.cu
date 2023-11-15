@@ -160,7 +160,29 @@ void fillSequence_ker(float *a, const size_t ne, const size_t start) {
   }
 }
 
+float thrust_min_Ker(float *a, const size_t ne) {
+  try {
+    thrust::pair<thrust::device_ptr<float>, thrust::device_ptr<float>> tuple;
+    tuple = thrust::minmax_element(thrust::device_pointer_cast(a),
+                                   thrust::device_pointer_cast(a) + ne);
+    return tuple.first[0];
+  } catch(thrust::system_error e) {
+    std::cerr << "Error inside thrust_min_Ker: " << e.what() << std::endl;
+    exit(-1);
+  }
+}
 
+float thrust_max_Ker(float *a, const size_t ne) {
+  try {
+    thrust::pair<thrust::device_ptr<float>, thrust::device_ptr<float>> tuple;
+    tuple = thrust::minmax_element(thrust::device_pointer_cast(a),
+                                   thrust::device_pointer_cast(a) + ne);
+    return tuple.second[0];
+  } catch(thrust::system_error e) {
+    std::cerr << "Error inside thrust_max_Ker: " << e.what() << std::endl;
+    exit(-1);
+  }
+}
 
 //float gpuCNorm(const float *v, size_t size) {
 

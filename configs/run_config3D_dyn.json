@@ -1,0 +1,24 @@
+{
+	"CudaFEMproject_path": "C:/Users/mokin/Desktop/git/CudaFEMproject/",
+	"working_path": "C:/Users/mokin/Desktop/fem_stuff_test/",
+	"task": ["test_bulk"],
+	"task_type": "dynamic",
+	"DIM": 3,
+	"youngModulus": 2e+07,
+	"poissonRatio": 0.3,
+	"rho": 2000,
+	"damping_alpha": 0.0,
+	"damping_beta": 0.0,
+	"dt": 0.003,
+	"endtime": 0.3,
+	"beta1": 0.5,
+	"beta2": 0.55,
+	"save_segy": false,
+	"wavelet111": {
+		"WaveletType": "berlage",
+		"freq": 15.0,
+		"ampl": 1.0,
+		"timeshift": 0.0
+	},
+	"verbose": true
+}

@@ -114,10 +114,24 @@ void CUDA_Matrix::sort(Matrix &target) {
   thrust_sort_Ker(target.get_data(), target.get_numElements());
 }
 
+float CUDA_Matrix::min() {
+  CheckAssert(_numElements > 0);
+  return thrust_min_Ker(_data, _numElements);
+}
+
+float CUDA_Matrix::max() {
+  CheckAssert(_numElements > 0);
+  return thrust_max_Ker(_data, _numElements);
+}
+
 void CUDA_Matrix::setTo(float value) {
   CheckAssert(_numElements > 0); // TODO: compare kernel and thrust
 //  setTo_Ker(_numElements, _data, value);
   thrust_setTo_Ker(_data, _numElements, value);
+}
+
+void CUDA_Matrix::getDiagonal(size_t size, Matrix &tgt) {
+  assert(false);
 }
 
 void CUDA_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {

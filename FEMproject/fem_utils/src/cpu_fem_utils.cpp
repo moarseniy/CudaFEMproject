@@ -97,7 +97,8 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
 //  if (dk.getTaskType() == "dynamic") {
     Mlocals = Matrix::setMatrix(_device,
                                 _elementsCount,
-                                6 * (_DIM - 1));
+                                6 * (_DIM - 1) * 6 * (_DIM - 1));
+    Mlocals->setTo(0.f);
 
     diagM = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
 
@@ -165,11 +166,11 @@ CPU_ElementsData::~CPU_ElementsData() {
   if (diagK)
     delete diagK;
 
-  if (Mlocals != nullptr)
+  if (Mlocals)
     delete Mlocals;
-  if (diagM != nullptr)
+  if (diagM)
     delete diagM;
-  if (Clocals != nullptr)
+  if (Clocals)
     delete Clocals;
 }
 
@@ -593,47 +594,131 @@ void CPU_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &m
   // TODO: add implicit scheme
   for (size_t el = 0; el < _elementsCount; ++el) {
     std::unique_ptr<Matrix> M = Mlocals->getRow(el);
-//    M->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
 
     std::unique_ptr<Matrix> coords = coordinates->getRow(el);
     coords->resize(_DIM, _DIM + 1);
-    float area = 0.5f * std::abs(((*coords)[0] - (*coords)[2]) *
-                          ((*coords)[4] - (*coords)[5]) -
-                          ((*coords)[1] - (*coords)[2]) *
-                          ((*coords)[3] - (*coords)[5]));
 
-    // TODO: THINK WHY elementsAreas have a little different values
-    float mass = mechParams.rho * area;//0.5 * (*elementsAreas)[el];
+    if (_DIM == 2) {
 
-    if (isLumped) {
-      (*M)[0] = mass / 3;
-      (*M)[1] = mass / 3;
-      (*M)[2] = mass / 3;
-      (*M)[3] = mass / 3;
-      (*M)[4] = mass / 3;
-      (*M)[5] = mass / 3;
-    } else {
-      (*M)(0, 0) = mass / 6;
-      (*M)(1, 1) = mass / 6;
-      (*M)(2, 2) = mass / 6;
-      (*M)(3, 3) = mass / 6;
-      (*M)(4, 4) = mass / 6;
-      (*M)(5, 5) = mass / 6;
+      float area = 0.5f * std::abs(((*coords)[0] - (*coords)[2]) *
+                            ((*coords)[4] - (*coords)[5]) -
+                            ((*coords)[1] - (*coords)[2]) *
+                            ((*coords)[3] - (*coords)[5]));
 
-      (*M)(2, 0) = mass / 12;
-      (*M)(3, 1) = mass / 12;
-      (*M)(4, 0) = mass / 12;
-      (*M)(5, 1) = mass / 12;
-      (*M)(4, 2) = mass / 12;
-      (*M)(5, 3) = mass / 12;
-      (*M)(0, 2) = mass / 12;
-      (*M)(1, 3) = mass / 12;
-      (*M)(0, 4) = mass / 12;
-      (*M)(1, 5) = mass / 12;
-      (*M)(2, 4) = mass / 12;
-      (*M)(3, 5) = mass / 12;
+      // TODO: THINK WHY elementsAreas have a little different values
+      float mass = mechParams.rho * area;//0.5 * (*elementsAreas)[el];
+
+      if (isLumped) {
+        (*M)[0] = mass / 3;
+        (*M)[1] = mass / 3;
+        (*M)[2] = mass / 3;
+        (*M)[3] = mass / 3;
+        (*M)[4] = mass / 3;
+        (*M)[5] = mass / 3;
+      } else {
+        M->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
+
+        (*M)(0, 0) = mass / 6;
+        (*M)(1, 1) = mass / 6;
+        (*M)(2, 2) = mass / 6;
+        (*M)(3, 3) = mass / 6;
+        (*M)(4, 4) = mass / 6;
+        (*M)(5, 5) = mass / 6;
+
+        (*M)(2, 0) = mass / 12;
+        (*M)(3, 1) = mass / 12;
+        (*M)(4, 0) = mass / 12;
+        (*M)(5, 1) = mass / 12;
+
+        (*M)(4, 2) = mass / 12;
+        (*M)(5, 3) = mass / 12;
+        (*M)(0, 2) = mass / 12;
+        (*M)(1, 3) = mass / 12;
+
+        (*M)(0, 4) = mass / 12;
+        (*M)(1, 5) = mass / 12;
+        (*M)(2, 4) = mass / 12;
+        (*M)(3, 5) = mass / 12;
+      }
+    } else if (_DIM == 3) {
+      float mass = mechParams.rho * (*elementsAreas)[el] / 6.f;
+      // TODO: Only lumping is available
+      if (isLumped) {
+        (*M)[0] = mass / 12;
+        (*M)[1] = mass / 12;
+        (*M)[2] = mass / 12;
+        (*M)[3] = mass / 12;
+        (*M)[4] = mass / 12;
+        (*M)[5] = mass / 12;
+        (*M)[6] = mass / 12;
+        (*M)[7] = mass / 12;
+        (*M)[8] = mass / 12;
+        (*M)[9] = mass / 12;
+        (*M)[10] = mass / 12;
+        (*M)[11] = mass / 12;
+      } else {
+        M->resize(6 * (_DIM - 1), 6 * (_DIM - 1));
+
+        (*M)(0, 0) = mass / 24;
+        (*M)(1, 1) = mass / 24;
+        (*M)(2, 2) = mass / 24;
+        (*M)(3, 3) = mass / 24;
+        (*M)(4, 4) = mass / 24;
+        (*M)(5, 5) = mass / 24;
+        (*M)(6, 6) = mass / 24;
+        (*M)(7, 7) = mass / 24;
+        (*M)(8, 8) = mass / 24;
+        (*M)(9, 9) = mass / 24;
+        (*M)(10, 10) = mass / 24;
+        (*M)(11, 11) = mass / 24;
+
+        (*M)(3, 0) = mass / 48;
+        (*M)(4, 1) = mass / 48;
+        (*M)(5, 2) = mass / 48;
+        (*M)(6, 0) = mass / 48;
+        (*M)(7, 1) = mass / 48;
+        (*M)(8, 2) = mass / 48;
+        (*M)(9, 0) = mass / 48;
+        (*M)(10, 1) = mass / 48;
+        (*M)(11, 2) = mass / 48;
+
+        (*M)(6, 3) = mass / 48;
+        (*M)(7, 4) = mass / 48;
+        (*M)(8, 5) = mass / 48;
+        (*M)(9, 3) = mass / 48;
+        (*M)(10, 4) = mass / 48;
+        (*M)(11, 5) = mass / 48;
+        (*M)(0, 3) = mass / 48;
+        (*M)(1, 4) = mass / 48;
+        (*M)(2, 5) = mass / 48;
+
+        (*M)(9, 6) = mass / 48;
+        (*M)(10, 7) = mass / 48;
+        (*M)(11, 8) = mass / 48;
+        (*M)(0, 6) = mass / 48;
+        (*M)(1, 7) = mass / 48;
+        (*M)(2, 8) = mass / 48;
+        (*M)(3, 6) = mass / 48;
+        (*M)(4, 7) = mass / 48;
+        (*M)(5, 8) = mass / 48;
+
+        (*M)(0, 9) = mass / 48;
+        (*M)(1, 10) = mass / 48;
+        (*M)(2, 11) = mass / 48;
+        (*M)(3, 9) = mass / 48;
+        (*M)(4, 10) = mass / 48;
+        (*M)(5, 11) = mass / 48;
+        (*M)(6, 9) = mass / 48;
+        (*M)(7, 10) = mass / 48;
+        (*M)(8, 11) = mass / 48;
+      }
     }
+//    M->Show();
+//    std::cout << "\n";
   }
+
+//  Mlocals->Show();
+//  elementsAreas->Show();
 }
 
 void CPU_ElementsData::solveDiagSystem(Matrix &diagonal, Matrix &v, Matrix &tgt, bool transformRes) {

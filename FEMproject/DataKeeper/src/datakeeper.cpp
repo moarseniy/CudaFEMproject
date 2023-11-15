@@ -20,6 +20,8 @@ void dataKeeper::parseJsonConfig(std::string configPath) {
   mechParams.youngModulus = config.value("youngModulus", 2e+7f);
   mechParams.poissonRatio = config.value("poissonRatio", 0.3f);
 
+  save_segy = config.value("save_segy", false);
+
   // required for dynamic problems
   taskType = config.value("task_type", "static");
   if (taskType == "dynamic") {

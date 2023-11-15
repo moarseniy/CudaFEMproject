@@ -32,6 +32,9 @@ void thrust_setTo_Ker(float *src, size_t size, float v);
 void uniformRandomize_Ker(float *data, const size_t size, float v1, float v2);
 void fillSequence_ker(float *a, const size_t ne, const size_t start);
 
+float thrust_min_Ker(float *a, const size_t ne);
+float thrust_max_Ker(float *a, const size_t ne);
+
 void multiplyByVec_Ker(const size_t numMatr, const float *data,
                        const float *vec_data, const size_t vecSize,
                        float *tgt);

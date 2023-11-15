@@ -9,47 +9,7 @@
 #include <chrono>
 #include <ctime>
 
-SegY::SegY(int v)
-  : _output_type(SegY::Type::Convert),
-  _type(ReceiversType::COUNT),
-  _dof(0),
-  _elementsCount(0),
-  _nodesCount(0),
-  _nt(0),
-  _isPlaneTask(false) {
-}
-
-SegY::~SegY() {
-}
-
-bool SegY::is_warning_shown = false;
-
-void SegY::setParameter(const std::string& filename,
-  const ReceiversType::eType type, const size_t dof, Matrix &nodes,
-  const size_t elementsCount, const size_t nodesCount, const size_t nt, bool isPlaneTask) {
-
-  _filename = filename;
-  _type = type;
-  _dof = dof;
-  _elementsCount = elementsCount;
-  _nodesCount = nodesCount;
-  _nt = nt;
-  _isPlaneTask = isPlaneTask;
-
-  _nodes = Matrix::setMatrix(nodes);
-  CPU_Matrix::copy(nodes, *_nodes);
-}
-
-void SegY::addFilenameTXT(const std::string& txt_filename,
-  const std::string& txt_filename_copy) {
-  _txt_filenames.insert(txt_filename);
-}
-
-void SegY::setOutputType(Type type) {
-  _output_type = type;
-}
-
-std::string SegY::getLineTextHeader(const std::vector<float>& times) const {
+std::string getLineTextHeader(const std::vector<float>& times, const ReceiversType::eType type, const size_t dof, size_t elementsCount, size_t nodesCount) {
   std::string line_textheader =
     "C 1 PROGRAM: CudaFEMproject                                                       "
     "C 2 LICENSE:                                                                    "
@@ -99,16 +59,16 @@ std::string SegY::getLineTextHeader(const std::vector<float>& times) const {
 
   strcpy(&line_textheader[1 * 80 + 13], license_str.c_str());
   strcpy(&line_textheader[2 * 80 + 12], client_str.c_str());
-  const std::string type_str = ReceiversTypeToInfoName(_type, _dof);
+  const std::string type_str = ReceiversTypeToInfoName(type, dof);
   strcpy(&line_textheader[3 * 80 + 25], type_str.c_str());
   const auto current = std::chrono::system_clock::now();
   const auto time = std::chrono::system_clock::to_time_t(current);
   std::string time_str = std::ctime(&time);
   time_str.resize(time_str.size() - 1);
   strcpy(&line_textheader[5 * 80 + 10], time_str.c_str());
-  const std::string elements_str = std::to_string(_elementsCount);
+  const std::string elements_str = std::to_string(elementsCount);
   strcpy(&line_textheader[6 * 80 + 44], elements_str.c_str());
-  const std::string nodes_str = std::to_string(_nodesCount);
+  const std::string nodes_str = std::to_string(nodesCount);
   strcpy(&line_textheader[7 * 80 + 41], nodes_str.c_str());
   const std::string timesteps_str = std::to_string(times.size());
   strcpy(&line_textheader[8 * 80 + 33], timesteps_str.c_str());
@@ -127,10 +87,11 @@ std::string SegY::getLineTextHeader(const std::vector<float>& times) const {
   return line_textheader;
 }
 
-void SegY::fill_sgy_with_traces(segy_file* fp) const {
+void fill_sgy_with_traces(segy_file* fp, std::string txt_filename, const ReceiversType::eType type, Matrix &nodes, size_t dof, size_t elementsCount, size_t nodesCount) {
   size_t total_trace_num(0);
   size_t line_counter(1);
-  for (const auto& txt_filename : _txt_filenames) {
+  bool is_warning_shown = false;
+//  for (const auto& txt_filename : _txt_filenames) {
     std::ifstream in(txt_filename, std::ifstream::in);
     if (in.good()) {
       std::string str;
@@ -167,7 +128,7 @@ void SegY::fill_sgy_with_traces(segy_file* fp) const {
 
       int err(0);
 
-      const std::string line_textheader = getLineTextHeader(times);
+      const std::string line_textheader = getLineTextHeader(times, type, dof, elementsCount, nodesCount);
       segy_write_textheader(fp, 0, line_textheader.c_str());
 
       std::string line_binheader;
@@ -202,25 +163,26 @@ void SegY::fill_sgy_with_traces(segy_file* fp) const {
         const size_t trace_id = trace_ids[i];
         if (trace_id < 0)
           throw std::runtime_error("ERROR: Invalid trace_id in SegY::fill_sgy_with_traces.");
-        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_X, static_cast<int>((*_nodes)(trace_id, 0)));
-        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_GROUP_X, static_cast<int>((*_nodes)(trace_id, 0)));
-        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_CDP_X, static_cast<int>((*_nodes)(trace_id, 0)));
-        if (_isPlaneTask) {
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_RECV_GROUP_ELEV, static_cast<int>((*_nodes)(trace_id, 1)));
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_SURF_ELEV, static_cast<int>((*_nodes)(trace_id, 1)));
+        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_X, static_cast<int>(nodes(trace_id, 0)));
+        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_GROUP_X, static_cast<int>(nodes(trace_id, 0)));
+        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_CDP_X, static_cast<int>(nodes(trace_id, 0)));
+        bool isPlaneTask = true;
+        if (isPlaneTask) {
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_RECV_GROUP_ELEV, static_cast<int>(nodes(trace_id, 1)));
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_SURF_ELEV, static_cast<int>(nodes(trace_id, 1)));
         } else {
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_Y, static_cast<int>((*_nodes)(trace_id, 1)));
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_GROUP_Y, static_cast<int>((*_nodes)(trace_id, 1)));
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_CDP_Y, static_cast<int>((*_nodes)(trace_id, 1)));
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_RECV_GROUP_ELEV, static_cast<int>((*_nodes)(trace_id, 2)));
-          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_SURF_ELEV, static_cast<int>((*_nodes)(trace_id, 2)));
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_Y, static_cast<int>(nodes(trace_id, 1)));
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_GROUP_Y, static_cast<int>(nodes(trace_id, 1)));
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_CDP_Y, static_cast<int>(nodes(trace_id, 1)));
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_RECV_GROUP_ELEV, static_cast<int>(nodes(trace_id, 2)));
+          err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_SURF_ELEV, static_cast<int>(nodes(trace_id, 2)));
         }
         err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_COORD_UNITS, 1);
         err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SAMPLE_COUNT, static_cast<int>(sample_counter));
         err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SAMPLE_INTER, static_cast<int>(interval));
         err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_INLINE, static_cast<int>(trace_id)); // _ins->nodes.id.get(trace_id)
         err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_CROSSLINE, static_cast<int>(line_counter));
-        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_TYPE, static_cast<int>(_dof + 1));
+        err = segy_set_field(&trace_binheader[0], SEGY_FIELD::SEGY_TR_SOURCE_TYPE, static_cast<int>(dof + 1));
 
         err = segy_write_traceheader(fp, traceno, trace_binheader.c_str(), trace0, trace_bsize);
         err = segy_set_format(fp, format | SEGY_MSB);
@@ -231,65 +193,25 @@ void SegY::fill_sgy_with_traces(segy_file* fp) const {
       total_trace_num += trace_num;
       line_counter++;
     }
-  }
+//  }
 }
 
-void SegY::read_sgy_with_traces(segy_file* fp) const {
-  int err(0);
-  std::string line_binheader;
-  line_binheader.resize(SEGY_BINARY_HEADER_SIZE);
-  //char line_binheader[SEGY_BINARY_HEADER_SIZE];
-  err = segy_binheader(fp, &line_binheader[0]);
-  int trace_num(0), sample_counter(0);
-  err = segy_get_bfield(&line_binheader[0], SEGY_BINFIELD::SEGY_BIN_TRACES, &trace_num);
-  err = segy_get_bfield(&line_binheader[0], SEGY_BINFIELD::SEGY_BIN_SAMPLES, &sample_counter);
-
-  std::vector<std::vector<float>> traces(trace_num);
-  for (auto& trace : traces)
-    trace.resize(sample_counter);
-  for (size_t i = 0; i < static_cast<size_t>(traces.size()); ++i) {
-    const int trace_bsize = static_cast<int>(traces[i].size() * sizeof(float));
-    const int traceno = static_cast<int>(i);
-    const int trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE;
-    err = segy_readtrace(fp, traceno, traces[i].data(), trace0, trace_bsize);
-  }
-}
-
-int SegY::formatsize(SEGY_FORMAT format) const {
-  switch (format) {
-  case SEGY_IBM_FLOAT_4_BYTE:             return 4;
-  case SEGY_SIGNED_INTEGER_4_BYTE:        return 4;
-  case SEGY_SIGNED_SHORT_2_BYTE:          return 2;
-  case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: return 4;
-  case SEGY_IEEE_FLOAT_4_BYTE:            return 4;
-  case SEGY_SIGNED_CHAR_1_BYTE:           return 1;
-
-  case SEGY_NOT_IN_USE_1:
-  case SEGY_NOT_IN_USE_2:
-  default:
-    return -1;
-  }
-}
-
-
-void SegY::convert() const {
+void convert(std::string out_path, std::string txt_filename, const ReceiversType::eType type, Matrix &nodes, size_t dof, size_t elementsCount, size_t nodesCount) {
 
 //#ifdef _WIN32
 //    using convert_type = std::codecvt_utf8<wchar_t>;
 //    std::wstring_convert<convert_type, wchar_t> converter;
 //    const std::string wfilename = converter.to_bytes(_filename);
 //#else
-  const std::string wfilename = _filename;
+  const std::string wfilename = out_path;
 //#endif  // _WIN32
 
-  if (_output_type == Type::Convert) {
-    segy_file* fp = segy_open(wfilename.c_str(), "wb");
-    fill_sgy_with_traces(fp);
-    if (fp) {
-      const int err = segy_close(fp);
-      if (err != 0)
-        throw std::runtime_error("Can't access to sgy-file.");
-    }
+  segy_file* fp = segy_open(wfilename.c_str(), "wb");
+  fill_sgy_with_traces(fp, txt_filename, type, nodes, dof, elementsCount, nodesCount);
+  if (fp) {
+    const int err = segy_close(fp);
+    if (err != 0)
+      throw std::runtime_error("Can't access to sgy-file.");
   }
 }
 

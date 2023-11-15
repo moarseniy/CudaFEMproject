@@ -103,6 +103,8 @@ protected:
   std::string taskName;
   std::string taskType;
 
+  bool save_segy;
+
   size_t DIM;
   size_t nodesCount;
   size_t elementsCount;

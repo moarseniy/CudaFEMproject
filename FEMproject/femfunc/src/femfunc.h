@@ -21,6 +21,7 @@
 
 #include <segyUtils.h>
 
+
 void writeSnapshot(float t, int num_receivers, int grid_size, int n_gl_dofs, FEMdataKeeper &FEMdata, gpuDataKeeper_DYN &gpu_data);
 
 void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha, float damping_beta, float endtime, float dt, float beta1, float beta2, bool PRINT_DEBUG_INFO);
@@ -28,7 +29,7 @@ void gpuCalculateFEM_DYN(FEMdataKeeper &FEMdata, float rho, float damping_alpha,
 void gpuCalculateFEM_EbE_vec(FEMdataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
 
 void gpuCalculateFEM_EbE_vec2(DEVICE_NAME deviceType, dataKeeper &FEMdata, bool PRINT_DEBUG_INFO);
-void gpuPCG_EbE_vec2(DEVICE_NAME deviceType, dataKeeper &FEMdata, ElementsData &elemsData, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);
+void gpuPCG_EbE_vec2(Matrix &displacements, DEVICE_NAME deviceType, dataKeeper &FEMdata, ElementsData &elemsData, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);
 void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_INFO);
 
 void gpuPCG_EbE_vec(FEMdataKeeper &FEMdata, Matrix &res, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO);

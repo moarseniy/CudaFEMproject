@@ -49,7 +49,12 @@ public:
   void uniformRandomize(float v1 = 0.f, float v2 = 1.f) override;
   void fillSequence(float startValue) override;
 
+  float min() override;
+  float max() override;
+
   void setTo(float value) override;
+  void getDiagonal(size_t size, Matrix &tgt) override;
+
 //  std::unique_ptr<Matrix> subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol) const;
 //  void subMatrix(size_t startRow, size_t endRow, size_t startCol, size_t endCol, Matrix &target) const;
 
