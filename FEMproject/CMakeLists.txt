@@ -40,6 +40,8 @@ find_package(CUDA QUIET REQUIRED)
 MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
 
 set(CUDA_64_BIT_DEVICE_CODE ON)
+
+# TODO: Think of usage FMA -fmad=true
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -arch=sm_52" )
 
 MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
@@ -79,7 +81,6 @@ add_subdirectory(VTKfile)
 add_subdirectory(femfunc)
 add_subdirectory(DataKeeper)
 add_subdirectory(Tools)
-add_subdirectory(CudaLib)
 add_subdirectory(femstruct)
 #add_subdirectory(testing)
 add_subdirectory(matrix_pack)
