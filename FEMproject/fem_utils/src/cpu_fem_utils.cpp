@@ -56,6 +56,7 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   tBlocals = Matrix::setMatrix(_device,
                         _elementsCount,
                         6 * (_DIM - 1) * 3 * (_DIM - 1));
+  tBlocals->setTo(0.f);
 
   Klocals = Matrix::setMatrix(_device,
                               _elementsCount,
@@ -92,15 +93,19 @@ CPU_ElementsData::CPU_ElementsData(const dataKeeper &dk) :
   elementsAreas = Matrix::setVector(_device, dk.get_elementsCount());
   bEdgesLengths = Matrix::setVector(_device, dk.get_boundaryEdgesCount());
 
-  diagK = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+  diagK = Matrix::setMatrix(_device);
+//  diagK = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
 
 //  if (dk.getTaskType() == "dynamic") {
-    Mlocals = Matrix::setMatrix(_device,
-                                _elementsCount,
-                                6 * (_DIM - 1) * 6 * (_DIM - 1));
-    Mlocals->setTo(0.f);
 
-    diagM = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+  Mlocals = Matrix::setMatrix(_device);
+//    Mlocals = Matrix::setMatrix(_device,
+//                                _elementsCount,
+//                                6 * (_DIM - 1) * 6 * (_DIM - 1));
+//    Mlocals->setTo(0.f);
+
+//    diagM = Matrix::setMatrix(_device, _elementsCount, 6 * (_DIM - 1));
+  diagM = Matrix::setMatrix(_device);
 
     Clocals = Matrix::setMatrix(_device,
                                 _elementsCount,
@@ -592,6 +597,13 @@ void CPU_ElementsData::calcLoads(float t, const WaveletParams &waveParams) {
 
 void CPU_ElementsData::calculateMlocals(bool isLumped, const MechanicalParams &mechParams) {
   // TODO: add implicit scheme
+  if (isLumped)
+    Mlocals->resize(_elementsCount, 6 * (_DIM - 1));
+  else
+    Mlocals->resize(_elementsCount, 6 * (_DIM - 1) * 6 * (_DIM - 1));
+
+  Mlocals->setTo(0.f);
+
   for (size_t el = 0; el < _elementsCount; ++el) {
     std::unique_ptr<Matrix> M = Mlocals->getRow(el);
 

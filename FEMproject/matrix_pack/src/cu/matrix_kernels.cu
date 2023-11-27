@@ -99,6 +99,21 @@ void setTo_Ker(const size_t size, float *data, const float value) {
 }
 
 __global__
+void kernelGetDiagonal(const size_t numRows, const size_t numCols, const float *data, float *tgt) {
+  size_t id = blockIdx.x * blockDim.x + threadIdx.x;
+  if (id < numRows) {
+    // TODO: parallel using Y dim
+    for (size_t j = 0; j < numCols; ++j) {
+      tgt[j + numCols * id] = data[numCols * numCols * id + numCols * j + j];
+    }
+  }
+}
+
+void getDiagonal_Ker(const size_t numRows, const size_t numCols, const float *data, float *tgt) {
+  kernelGetDiagonal<<<(numRows + THREADS_NUM - 1) / THREADS_NUM, THREADS_NUM>>>(numRows, numCols, data, tgt);
+}
+
+__global__
 void kernelScale(const size_t size, float *data, const float value) {
   size_t id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < size) {

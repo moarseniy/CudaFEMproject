@@ -131,7 +131,10 @@ void CUDA_Matrix::setTo(float value) {
 }
 
 void CUDA_Matrix::getDiagonal(size_t size, Matrix &tgt) {
-  assert(false);
+  CheckAssert(_numElements > 0);
+  tgt.resize(_numRows, size);
+
+  getDiagonal_Ker(_numRows, size, _data, tgt.get_data());
 }
 
 void CUDA_Matrix::multiplyByVec(const Matrix &vec, Matrix &target) const {
@@ -250,6 +253,9 @@ void CUDA_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool tr
                       const Matrix &b, size_t subColsB, bool trans_b, size_t batchCount, const float alpha) {
   CheckAssert(a.get_numElements() > 0 && b.get_numElements() > 0 && batchCount > 0);
 //  resize(batchCount, subRowsA * subColsB);
+
+//  cublasSetMathMode(_handle, CUBLAS_PEDANTIC_MATH);
+//  cublasSetComp
   const float beta = 0.f;
   int strideA = subRowsA * subColsA == a.get_numElements() ? 0 : subRowsA * subColsA;
   int strideB = subColsA * subColsB == b.get_numElements() ? 0 : subColsA * subColsB;
@@ -264,6 +270,8 @@ void CUDA_Matrix::bmm(const Matrix &a, size_t subRowsA, size_t subColsA, bool tr
                             &beta,
                             _data, subRowsA, strideC,
                             batchCount);
+
+  cudaDeviceSynchronize();
 }
 
 void CUDA_Matrix::resize(const Matrix &like) {

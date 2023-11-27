@@ -113,6 +113,14 @@ Matrix* ElementsData::get_Blocals() const {
   return Blocals;
 }
 
+Matrix* ElementsData::get_tBlocals() const {
+  return tBlocals;
+}
+
+Matrix* ElementsData::get_D() const {
+  return D;
+}
+
 Matrix* ElementsData::get_coordinates() const {
   return coordinates;
 }

@@ -71,6 +71,8 @@ public:
   Matrix* get_Klocals() const;
   Matrix* get_Flocals() const;
   Matrix* get_Blocals() const;
+  Matrix* get_tBlocals() const;
+  Matrix* get_D() const;
   Matrix* get_coordinates() const;
   Matrix* get_fcoordinates() const;
   Matrix* get_mask() const;

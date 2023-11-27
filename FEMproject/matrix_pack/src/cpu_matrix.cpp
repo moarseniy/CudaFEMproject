@@ -295,6 +295,8 @@ void CPU_Matrix::setTo(float value) {
 
 void CPU_Matrix::getDiagonal(size_t size, Matrix &tgt) {
   CheckAssert(_numElements > 0);
+  tgt.resize(_numRows, size);
+
   for (size_t i = 0; i < _numRows; ++i) {
     for (size_t j = 0; j < size; ++j) {
       tgt.get_data()[j + size * i] = _data[_numCols * i + size * j + j];
