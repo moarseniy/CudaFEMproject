@@ -40,6 +40,8 @@ void multiplyByVec_Ker(const size_t numMatr, const float *data,
                        float *tgt);
 
 void setTo_Ker(const size_t size, float *data, const float value);
+void getDiagonal_Ker(const size_t numRows, const size_t numCols, const float *data, float *tgt);
+
 void addWeighted_Ker(const size_t size, float *data, const float *src,
                      const float alpha, const float beta);
 void scale_Ker(const size_t size, float *data, const float value);

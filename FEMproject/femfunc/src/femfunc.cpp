@@ -1,6 +1,6 @@
 #include <femfunc.h>
 
-void gpuCalculateFEM_EbE_vec2(DEVICE_NAME deviceType, dataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
+void gpuCalculateFEM_EbE_vec(DEVICE_NAME deviceType, dataKeeper &FEMdata, bool PRINT_DEBUG_INFO) {
   CheckRunTime(__func__)
   ElementsData *elemsData = ElementsData::setElementsData(deviceType, FEMdata);
 
@@ -17,29 +17,17 @@ void gpuCalculateFEM_EbE_vec2(DEVICE_NAME deviceType, dataKeeper &FEMdata, bool 
   // (0a)
   elemsData->get_Flocals()->copy(*elemsData->get_r());
 
-  gpuPCG_EbE_vec2(*FEMdata.get_displacements(), deviceType, FEMdata, *elemsData, true, 1e-8f, PRINT_DEBUG_INFO);
+  gpuPCG_EbE_vec(*FEMdata.get_displacements(), deviceType, FEMdata, *elemsData, true, 1e-8f, PRINT_DEBUG_INFO);
 
   delete elemsData;
 }
 
-void gpuPCG_EbE_vec2(Matrix &displacements, DEVICE_NAME devType, dataKeeper &FEMdata, ElementsData &elemsData, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO) {
+void gpuPCG_EbE_vec(Matrix &displacements, DEVICE_NAME devType, dataKeeper &FEMdata, ElementsData &elemsData, bool doAssemblyRes, float eps, bool PRINT_DEBUG_INFO) {
   CheckRunTime(__func__)
   size_t n_elems  = FEMdata.get_elementsCount();
   size_t DIM = FEMdata.get_dim();
   size_t n_gl_dofs = FEMdata.get_nodesCount() * DIM;
   int grid_size = 6 * (DIM - 1) * n_elems;
-
-//  Matrix *r = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  Matrix *m = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  Matrix *z = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  Matrix *s = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  Matrix *p = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  Matrix *u = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  Matrix *x = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));
-//  r->setTo(0.f); m->setTo(0.f); z->setTo(0.f); s->setTo(0.f);
-//  p->setTo(0.f); u->setTo(0.f); x->setTo(0.f);
-
-//  elemsData.zeroCGMData();
 
   Matrix *r = elemsData.get_r(), *m = elemsData.get_m(),
          *z = elemsData.get_z(), *s = elemsData.get_s(),
@@ -139,7 +127,7 @@ void gpuPCG_EbE_vec2(Matrix &displacements, DEVICE_NAME devType, dataKeeper &FEM
 
 }
 
-void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_INFO) {
+void gpuCalculateFEM_DYN(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_INFO) {
   // Zienkiewicz, Taylor, Zhu "The Finite Element Method: Its Basis and Fundamentals" 6th edition 17.3.3 GN22 (page 608)
   CheckRunTime(__func__)
   //assert(beta2 >= beta1 && beta1 >= 0.5f);
@@ -311,7 +299,7 @@ void gpuCalculateFEM_DYN2(DEVICE_NAME devType, dataKeeper &dk, bool PRINT_DEBUG_
       if (isExplicit) {
         elemsData->solveDiagSystem(*elemsData->get_Mlocals(), *r, *x_dyn, doAssemblyRes);
       } else {
-        gpuPCG_EbE_vec2(*x_dyn, devType, dk, *elemsData, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
+        gpuPCG_EbE_vec(*x_dyn, devType, dk, *elemsData, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
 //        gpuPCG_EbE_vec_DYN(FEMdata, gpu_data, doAssemblyRes, eps_PCG, PRINT_DEBUG_INFO);
       }
     }
@@ -398,17 +386,6 @@ void WriteResults(dataKeeper &dk, ResultsDataKeeper &RESdata) {
     MakeVTKfile2D(dk.getDataPaths().output_vtk, *dk.get_nodes(), *dk.get_elementsIds(), *dk.get_displacements());
   } else if (dk.get_dim() == 3) {
     MakeVTKfile3D(dk.getDataPaths().output_vtk, *dk.get_nodes(), *dk.get_elementsIds(), *dk.get_displacements());
-  }
-}
-
-void WriteResults(FEMdataKeeper &FEMdata, ResultsDataKeeper &RESdata, std::string output_vtk, bool PRINT_DEBUG_INFO) {
-
-  if (FEMdata.DIM == 2) {
-    MakeVTKfile2D(output_vtk, FEMdata.nodes, FEMdata.elements,
-                *FEMdata.displacements, RESdata.Stress, RESdata.sigma_mises, RESdata.Deformation, RESdata.epsilon_mises, RESdata.SmoothStress);
-  } else if (FEMdata.DIM == 3) {
-    MakeVTKfile3D(output_vtk, FEMdata.nodes, FEMdata.elements,
-                *FEMdata.displacements, RESdata.Stress, RESdata.sigma_mises, RESdata.Deformation, RESdata.epsilon_mises);
   }
 }
 

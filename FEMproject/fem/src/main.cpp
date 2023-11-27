@@ -22,9 +22,9 @@ int main(int argc, char *argv[]) {
   dataKeeper dk(config_path, task_name);
 
   if (dk.getTaskType() == "static")
-    gpuCalculateFEM_EbE_vec2(deviceType, dk, true);
+    gpuCalculateFEM_EbE_vec(deviceType, dk, true);
   else
-    gpuCalculateFEM_DYN2(deviceType, dk, true);
+    gpuCalculateFEM_DYN(deviceType, dk, true);
 
   ResultsDataKeeper RESdata2(false, false, false,
                             dk.get_nodesCount());

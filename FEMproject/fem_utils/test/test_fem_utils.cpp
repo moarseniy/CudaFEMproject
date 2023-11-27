@@ -21,13 +21,13 @@ TEST(staticTask2D, test_rect_pcg) {
   std::string task_name = "test_rect_pcg";
   dataKeeper dk(config_path, task_name);
 
-  gpuCalculateFEM_EbE_vec2(CUDA, dk, false);
+  gpuCalculateFEM_EbE_vec(CUDA, dk, false);
 
   CPU_Matrix cuda_res;
   dk.get_displacements()->copy(cuda_res);
   dk.get_displacements()->setTo(0.f);
 
-  gpuCalculateFEM_EbE_vec2(CPU, dk, false);
+  gpuCalculateFEM_EbE_vec(CPU, dk, false);
 
   float *cpu_data = dk.get_displacements()->get_data();
   float *gpu_data = cuda_res.get_data();
@@ -42,13 +42,13 @@ TEST(staticTask3D, test_bulk) {
   std::string task_name = "test_bulk";
   dataKeeper dk(config_path, task_name);
 
-  gpuCalculateFEM_EbE_vec2(CUDA, dk, false);
+  gpuCalculateFEM_EbE_vec(CUDA, dk, false);
 
   CPU_Matrix cuda_res;
   dk.get_displacements()->copy(cuda_res);
   dk.get_displacements()->setTo(0.f);
 
-  gpuCalculateFEM_EbE_vec2(CPU, dk, false);
+  gpuCalculateFEM_EbE_vec(CPU, dk, false);
 
   float *cpu_data = dk.get_displacements()->get_data();
   float *gpu_data = cuda_res.get_data();
@@ -63,13 +63,13 @@ TEST(dynamicTask, test_bulk_dyn_implicit) {
   std::string task_name = "test_bulk";
   dataKeeper dk(config_path, task_name);
 
-  gpuCalculateFEM_DYN2(CUDA, dk, false);
+  gpuCalculateFEM_DYN(CUDA, dk, false);
 
   CPU_Matrix cuda_res;
   dk.get_displacements()->copy(cuda_res);
   dk.get_displacements()->setTo(0.f);
 
-  gpuCalculateFEM_DYN2(CPU, dk, false);
+  gpuCalculateFEM_DYN(CPU, dk, false);
 
   ResultsDataKeeper RESdata2(false, false, false,
                             dk.get_nodesCount());
@@ -89,13 +89,13 @@ TEST(dynamicTask, test_bulk_dyn_explicit) {
   std::string task_name = "test_bulk";
   dataKeeper dk(config_path, task_name);
 
-  gpuCalculateFEM_DYN2(CUDA, dk, false);
+  gpuCalculateFEM_DYN(CUDA, dk, false);
 
   CPU_Matrix cuda_res;
   dk.get_displacements()->copy(cuda_res);
   dk.get_displacements()->setTo(0.f);
 
-  gpuCalculateFEM_DYN2(CPU, dk, false);
+  gpuCalculateFEM_DYN(CPU, dk, false);
 
   ResultsDataKeeper RESdata2(false, false, false,
                             dk.get_nodesCount());
