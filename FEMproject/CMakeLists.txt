@@ -23,6 +23,7 @@ add_subdirectory(
   )
 
 
+option(WITH_TESTS "Use gtest" ON)
 option(WITH_CUDA "Use CUDA for calculations" ON)
 option(WITH_ONEAPI "Use ONEAPI for calculations" OFF)
 if (WITH_CUDA)
@@ -35,17 +36,16 @@ elseif (WITH_ONEAPI)
     add_definitions(-DWITH_ONEAPI=true)
 endif()
 
-find_package(CUDA QUIET REQUIRED)
+#find_package(CUDA QUIET REQUIRED)
 
-MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
+#MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
 
-set(CUDA_64_BIT_DEVICE_CODE ON)
+#set(CUDA_64_BIT_DEVICE_CODE ON)
 
-# TODO: Think of usage FMA -fmad=true
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -arch=sm_52" )
+## TODO: Think of usage FMA -fmad=true
+#set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11 -arch=sm_52" )
 
-MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
-
+#MESSAGE(STATUS "${CUDA_NVCC_FLAGS}")
 
 
 option(TOOLS_TIMER CACHED ON)
@@ -75,19 +75,20 @@ if (TOOLS_TIMER)
     add_definitions(-DTOOLS_TIMER)
 endif()
 
-#add_subdirectory(Linal2)
 add_subdirectory(fem)
 add_subdirectory(VTKfile)
 add_subdirectory(femfunc)
 add_subdirectory(DataKeeper)
 add_subdirectory(Tools)
 add_subdirectory(femstruct)
-#add_subdirectory(testing)
+
 add_subdirectory(matrix_pack)
 add_subdirectory(fem_utils)
 
 add_subdirectory(thirdparty/json)
-add_subdirectory(thirdparty/segyio)
 
+add_subdirectory(thirdparty/segyio)
 add_subdirectory(thirdparty/segyio2)
 add_subdirectory(segyUtils)
+
+#add_subdirectory(testing)

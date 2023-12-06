@@ -1,4 +1,4 @@
-#include <cuda_matrix_pack/cuda_matrix.h>
+#include <cuda_matrix.h>
 
 cublasHandle_t CUDA_Matrix::_handle;
 

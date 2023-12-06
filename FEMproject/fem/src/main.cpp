@@ -5,6 +5,7 @@
 #include <Tools.h>
 #include <femfunc.h>
 #include <datakeeper.h>
+#include <matrix_pack.h>
 
 int main(int argc, char *argv[]) {
   CheckRunTime(__func__)

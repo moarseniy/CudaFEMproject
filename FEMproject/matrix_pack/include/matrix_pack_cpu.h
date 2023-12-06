@@ -1,9 +1,12 @@
-#ifndef MATRIX_PACK_H
-#define MATRIX_PACK_H
+#ifndef MATRIX_PACK_CPU_H
+#define MATRIX_PACK_CPU_H
 
 #include <cassert>
 #include <stdexcept>
 
+#include <cmath>
+#include <cstring>
+#include <memory>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -178,4 +181,4 @@ public:
   float& operator ()(size_t i, size_t j);
 };
 
-#endif // MATRIX_PACK_H
+#endif // MATRIX_PACK_CPU_H

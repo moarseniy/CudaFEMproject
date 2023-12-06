@@ -1,4 +1,5 @@
 CMakeLists.txt.user
+build*
 build-FEMproject-Desktop_x86_windows_msvc2019_pe_64bit-Debug
 build-FEMproject-Desktop_x86_windows_msvc2019_pe_64bit-Release
 build-FEMproject-MSVC-Debug

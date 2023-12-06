@@ -1,5 +1,5 @@
-#ifndef FEM_UTILS_H
-#define FEM_UTILS_H
+#ifndef FEM_UTILS_CPU_H
+#define FEM_UTILS_CPU_H
 
 #include <cassert>
 #include <stdexcept>
@@ -10,7 +10,7 @@
 #include <map>
 #include <set>
 
-#include <matrix_pack/matrix_pack.h>
+#include <matrix_pack.h>
 #include <datakeeper.h>
 
 struct CGMData {
@@ -189,4 +189,4 @@ public:
   void calculateMlocals(bool isLumped, const MechanicalParams &mechParams) override;
 };
 
-#endif // FEM_UTILS_H
+#endif // FEM_UTILS_CPU_H

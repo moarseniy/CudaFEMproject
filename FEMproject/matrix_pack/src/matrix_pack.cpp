@@ -1,8 +1,4 @@
-
-#include <matrix_pack/matrix_pack.h>
-#ifdef WITH_CUDA
-#include <cuda_matrix_pack/cuda_matrix.h>
-#endif
+#include <matrix_pack.h>
 
 Matrix::Matrix(size_t numRows, size_t numCols, bool hasData, float *data, DEVICE_NAME device) :
   _device(device),

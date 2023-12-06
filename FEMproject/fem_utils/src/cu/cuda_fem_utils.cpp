@@ -1,5 +1,4 @@
-#include <cuda_fem_utils/cuda_fem_utils.h>
-
+#include <cuda_fem_utils.h>
 
 CUDA_ElementsData::CUDA_ElementsData() :
   ElementsData(0, 0, 0, 0, 0, CUDA) {}

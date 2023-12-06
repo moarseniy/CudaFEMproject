@@ -1,13 +1,12 @@
 #ifndef VTKfile_H
 #define VTKfile_H
 
-#include <matrix_pack/matrix_pack.h>
-#include <cuda_matrix_pack/cuda_matrix.h>
+#include <matrix_pack.h>
 
-#include <SegyIO.h>
-#include <SegyIn.h>
-#include <SegyOut.h>
-#include <femfunc.h>
+//#include <SegyIO.h>
+//#include <SegyIn.h>
+//#include <SegyOut.h>
+
 #include <Tools.h>
 
 #include <iostream>

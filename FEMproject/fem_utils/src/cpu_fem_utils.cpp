@@ -1,4 +1,4 @@
-#include <fem_utils/fem_utils.h>
+#include <fem_utils_cpu.h>
 
 CPU_ElementsData::CPU_ElementsData() :
   ElementsData(0, 0, 0, 0, 0, CPU) {}

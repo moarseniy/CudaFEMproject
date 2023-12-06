@@ -22,8 +22,8 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/inner_product.h>
 
-#include <fem_utils/fem_utils.h>
-#include "cuda_fem_utils/fem_utils_kernels.h"
+#include <fem_utils_cpu.h>
+#include "fem_utils_kernels.h"
 
 
 class CUDA_ElementsData : public ElementsData {

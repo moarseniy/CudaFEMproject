@@ -8,4 +8,4 @@ add_library(
 )
 
 target_include_directories(VTKfile PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(VTKfile matrix_pack cuda_matrix_pack femfunc Tools segyio)
+target_link_libraries(VTKfile matrix_pack segyio)

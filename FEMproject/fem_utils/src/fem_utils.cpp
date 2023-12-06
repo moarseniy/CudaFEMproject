@@ -1,8 +1,4 @@
-
-#include <fem_utils/fem_utils.h>
-#ifdef WITH_CUDA
-#include <cuda_fem_utils/cuda_fem_utils.h>
-#endif
+#include <fem_utils.h>
 
 CGMData::CGMData(DEVICE_NAME devType, size_t n_elems, size_t DIM) {
   r = Matrix::setMatrix(devType, n_elems, 6 * (DIM - 1));

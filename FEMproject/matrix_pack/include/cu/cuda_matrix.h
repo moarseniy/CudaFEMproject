@@ -4,8 +4,8 @@
 #include <iostream>
 #include <cassert>
 
-#include <matrix_pack/matrix_pack.h>
-#include "cuda_matrix_pack/matrix_kernels.h"
+#include <matrix_pack_cpu.h>
+#include "matrix_kernels.h"
 
 class CUDA_Matrix : public Matrix {
 private:

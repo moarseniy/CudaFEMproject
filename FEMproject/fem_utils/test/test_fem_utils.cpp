@@ -1,5 +1,4 @@
-#include <fem_utils/fem_utils.h>
-#include <cuda_fem_utils/cuda_fem_utils.h>
+#include <fem_utils.h>
 
 #include <gtest/gtest.h>
 

@@ -7,8 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#include <matrix_pack/matrix_pack.h>
-#include <cuda_matrix_pack/cuda_matrix.h>
+#include <matrix_pack.h>
 
 #include <Tools.h>
 

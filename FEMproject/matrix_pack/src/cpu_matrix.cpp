@@ -1,4 +1,4 @@
-#include <matrix_pack/matrix_pack.h>
+#include <matrix_pack_cpu.h>
 
 CPU_Matrix::CPU_Matrix() :
   Matrix(0, 0, true, nullptr, CPU) {}
