@@ -103,14 +103,14 @@ bool CSegyIn::readSEGYTrace()
 		getBuf(buf, _char2int, index*_LONGSIZE, _LONGSIZE);
 		if (format == 2)
 		{
-			memcpy(&tmp, _char2int, _LONGSIZE);
+            std::memcpy(&tmp, _char2int, _LONGSIZE);
 			_trace[index] = static_cast<float>(tmp);
 		}
 		else
-			memcpy(&_trace[index], _char2int, _LONGSIZE);
+            std::memcpy(&_trace[index], _char2int, _LONGSIZE);
 	}
 	/* copy data to trace pointer */
-	memcpy(trace + count*sampleNumber, _trace, sizeof(float)*sampleNumber);
+    std::memcpy(trace + count*sampleNumber, _trace, sizeof(float)*sampleNumber);
 	count++;
 	delete[]_trace;
 	delete[]buf;
@@ -132,13 +132,13 @@ void CSegyIn::readSEGYFileHeader()
 	for (index = 0; index < 3; index++)
 	{
 		getBuf(buffer, _char2int, _offset, _LONGSIZE);
-		memcpy(&fHeader[index], _char2int, _LONGSIZE);
+        std::memcpy(&fHeader[index], _char2int, _LONGSIZE);
 		_offset += _LONGSIZE;
 	}
 	for (; index < 27; index++)
 	{
 		getBuf(buffer, _char2short, _offset, _SHORTSIZE);
-		memcpy(&tmp, _char2short, _SHORTSIZE);
+        std::memcpy(&tmp, _char2short, _SHORTSIZE);
 		fHeader[index] = static_cast<int>(tmp);
 		_offset += _SHORTSIZE;
 	}
@@ -168,7 +168,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for(index = 0; index < 7; index++)
 	{
 		getBuf(buffer,_char2int,_offset,_LONGSIZE);
-		memcpy(&tHeader[index], _char2int, _LONGSIZE);
+        std::memcpy(&tHeader[index], _char2int, _LONGSIZE);
 		_offset += _LONGSIZE;
 	}
 
@@ -184,7 +184,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for (; index < 11; index++)
 	{
 		getBuf(buffer, _char2short,_offset, _SHORTSIZE);
-		memcpy(&tmp, _char2short, _SHORTSIZE);
+        std::memcpy(&tmp, _char2short, _SHORTSIZE);
 		tHeader[index] = static_cast<int>(tmp);
 		_offset += _SHORTSIZE;
 	}
@@ -203,7 +203,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for (; index < 19; index++)
 	{
 		getBuf(buffer, _char2int, _offset, _LONGSIZE);
-		memcpy(&tHeader[index], _char2int, _LONGSIZE);
+        std::memcpy(&tHeader[index], _char2int, _LONGSIZE);
 		_offset += _LONGSIZE;
 	}
 		
@@ -215,7 +215,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for (; index < 21; index++)
 	{
 		getBuf(buffer, _char2short, _offset, _SHORTSIZE);
-		memcpy(&tmp, _char2short, _SHORTSIZE);
+        std::memcpy(&tmp, _char2short, _SHORTSIZE);
 		tHeader[index] = static_cast<int>(tmp);
 		_offset += _SHORTSIZE;
 	}
@@ -230,7 +230,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for (; index < 25; index++)
 	{
 		getBuf(buffer, _char2int, _offset, _LONGSIZE);
-		memcpy(&tHeader[index], _char2int, _LONGSIZE);
+        std::memcpy(&tHeader[index], _char2int, _LONGSIZE);
 		_offset += _LONGSIZE;
 	}
 		
@@ -243,7 +243,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for (; index < 67; index++)
 	{
 		getBuf(buffer, _char2short, _offset, _SHORTSIZE);
-		memcpy(&tmp, _char2short, _SHORTSIZE);
+        std::memcpy(&tmp, _char2short, _SHORTSIZE);
 		tHeader[index] = static_cast<int>(tmp);
 		_offset += _SHORTSIZE;
 	}
@@ -251,7 +251,7 @@ bool CSegyIn::readSEGYTraceHeader()
 	for (; index < 71; index++)
 	{
 		getBuf(buffer, _char2int, _offset, _LONGSIZE);
-		memcpy(&tHeader[index], _char2int, _LONGSIZE);
+        std::memcpy(&tHeader[index], _char2int, _LONGSIZE);
 		_offset += _LONGSIZE;
 	}
 
@@ -283,7 +283,7 @@ bool CSegyIn::readSEGYTraceHeader()
 		}
 	}
 	
-	memcpy(tHeaders + count*_TRACE_HEAD_LEN, tHeader, sizeof(int)*_TRACE_HEAD_LEN);
+    std::memcpy(tHeaders + count*_TRACE_HEAD_LEN, tHeader, sizeof(int)*_TRACE_HEAD_LEN);
 	count++;
 
 	return true;
@@ -305,15 +305,15 @@ void CSegyIn::getBuf(const char* const src,
 void CSegyIn::getSegyTrace(float* const &p_trace) const
 {
 	if (!trace) return;
-	memcpy(p_trace, trace, sizeof(float)*traceNumber*sampleNumber);
+    std::memcpy(p_trace, trace, sizeof(float)*traceNumber*sampleNumber);
 }
 
 void CSegyIn::getSegyFileHeader(int* const &p_fHeader) const
 {
-	memcpy(p_fHeader, fHeader, sizeof(int)*_FILE_HEAD_LEN);
+    std::memcpy(p_fHeader, fHeader, sizeof(int)*_FILE_HEAD_LEN);
 }
 
 void CSegyIn::getSegyTraceHeaders(int* const &p_tHeaders) const
 {
-	memcpy(p_tHeaders, tHeaders, sizeof(int)*traceNumber*_TRACE_HEAD_LEN);
+    std::memcpy(p_tHeaders, tHeaders, sizeof(int)*traceNumber*_TRACE_HEAD_LEN);
 }

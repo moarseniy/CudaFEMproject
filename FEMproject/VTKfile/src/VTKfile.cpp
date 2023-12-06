@@ -137,7 +137,7 @@ void convertToSEGY(std::string src_path, std::string SEGY_path, std::vector<int>
   f.close();
   delete [] segy_data;
 }
-
+/*
 void MakeVTKfile2D(std::string output_vtk,
                    std::vector<CPU_Matrix> &nodes,
                    std::vector<Element> &elements,
@@ -215,6 +215,68 @@ void MakeVTKfile2D(std::string output_vtk,
 //    outvtk << epsilon_mises[i] << "\n";
 //  }
 }
+
+void MakeVTKfile3D(std::string output_vtk,
+                   std::vector<CPU_Matrix> &nodes,
+                   std::vector<Element> &elements,
+                   Matrix &displacements,
+                   std::vector<CPU_Matrix> &Stress,
+                   std::vector<float> &sigma_mises,
+                   std::vector<CPU_Matrix> &Deformation,
+                   std::vector<float> &epsilon_mises) {
+  CheckRunTime(__func__)
+  std::fstream outvtk;
+  outvtk.open(output_vtk, std::fstream::out);
+  outvtk << "# vtk DataFile Version 1.0\nresults.vtk  3D Unstructured Grid of Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "
+           << nodes[0].get_numElements() << " float\n";
+  for (size_t i = 0; i < nodes[0].get_numElements(); ++i) {
+    outvtk << nodes[0][i] << " " << nodes[1][i] << " " << nodes[2][i] << "\n";
+  }
+
+  outvtk << "CELLS " << elements.size() << " " << elements.size() * 5 << "\n";
+  for (size_t i = 0; i < elements.size(); ++i) {
+    outvtk << 4 << " " << elements[i].nodesIds[0] << " " << elements[i].nodesIds[1] << " " << elements[i].nodesIds[2] << " " << elements[i].nodesIds[3] << "\n";
+  }
+
+  outvtk << "CELL_TYPES " << elements.size() << "\n";
+  for (size_t i = 0; i < elements.size(); ++i) {
+    outvtk << 10 << "\n";
+  }
+
+  outvtk << "\nPOINT_DATA " << nodes[0].get_numElements() << "\n";
+
+  outvtk << "\nVECTORS displacements float\n";
+  for (size_t i = 0; i < displacements.get_numElements() - 2; i += 3) {
+    outvtk << displacements[i] << " " << displacements[i + 1] << " " << displacements[i + 2] << "\n";
+  }
+
+  outvtk << "\nSCALARS summary float\nLOOKUP_TABLE default\n";
+  for (size_t i = 0; i < displacements.get_numElements() - 2; i += 3) {
+    outvtk << std::sqrt(displacements[i] * displacements[i] + displacements[i + 1] * displacements[i + 1] + displacements[i + 2] * displacements[i + 2]) << "\n";
+  }
+
+  //    outvtk << "\nCELL_DATA " << elements.size() << "\n";
+  //    outvtk << "VECTORS stress float\n";
+  //    for (int i = 0; i < Stress.size(); i++) {
+  //        outvtk << Stress[i][0] << " " << Stress[i][1] << " " << Stress[i][2] << " " << Stress[i][3] << " " << Stress[i][4] << " " << Stress[i][5] << "\n";
+  //    }
+
+//      outvtk << "\nSCALARS mises_stress float\nLOOKUP_TABLE default\n";
+//      for (int i = 0; i < sigma_mises.size(); i++) {
+//          outvtk << sigma_mises[i] << "\n";
+//      }
+
+  //    outvtk << "\nVECTORS deformation float\n";
+  //    for (int i = 0; i < Deformation.size(); i++) {
+  //        outvtk << Deformation[i][0] << " " << Deformation[i][1] << " " << Deformation[i][2] << " " << Deformation[i][3] << " " << Deformation[i][4] << " " << Deformation[i][5] << "\n";
+  //    }
+
+  //    outvtk << "\nSCALARS mises_deformation float\nLOOKUP_TABLE default\n";
+  //    for (int i = 0; i < epsilon_mises.size(); i++) {
+  //        outvtk << epsilon_mises[i] << "\n";
+  //    }
+}
+*/
 
 void MakeVTKfile2D(std::string output_vtk,
                    Matrix &nodes,
@@ -321,64 +383,4 @@ void MakeVTKfile3D(std::string output_vtk,
   }
 }
 
-void MakeVTKfile3D(std::string output_vtk,
-                   std::vector<CPU_Matrix> &nodes,
-                   std::vector<Element> &elements,
-                   Matrix &displacements,
-                   std::vector<CPU_Matrix> &Stress,
-                   std::vector<float> &sigma_mises,
-                   std::vector<CPU_Matrix> &Deformation,
-                   std::vector<float> &epsilon_mises) {
-  CheckRunTime(__func__)
-  std::fstream outvtk;
-  outvtk.open(output_vtk, std::fstream::out);
-  outvtk << "# vtk DataFile Version 1.0\nresults.vtk  3D Unstructured Grid of Triangles\nASCII\n\nDATASET UNSTRUCTURED_GRID\nPOINTS "
-           << nodes[0].get_numElements() << " float\n";
-  for (size_t i = 0; i < nodes[0].get_numElements(); ++i) {
-    outvtk << nodes[0][i] << " " << nodes[1][i] << " " << nodes[2][i] << "\n";
-  }
-
-  outvtk << "CELLS " << elements.size() << " " << elements.size() * 5 << "\n";
-  for (size_t i = 0; i < elements.size(); ++i) {
-    outvtk << 4 << " " << elements[i].nodesIds[0] << " " << elements[i].nodesIds[1] << " " << elements[i].nodesIds[2] << " " << elements[i].nodesIds[3] << "\n";
-  }
-
-  outvtk << "CELL_TYPES " << elements.size() << "\n";
-  for (size_t i = 0; i < elements.size(); ++i) {
-    outvtk << 10 << "\n";
-  }
-
-  outvtk << "\nPOINT_DATA " << nodes[0].get_numElements() << "\n";
-
-  outvtk << "\nVECTORS displacements float\n";
-  for (size_t i = 0; i < displacements.get_numElements() - 2; i += 3) {
-    outvtk << displacements[i] << " " << displacements[i + 1] << " " << displacements[i + 2] << "\n";
-  }
-
-  outvtk << "\nSCALARS summary float\nLOOKUP_TABLE default\n";
-  for (size_t i = 0; i < displacements.get_numElements() - 2; i += 3) {
-    outvtk << std::sqrt(displacements[i] * displacements[i] + displacements[i + 1] * displacements[i + 1] + displacements[i + 2] * displacements[i + 2]) << "\n";
-  }
-
-  //    outvtk << "\nCELL_DATA " << elements.size() << "\n";
-  //    outvtk << "VECTORS stress float\n";
-  //    for (int i = 0; i < Stress.size(); i++) {
-  //        outvtk << Stress[i][0] << " " << Stress[i][1] << " " << Stress[i][2] << " " << Stress[i][3] << " " << Stress[i][4] << " " << Stress[i][5] << "\n";
-  //    }
-
-//      outvtk << "\nSCALARS mises_stress float\nLOOKUP_TABLE default\n";
-//      for (int i = 0; i < sigma_mises.size(); i++) {
-//          outvtk << sigma_mises[i] << "\n";
-//      }
-
-  //    outvtk << "\nVECTORS deformation float\n";
-  //    for (int i = 0; i < Deformation.size(); i++) {
-  //        outvtk << Deformation[i][0] << " " << Deformation[i][1] << " " << Deformation[i][2] << " " << Deformation[i][3] << " " << Deformation[i][4] << " " << Deformation[i][5] << "\n";
-  //    }
-
-  //    outvtk << "\nSCALARS mises_deformation float\nLOOKUP_TABLE default\n";
-  //    for (int i = 0; i < epsilon_mises.size(); i++) {
-  //        outvtk << epsilon_mises[i] << "\n";
-  //    }
-}
 

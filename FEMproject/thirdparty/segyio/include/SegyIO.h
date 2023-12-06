@@ -10,6 +10,7 @@ Date    : 2016.09.09
 #include <fstream>
 #include <string>
 #include <cstdlib>
+#include <cstring>
 class CSegyIO
 {
 	/* private copy-constructor function */

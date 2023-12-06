@@ -1,5 +1,4 @@
-#include <matrix_pack/matrix_pack.h>
-#include <cuda_matrix_pack/cuda_matrix.h>
+#include <matrix_pack.h>
 
 #include <gtest/gtest.h>
 
